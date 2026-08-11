@@ -25,6 +25,7 @@ from .frames import (
     stl_to_body,
     velocity_hat_stl_from_tangent_angles,
 )
+from .integration import PanelIntegration, integrate_panel_loads
 from .mesh import MeshComponent, PanelMesh
 
 __all__ = (
@@ -40,6 +41,7 @@ __all__ = (
     "NonFiniteError",
     "PanelFlowState",
     "PanelGeometry",
+    "PanelIntegration",
     "PanelLoadModel",
     "PanelMesh",
     "PanelSolverError",
@@ -47,6 +49,7 @@ __all__ = (
     "PayloadValue",
     "ShapeError",
     "body_to_stability",
+    "integrate_panel_loads",
     "stl_to_body",
     "velocity_hat_stl_from_tangent_angles",
 )

@@ -73,6 +73,12 @@ checks indexing and one-to-one face alignment but does not load or repair a mesh
 derive geometric quantities, reject unresolved degeneracy, or select either
 mesh-strictness behavior recorded in D011.
 
+Common integration applies panel area/reference-area normalization to the local
+traction vector, transforms total force into body and stability frames, and
+computes body-axis moments about the configured STL-frame reference point. It
+retains per-face force and moment contributions for later component aggregation
+without importing or identifying a physical model.
+
 ## Ownership constraints
 
 | Concern | Owner |
