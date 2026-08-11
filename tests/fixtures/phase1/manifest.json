@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "generation": {
+    "command": "uv run python scripts/generate_phase1_goldens.py --fmf-repo ../fmfsolver --newt-repo ../newtsolver",
+    "clean_source_method": "git archive of the verified commit into a temporary directory",
+    "environments": [
+      "uv sync --locked --python 3.12",
+      "uv sync --locked --python 3.12 --extra rayaccel"
+    ],
+    "python": "3.12",
+    "terminal": {
+      "COLUMNS": "80",
+      "LINES": "24"
+    },
+    "workers": 1
+  },
+  "sources": {
+    "fmfsolver": {
+      "repository": "https://github.com/pandorobo11/fmfsolver",
+      "commit": "b62bc844d02a8f5212e62a53dea3238a1414317d",
+      "version": "1.3.8",
+      "input": "inputs/fmfsolver_cases.csv"
+    },
+    "newtsolver": {
+      "repository": "https://github.com/pandorobo11/newtsolver",
+      "commit": "dc1357d0d50bbedfdc8b3429cab37e6b98b56c70",
+      "version": "1.0.3",
+      "input": "inputs/newtsolver_cases.csv"
+    }
+  },
+  "assets": {
+    "inputs/stl/plate.stl": "5efbd2fedbd19699b2faeb17e6476d7c3daf1c9140dfe27819fe2925e8da94a4",
+    "inputs/stl/double_plate.stl": "a994d84a74f58054c49778b3365eec5057e17c25d06630a2b4e4e9264774059b",
+    "inputs/stl/plate_offset_x2.stl": "ea3ac79d1b9a6d8966c9e9fd47a31bc11fe6f21e2210efe9e6437327b4d4db23",
+    "inputs/stl/cube.stl": "9957967dbb6a0af6206146024ba27bcb550a28f92baa65a279bdf5e04199cf23"
+  },
+  "normalization": {
+    "absolute_paths": "replace the staged fixture/archive root with its marker and canonicalize only the rooted path suffix to POSIX separators, including JSON-encoded STL path lists",
+    "case_signature": "validate as 64 lowercase hexadecimal characters, then store <case-signature:path-and-version-dependent>",
+    "timestamps": "validate UTC ISO-8601 syntax, then store <utc-timestamp>",
+    "elapsed_time": "validate finite and nonnegative, then store <nonnegative-elapsed-seconds>",
+    "nonfinite_csv": "preserve explicit NaN and infinity as distinct markers; never equate them with a blank cell or finite number",
+    "string_dtype": "normalize NumPy fixed-width Unicode and object string arrays to logical dtype string",
+    "rayaccel_binding": "after proving Embree availability and selection, normalize the platform-specific embreex or embreex4 distribution and version",
+    "artifact_serialization": "compare CSV cells, VTP named arrays/field metadata, and NPZ named arrays; never compare file bytes"
+  },
+  "tolerances": {
+    "exact": {
+      "atol": 0.0,
+      "rtol": 0.0,
+      "quantities": "names, order, shapes, integer topology, masks, counts, strings and metadata",
+      "rationale": "These quantities do not contain floating-point numerical work."
+    },
+    "geometry": {
+      "atol": 1e-12,
+      "rtol": 0.0,
+      "quantities": "vertices, centers, normals, areas and resolved attitude vectors/angles",
+      "rationale": "The legacy suites already require attitude agreement at 1e-12; the ASCII fixtures use exactly representable coordinates before normalization."
+    },
+    "sentman": {
+      "atol": 1e-10,
+      "rtol": 0.0,
+      "quantities": "Sentman panel vectors/scalars and integrated force/moment coefficients",
+      "rationale": "The pinned analytic flat-plate regression accepts absolute coefficient error of 1e-10 across S=1..100 and alpha=0..60 degrees."
+    },
+    "hypersonic_algebraic": {
+      "atol": 1e-10,
+      "rtol": 0.0,
+      "quantities": "Newtonian, modified-Newtonian and closed-form tangent-wedge panel pressure, vectors and integrated coefficients",
+      "rationale": "The pinned Newtonian analytic flat-plate regression uses 1e-10; tangent-wedge branch/vector consistency and other vector/scalar tests are stricter at 12 decimal places or 1e-12 to 1e-13."
+    },
+    "hypersonic_root_solve": {
+      "atol": 1e-9,
+      "rtol": 0.0,
+      "quantities": "Prandtl-Meyer panel pressure, vectors and integrated coefficients",
+      "rationale": "The safeguarded inverse Prandtl-Meyer iteration is covered by a pinned nine-decimal-place regression; its internal stopping thresholds are 1e-12."
+    },
+    "hypersonic_tangent_cone": {
+      "atol": 1e-9,
+      "rtol": 5e-8,
+      "quantities": "tangent-cone panel pressure, vectors and downstream integrated coefficients",
+      "rationale": "The pinned Taylor-Maccoll solve uses LSODA with rtol=1e-8 and atol=1e-10; 5e-8 relative and 1e-9 absolute preserve that algorithm while allowing cross-platform ODE variation."
+    }
+  },
+  "tolerance_profiles": {
+    "fmf_default": {
+      "default": "sentman",
+      "geometry": "geometry",
+      "discrete": "exact"
+    },
+    "fmf_mode_a": {
+      "default": "sentman",
+      "geometry": "geometry",
+      "discrete": "exact",
+      "path_overrides": [
+        {
+          "tolerance": "exact",
+          "paths": [
+            "csv/rows/*/out_S",
+            "csv/rows/*/out_Ti_K",
+            "npz/arrays/S/values",
+            "npz/arrays/Ti_K/values"
+          ]
+        }
+      ]
+    },
+    "fmf_shielded": {
+      "default": "sentman",
+      "geometry": "geometry",
+      "discrete": "exact",
+      "path_overrides": [
+        {
+          "tolerance": "exact",
+          "paths": [
+            "csv/rows/*/out_S",
+            "csv/rows/*/out_Ti_K",
+            "vtp/cell_data/Cp_n/values/[23]",
+            "vtp/cell_data/C_face_stl/values/[23]/*",
+            "npz/arrays/S/values",
+            "npz/arrays/Ti_K/values",
+            "npz/arrays/Cp_n/values/[23]"
+          ]
+        }
+      ]
+    },
+    "newt_algebraic": {
+      "default": "hypersonic_algebraic",
+      "geometry": "geometry",
+      "discrete": "exact"
+    },
+    "newt_tangent_cone": {
+      "default": "hypersonic_tangent_cone",
+      "geometry": "geometry",
+      "discrete": "exact"
+    },
+    "newt_shielded": {
+      "default": "hypersonic_algebraic",
+      "geometry": "geometry",
+      "discrete": "exact",
+      "path_overrides": [
+        {
+          "tolerance": "exact",
+          "paths": [
+            "vtp/cell_data/Cp_n/values/[23]",
+            "vtp/cell_data/C_face_stl/values/[23]/*",
+            "npz/arrays/Cp_n/values/[23]"
+          ]
+        }
+      ]
+    },
+    "newt_prandtl_meyer_mixed": {
+      "default": "hypersonic_algebraic",
+      "geometry": "geometry",
+      "discrete": "exact",
+      "path_overrides": [
+        {
+          "tolerance": "hypersonic_root_solve",
+          "paths": [
+            "csv/rows/0/C?",
+            "vtp/cell_data/Cp_n/values/[016789]",
+            "vtp/cell_data/C_face_stl/values/[016789]/*",
+            "npz/arrays/Cp_n/values/[016789]",
+            "npz/arrays/C_force_*/values/*",
+            "npz/arrays/C_M_body/values/*",
+            "npz/arrays/C?/values"
+          ]
+        }
+      ]
+    },
+    "newt_cone_mixed": {
+      "default": "hypersonic_algebraic",
+      "geometry": "geometry",
+      "discrete": "exact",
+      "path_overrides": [
+        {
+          "tolerance": "hypersonic_tangent_cone",
+          "paths": [
+            "csv/rows/[01]/C?",
+            "vtp/cell_data/Cp_n/values/[01]",
+            "vtp/cell_data/C_face_stl/values/[01]/*",
+            "npz/arrays/Cp_n/values/[01]",
+            "npz/arrays/C_force_*/values/*",
+            "npz/arrays/C_M_body/values/*",
+            "npz/arrays/C?/values"
+          ]
+        }
+      ]
+    }
+  },
+  "exact_numeric_paths": [
+    "npz/arrays/Aref_m2/values",
+    "npz/arrays/Tw_K/values"
+  ],
+  "contract_coverage": [
+    "backend_auto_fallback"
+  ],
+  "required_coverage": [
+    "zero_attitude",
+    "nonzero_attitude",
+    "sideslip",
+    "bank",
+    "multi_component",
+    "shielded",
+    "unshielded",
+    "moment_reference_offset",
+    "backend_rtree",
+    "backend_embree",
+    "backend_auto_fallback",
+    "valid_boundary",
+    "invalid_input",
+    "panel_loads",
+    "integrated_coefficients",
+    "csv",
+    "vtp",
+    "npz",
+    "sentman_validation",
+    "newtonian_validation",
+    "modified_newtonian",
+    "tangent_wedge",
+    "tangent_cone",
+    "prandtl_meyer"
+  ],
+  "cases": {
+    "fmfsolver": [
+      {
+        "case_id": "fmf_zero_plate",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "fmf_mode_a",
+        "coverage": ["zero_attitude", "unshielded", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz", "sentman_validation"]
+      },
+      {
+        "case_id": "fmf_mode_b_offset",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "fmf_default",
+        "coverage": ["nonzero_attitude", "sideslip", "unshielded", "moment_reference_offset", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "fmf_beta_sin_boundary",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "fmf_mode_a",
+        "coverage": ["nonzero_attitude", "sideslip", "valid_boundary", "unshielded", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "fmf_bank_multicomponent",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "fmf_mode_a",
+        "coverage": ["nonzero_attitude", "bank", "multi_component", "moment_reference_offset", "unshielded", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "fmf_shield_rtree",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "rtree",
+        "tolerance_profile": "fmf_shielded",
+        "coverage": ["zero_attitude", "shielded", "backend_rtree", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "fmf_shield_embree",
+        "requested_backend": "embree",
+        "expected_effective_backend": "embree",
+        "tolerance_profile": "fmf_shielded",
+        "coverage": ["zero_attitude", "shielded", "backend_embree", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      }
+    ],
+    "newtsolver": [
+      {
+        "case_id": "newt_zero_newtonian",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_algebraic",
+        "coverage": ["zero_attitude", "unshielded", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz", "newtonian_validation"]
+      },
+      {
+        "case_id": "newt_modified_offset",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_algebraic",
+        "coverage": ["nonzero_attitude", "sideslip", "moment_reference_offset", "unshielded", "modified_newtonian", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_tangent_wedge",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_algebraic",
+        "coverage": ["nonzero_attitude", "unshielded", "tangent_wedge", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_tangent_cone",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_tangent_cone",
+        "coverage": ["nonzero_attitude", "unshielded", "tangent_cone", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_prandtl_meyer",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_prandtl_meyer_mixed",
+        "coverage": ["nonzero_attitude", "sideslip", "unshielded", "prandtl_meyer", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_beta_sin_boundary",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_algebraic",
+        "coverage": ["nonzero_attitude", "sideslip", "valid_boundary", "unshielded", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_bank_multicomponent",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "not_used",
+        "tolerance_profile": "newt_cone_mixed",
+        "coverage": ["nonzero_attitude", "bank", "multi_component", "moment_reference_offset", "unshielded", "tangent_cone", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_shield_rtree",
+        "requested_backend": "rtree",
+        "expected_effective_backend": "rtree",
+        "tolerance_profile": "newt_shielded",
+        "coverage": ["zero_attitude", "shielded", "backend_rtree", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      },
+      {
+        "case_id": "newt_shield_embree",
+        "requested_backend": "embree",
+        "expected_effective_backend": "embree",
+        "tolerance_profile": "newt_shielded",
+        "coverage": ["zero_attitude", "shielded", "backend_embree", "panel_loads", "integrated_coefficients", "csv", "vtp", "npz"]
+      }
+    ]
+  },
+  "invalid_inputs": {
+    "fmfsolver": [
+      "inputs/invalid/fmf_both_modes.csv",
+      "inputs/invalid/fmf_beta_tan_90.csv",
+      "inputs/invalid/fmf_flags_backend.csv",
+      "inputs/invalid/fmf_missing_header.csv"
+    ],
+    "newtsolver": [
+      "inputs/invalid/newt_gamma_flag.csv",
+      "inputs/invalid/newt_equation_count.csv",
+      "inputs/invalid/newt_equation_name.csv",
+      "inputs/invalid/newt_missing_header.csv"
+    ]
+  }
+}

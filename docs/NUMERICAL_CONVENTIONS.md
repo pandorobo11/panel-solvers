@@ -1,8 +1,10 @@
 # Numerical conventions
 
 This document records conventions already common to the two legacy interfaces.
-Phase 1 must verify them against executable golden cases. An unverified item is
-not permission to normalize differing legacy behavior.
+Phase 1 verifies them against executable semantic goldens. The captured arrays,
+relations, and evidence-based limits are documented in
+`phase1/GOLDEN_BASELINES.md` and `phase1/TOLERANCES.md`. An unverified item is not
+permission to normalize differing legacy behavior.
 
 ## Units and naming
 
@@ -30,7 +32,8 @@ Vhat_stl = normalize([
 Thus positive `alpha_t` points freestream toward `+Z_stl`, and positive `beta_t`
 points it toward `-Y_stl`. The `beta_sin` and included-angle/bank inputs remain
 public legacy alternatives and must resolve to the same explicit vector before
-panel calculations. Their domains and edge behavior will be frozen in Phase 1.
+panel calculations. Their legacy domains and edge behavior are frozen in the
+Phase 1 valid/invalid fixtures; differing product behavior remains separate.
 
 ## Local loads and integration
 
@@ -60,12 +63,13 @@ component, so no common contract may replace the vector with a scalar `Cp`.
   degenerate faces.
 - Do not hide domain errors by clipping unless the legacy contract and tests
   justify the exact clipping behavior.
-- Regression comparisons use quantity-specific absolute/relative tolerances
-  established in Phase 1; there is no repository-wide default tolerance yet.
+- Regression comparisons use the Phase 1 case profile and quantity-specific
+  absolute/relative tolerance. There is intentionally no repository-wide default
+  tolerance.
 
-## Frames and signs still to freeze
+## Frozen frame and sign evidence
 
-Phase 1 must explicitly fixture STL/body/stability transformations, force and
-moment coefficient signs, center-of-moment handling, windward classification,
-panel normal orientation, and edge angles. Until then, the pinned legacy outputs
-are authoritative.
+Phase 1 fixtures now cover STL/body/stability transforms, force and moment signs,
+reference offsets, windward/leeward classification, panel normal orientation,
+and edge-angle cases. The pinned case JSON remains the executable authority; this
+does not select one behavior where the legacy products differ.

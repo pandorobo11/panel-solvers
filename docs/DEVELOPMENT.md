@@ -65,6 +65,11 @@ Python/dependency context when material, exact command/case, backend, and numeri
 tolerance. Prefer text or compressed NumPy data that reviewers can inspect. Do
 not compare VTP/NPZ files byte-for-byte.
 
+Phase 1 legacy captures live under `tests/fixtures/phase1`. Regenerate or verify
+them with `scripts/generate_phase1_goldens.py`; the semantic format and command
+are documented in `tests/fixtures/phase1/README.md`, and the evidence-based
+quantity limits are in `docs/phase1/TOLERANCES.md`.
+
 ## Versioning and releases
 
 The unified distribution begins at `0.1.0` while migration is incomplete. A tag

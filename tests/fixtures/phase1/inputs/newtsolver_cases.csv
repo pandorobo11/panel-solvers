@@ -1,0 +1,10 @@
+case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,out_dir,save_vtp_on,save_npz_on,fixture_note
+newt_zero_newtonian,stl/plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs,1,1,analytic zero-attitude plate
+newt_modified_offset,stl/plate.stl,1,6,1.4,modified_newtonian,shield,15,-10,beta_tan,0.25,-0.1,0.2,1,1.5,2,2.5,0,rtree,outputs,1,1,modified Newtonian and moment reference
+newt_tangent_wedge,stl/plate.stl,1,6,1.4,tangent_wedge,shield,75,0,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs,1,1,attached tangent-wedge case
+newt_tangent_cone,stl/plate.stl,1,6,1.4,tangent_cone,shield,75,0,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs,1,1,attached tangent-cone case
+newt_prandtl_meyer,stl/cube.stl,1,6,1.4,newtonian,prandtl_meyer,15,10,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs,1,1,leeward expansion case
+newt_beta_sin_boundary,stl/plate.stl,1,6,1.4,newtonian,shield,0,90,beta_sin,0,0,0,1,1,1,1,0,rtree,outputs,1,1,valid beta-sin endpoint
+newt_bank_multicomponent,stl/plate.stl;stl/plate_offset_x2.stl,1,6,1.4,tangent_cone;newtonian,prandtl_meyer;shield,30,25,bank,0.25,-0.1,0.2,2,1.5,2,2.5,0,rtree,outputs,1,1,bank and per-component equations
+newt_shield_rtree,stl/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,1,rtree,outputs,1,1,forced rtree shielding
+newt_shield_embree,stl/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,1,embree,outputs,1,1,forced embree shielding

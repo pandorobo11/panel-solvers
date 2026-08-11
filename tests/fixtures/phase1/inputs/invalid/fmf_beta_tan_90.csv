@@ -1,0 +1,2 @@
+case_id,stl_path,stl_scale_m_per_unit,S,Ti_K,Tw_K,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m
+fmf_beta_tan_90,../stl/plate.stl,1,5,300,300,90,0,beta_tan,0,0,0,1,1,1,1
