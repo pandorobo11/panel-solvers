@@ -5,10 +5,11 @@
 It will provide one geometry/execution/integration platform while keeping the
 Sentman and hypersonic physical models independent.
 
-The repository is currently at **migration Phase 2**. Phase 1 freezes both
-legacy implementations as regression oracles, and Phase 2 defines the immutable
-central contracts and model registry. It intentionally contains no solver
-algorithm; numerical code moves only in later migration phases.
+The repository has completed **migration Phase 2**, and Phase 3 is in progress.
+Phase 1 freezes both legacy implementations as regression oracles, Phase 2
+defines the immutable central contracts and model registry, and the first Phase 3
+slice extracts only resolved-attitude and coordinate-frame transforms. It does
+not contain a physical-model equation or a runnable solver pipeline.
 
 ## Target structure
 
@@ -45,7 +46,7 @@ sequence is tracked in [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md).
 
 ## Status and compatibility
 
-No `fmfsolver` or `newtsolver` command is provided in Phase 0. The top-level
-Python package names exist only to reserve their eventual compatibility
-frontends. Continue using the legacy repositories for production calculations
-until the relevant migration phase is accepted.
+No `fmfsolver` or `newtsolver` command is provided yet. The top-level Python
+package names exist only to reserve their eventual compatibility frontends.
+Continue using the legacy repositories for production calculations until the
+relevant migration phase is accepted.
