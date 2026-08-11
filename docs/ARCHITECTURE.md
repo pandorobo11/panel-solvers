@@ -60,6 +60,13 @@ models layer owns `ModelRegistry`, whose dispatch path validates the same
 read-only copies; metadata is deeply immutable. Physical equations, integration,
 artifact projection, and legacy adapters are not part of Phase 2.
 
+Phase 3 begins with pure frame primitives in `panelsolver.core`. They construct
+`velocity_hat_stl` from already-resolved tangent angles, map STL-axis vectors to
+body axes, and rotate body-axis vectors into stability axes. They preserve any
+leading array dimensions and validate the trailing vector dimension explicitly.
+Legacy attitude-mode parsing and public angle-domain policy remain adapter-owned,
+so this extraction does not select either behavior recorded in D007.
+
 ## Ownership constraints
 
 | Concern | Owner |

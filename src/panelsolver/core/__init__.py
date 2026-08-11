@@ -20,6 +20,11 @@ from .errors import (
     PanelSolverError,
     ShapeError,
 )
+from .frames import (
+    body_to_stability,
+    stl_to_body,
+    velocity_hat_stl_from_tangent_angles,
+)
 
 __all__ = (
     "CommonCasePayload",
@@ -38,4 +43,7 @@ __all__ = (
     "PayloadScalar",
     "PayloadValue",
     "ShapeError",
+    "body_to_stability",
+    "stl_to_body",
+    "velocity_hat_stl_from_tangent_angles",
 )
