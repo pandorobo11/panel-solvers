@@ -1,0 +1,169 @@
+# Migration plan
+
+## Principles
+
+The migration proceeds through independently reviewable pull requests. Structural
+movement and physical changes are never combined. A phase is complete only when
+its tests and documented acceptance criteria pass; elapsed work or copied code is
+not completion.
+
+The pinned legacy implementations in `MIGRATION_SOURCES.md` remain numerical
+oracles. The final design is one repository, one shared engine/application shell,
+independent physical models, and temporary compatibility frontends for both old
+products.
+
+## Dependency sequence
+
+```text
+0 foundation
+    -> 1 behavioral baselines
+        -> 2 central contracts
+            -> 3 low-risk shared core
+                -> 4a Sentman model
+                -> 4b hypersonic model
+                    -> 5 shielding/execution/cache/signatures
+                        -> 6 shared GUI
+                            -> 7 packaging and compatibility completion
+                                -> 8 final audit
+```
+
+Only model migrations 4a and 4b are intended for concurrent implementation, and
+only after Phase 2 contracts are merged. Changes to the shared core, schemas,
+output formats, GUI shell, or `pyproject.toml` are serialized.
+
+## Phase 0 — Repository foundation
+
+**Scope:** Create the neutral repository, package/test directory boundaries,
+development instructions, architecture and compatibility documents, ADRs, locked
+dependencies, and cross-platform CI. Do not migrate algorithms or expose legacy
+commands.
+
+**Acceptance:**
+
+- Python 3.12+ package skeleton imports all three top-level packages.
+- `uv sync --locked --extra rayaccel`, unittest, Ruff, and build pass locally.
+- CI covers Ubuntu, Windows, and macOS, verifies Embree, and builds/reinstalls the
+  wheel.
+- Source commits and intentional Phase 0 compatibility gaps are documented.
+- Central architecture decisions are recorded, while exact Python contracts and
+  numeric tolerances remain deferred to evidence-producing phases.
+
+## Phase 1 — Freeze behavioral and numerical baselines
+
+**Scope:** Execute both pinned legacy suites; inventory public imports, commands,
+case schemas/defaults, environment variables, result columns, VTP/NPZ contents,
+GUI-visible behavior, caches, scheduler errors, and backend selection. Generate a
+small matrix of reproducible golden fixtures for both models and both ray paths.
+Document all differing behavior without resolving it incidentally.
+
+**Minimum fixture coverage:** zero and nonzero attitude, sideslip/bank variants,
+multi-component geometry, shielded/unshielded panels, moment-reference offset,
+backend selection/fallback, valid boundary inputs, invalid inputs, and at least
+one canonical validation case per physical model family.
+
+**Acceptance:**
+
+- Every golden fixture names its source commit, generation command, backend, and
+  per-quantity tolerance.
+- Panel vectors/scalars, shielding masks, total and component coefficients,
+  result CSV schema/order, and semantic VTP/NPZ content are captured.
+- A legacy-difference ledger classifies each mismatch as intentional, bug,
+  unknown, or compatibility decision required.
+- Baselines reproduce on a clean environment without editing legacy source.
+
+## Phase 2 — Define central contracts
+
+**Scope:** Define and test immutable/validated contracts such as `PanelGeometry`,
+`PanelFlowState`, `LocalLoads`, `PanelLoadModel`, common/model case payloads, and
+common results. Decide frame annotations, mutability, array ownership, scalar
+validation, error taxonomy, and model registry. Update ADR 0002 with the exact
+accepted API.
+
+**Acceptance:** contracts represent Sentman tangential loads and hypersonic normal
+loads without model-name branches; shapes/nonfinite values are validated; core
+does not import models/app/frontends; contract tests use synthetic data and do not
+change legacy numerical output.
+
+## Phase 3 — Extract low-risk shared core
+
+**Scope:** Migrate exporters, attitude/frame transforms, mesh data representation,
+force/moment integration, component aggregation, and common result types. Initially
+call the extracted functions from adapters around legacy pipelines. Choose a
+legacy difference only through a dedicated compatibility decision or ADR.
+
+**Acceptance:** affected golden arrays and coefficients match within Phase 1
+tolerances; frame/sign edge cases pass; exporter semantic fields and CSV order are
+unchanged; no model equation has moved into core.
+
+## Phase 4 — Adapt physical models
+
+### 4a Sentman
+
+Wrap the existing Sentman equations, atmosphere-derived inputs, case validation,
+scalars, metadata, and signature payload behind `PanelLoadModel`. Preserve both
+normal and tangential local load contributions.
+
+### 4b Hypersonic
+
+Wrap Newtonian, modified Newtonian, tangent-wedge, tangent-cone, and
+Prandtl–Meyer behavior, including windward/leeward canonicalization and component
+overrides, behind the same contract.
+
+**Acceptance for each:** model-specific validation and scientific reference tests
+pass; Phase 1 panel-level and integrated goldens match; no filesystem, GUI,
+scheduler, or common integration code lives in the model.
+
+## Phase 5 — Unify geometry execution infrastructure
+
+**Scope:** Unify strict mesh validation, geometry fingerprints, ray shielding,
+Embree/rtree adapters, mesh and shielding caches, common case signatures, parallel
+scheduler, worker logging, cancellation, progress, partial-result policy, and
+failure propagation. Define neutral `PANELSOLVER_*` environment variables while
+reading documented legacy variables with explicit precedence.
+
+**Acceptance:** both models execute through one engine; cache keys cannot cross
+contaminate geometry/model/algorithm variants; backend goldens match; worker start,
+failure, cancellation, and partial-result tests are deterministic; signature
+schema/versioning conforms to ADR 0005.
+
+## Phase 6 — Share the GUI and viewer
+
+**Scope:** Implement one `SolverSpec`-driven main window, cases panel, and viewer.
+Discover VTP cell arrays dynamically while prioritizing model-preferred scalars.
+Preserve selection, progress, cancel/close, image export, camera controls, and
+case-signature matching.
+
+**Acceptance:** each compatibility launcher opens the shared shell with the right
+model/schema/title; GUI and viewer compatibility tests pass; neither GUI nor
+frontend contains physics; headless numerical use remains testable.
+
+## Phase 7 — Finish packaging, CLI, and public compatibility
+
+**Scope:** Register all legacy command names, forward supported public imports,
+complete CSV/Excel and artifact compatibility, decide single-versus-multiple
+distribution release mechanics, and write user migration/release documentation.
+Do not archive legacy repositories yet.
+
+**Acceptance:** existing samples run unchanged; all six commands and their
+`--help` contracts work from an installed wheel; result schemas and artifacts
+match; Windows/macOS/Linux CI covers both models; no common implementation remains
+duplicated in the compatibility packages.
+
+## Phase 8 — Independent final audit
+
+**Scope:** Audit numerical correctness, architecture/dependencies, compatibility,
+parallelism/caching, performance, GUI lifecycle, tests, and installed artifacts.
+Run the complete baseline on clean environments and compare performance/memory
+without changing algorithms to improve benchmark optics.
+
+**Acceptance:** no unexplained numerical delta; all compatibility exceptions have
+an accepted record and user path; performance regressions are understood and
+accepted or fixed; release/rollback instructions are complete. Only then may the
+legacy repositories be marked read-only.
+
+## Decision and risk log
+
+Open questions must be recorded in the relevant issue or a new ADR. Highest-risk
+areas are load-vector signs/frames, mesh normal repair, shielding backend parity,
+signature/cache invalidation, multiprocessing errors/cancellation, CSV order, and
+VTP/NPZ metadata. These receive panel-level regression coverage before refactoring.

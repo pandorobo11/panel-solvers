@@ -1,0 +1,43 @@
+[project]
+name = "panel-solvers"
+version = "0.1.0"
+description = "Shared panel-solver platform for free-molecular and hypersonic flow models"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "networkx",
+  "numpy",
+  "openpyxl",
+  "pandas",
+  "pyside6==6.9.3",
+  "pyvista",
+  "pyvistaqt",
+  "rtree",
+  "scipy",
+  "trimesh",
+  "xlrd",
+]
+
+[project.optional-dependencies]
+rayaccel = [
+  "embreex4; sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "embreex; sys_platform != 'darwin' or platform_machine != 'arm64'",
+]
+
+[dependency-groups]
+dev = ["ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/panelsolver", "src/fmfsolver", "src/newtsolver"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# Broad catches remain acceptable only at GUI, worker-process, and optional-
+# backend boundaries. These exceptions match the stricter legacy baseline.
+ignore = ["BLE001", "EXE001", "S110", "SIM113", "SIM117"]

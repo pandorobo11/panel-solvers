@@ -1,0 +1,51 @@
+# Compatibility contract
+
+Compatibility is preserved per migrated surface, not asserted globally. During
+Phase 0, the new distribution intentionally exposes only importable placeholder
+packages; legacy repositories remain the supported calculators.
+
+## Surfaces to preserve
+
+| Surface | Required target | Freeze phase |
+|---|---|---|
+| Commands | `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`, `newtsolver`, `newtsolver-gui`, `newtsolver-cli` | 1 and 7 |
+| Python imports | public imports discovered from source/tests and real usage | 1 |
+| Case input | CSV/Excel column names, defaults, validation, path resolution, row selection | 1 |
+| Result CSV | column names, order, row scopes, blank/value semantics | 1 |
+| VTP | cell arrays, field metadata, case-signature matching | 1 |
+| NPZ | array names, shapes, values, metadata | 1 |
+| GUI | case selection/run/cancel, viewer scalars, export, VTP matching | 1 and 6 |
+| Environment | current backend/cache/worker variables and precedence | 1 and 5 |
+| Numerical results | panel loads, masks, totals, components, force/moment transforms | 1 |
+
+No legacy option, field, or behavior may be deleted because it appears unused.
+Deprecation requires evidence, an announced transition, tests for the warning and
+fallback, and a separately approved removal phase.
+
+## Comparison rules
+
+- CSV comparison is schema- and value-aware, including order when consumers may
+  rely on it.
+- VTP and NPZ comparison uses named arrays, shapes, values, and metadata rather
+  than serialized bytes.
+- Floating values use per-quantity tolerances with special treatment for values
+  near zero.
+- Paths, timestamps, backend identities, and nondeterministic metadata are
+  normalized only when explicitly documented.
+- A legacy discrepancy is recorded as two contracts until an ADR selects a
+  unified behavior and defines compatibility handling.
+
+## Compatibility frontends
+
+`src/fmfsolver` and `src/newtsolver` may parse or translate legacy interfaces,
+select a solver specification, and forward calls. They may not own physical
+equations, geometry, integration, caching, scheduling, artifact generation, or
+new application behavior.
+
+## Known Phase 0 non-compatibilities
+
+- Legacy console commands are not registered.
+- Legacy Python modules beyond the package root do not exist.
+- No CSV, Excel, mesh, calculation, VTP, NPZ, CLI, or GUI operation is implemented.
+
+These gaps are intentional and must not be mistaken for a usable preview release.

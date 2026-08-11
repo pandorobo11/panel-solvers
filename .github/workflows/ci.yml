@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-15
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked --extra rayaccel
+
+      - name: Verify Embree backend availability
+        run: >-
+          uv run python -c "import trimesh; from trimesh import ray;
+          print('trimesh_version:', trimesh.__version__);
+          print('has_embree:', ray.has_embree);
+          (_ for _ in ()).throw(SystemExit('Embree backend is required in CI but not available.'))
+          if not ray.has_embree else None"
+
+      - name: Unit tests
+        run: uv run python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Static checks
+        run: uv run ruff check src tests scripts
+
+      - name: Verify tag matches version
+        if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          EXPECTED="$(python - <<'PY'
+          import tomllib
+          with open("pyproject.toml", "rb") as file:
+              data = tomllib.load(file)
+          print(f"v{data['project']['version']}")
+          PY
+          )"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "Tag/version mismatch: tag=$TAG expected=$EXPECTED"
+            exit 1
+          fi
+
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Reinstall built wheel
+        run: |
+          uv pip uninstall panel-solvers
+          uv pip install --no-deps dist/*.whl
+
+      - name: Smoke test installed wheel
+        run: |
+          cd "${RUNNER_TEMP}"
+          "${GITHUB_WORKSPACE}/.venv/bin/python" -c "import panelsolver, fmfsolver, newtsolver"
+
+  release:
+    needs: [test, artifact]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
