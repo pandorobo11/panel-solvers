@@ -79,6 +79,11 @@ computes body-axis moments about the configured STL-frame reference point. It
 retains per-face force and moment contributions for later component aggregation
 without importing or identifying a physical model.
 
+Component aggregation groups those face contributions by the existing geometry
+IDs in ascending order, applies the same global reference quantities, and builds
+the already-adopted `ComponentResult` and `CommonResults` contracts. Component
+metadata remains caller-supplied and model-neutral.
+
 ## Ownership constraints
 
 | Concern | Owner |

@@ -1,5 +1,6 @@
 """Model-independent central contracts for the shared numerical pipeline."""
 
+from .aggregation import aggregate_component_results, assemble_common_results
 from .contracts import (
     CommonCasePayload,
     CommonResults,
@@ -48,6 +49,8 @@ __all__ = (
     "PayloadScalar",
     "PayloadValue",
     "ShapeError",
+    "aggregate_component_results",
+    "assemble_common_results",
     "body_to_stability",
     "integrate_panel_loads",
     "stl_to_body",

@@ -87,12 +87,6 @@ def integrate_panel_loads(
     area_scale = geometry.areas_m2 / case.Aref_m2
     face_force_coeff_stl = local_loads.traction_coeff_stl * area_scale[:, None]
     force_coeff_stl = face_force_coeff_stl.sum(axis=0)
-    force_coeff_body = stl_to_body(force_coeff_stl)
-    force_coeff_stability = body_to_stability(
-        force_coeff_body,
-        alpha_t_deg=case.alpha_t_deg,
-    )
-
     centers_body_m = stl_to_body(geometry.centers_stl_m)
     reference_body_m = stl_to_body(case.moment_reference_stl_m)
     face_force_coeff_body = stl_to_body(face_force_coeff_stl)
@@ -101,22 +95,38 @@ def integrate_panel_loads(
         face_force_coeff_body,
     )
     moment_area_coeff_body_m = face_moment_area_coeff_body_m.sum(axis=0)
-    moment_coeff_body = moment_area_coeff_body_m / np.array(
-        [case.Lref_Cl_m, case.Lref_Cm_m, case.Lref_Cn_m],
-        dtype=np.float64,
-    )
-
-    total = IntegratedCoefficients(
-        force_coeff_stl=force_coeff_stl,
-        force_coeff_body=force_coeff_body,
-        force_coeff_stability=force_coeff_stability,
-        moment_area_coeff_body_m=moment_area_coeff_body_m,
-        moment_coeff_body=moment_coeff_body,
+    total = _integrated_coefficients(
+        force_coeff_stl,
+        moment_area_coeff_body_m,
+        case,
     )
     return PanelIntegration(
         face_force_coeff_stl=face_force_coeff_stl,
         face_moment_area_coeff_body_m=face_moment_area_coeff_body_m,
         total=total,
+    )
+
+
+def _integrated_coefficients(
+    force_coeff_stl: np.ndarray,
+    moment_area_coeff_body_m: np.ndarray,
+    case: CommonCasePayload,
+) -> IntegratedCoefficients:
+    force_coeff_body = stl_to_body(force_coeff_stl)
+    force_coeff_stability = body_to_stability(
+        force_coeff_body,
+        alpha_t_deg=case.alpha_t_deg,
+    )
+    moment_coeff_body = moment_area_coeff_body_m / np.array(
+        [case.Lref_Cl_m, case.Lref_Cm_m, case.Lref_Cn_m],
+        dtype=np.float64,
+    )
+    return IntegratedCoefficients(
+        force_coeff_stl=force_coeff_stl,
+        force_coeff_body=force_coeff_body,
+        force_coeff_stability=force_coeff_stability,
+        moment_area_coeff_body_m=moment_area_coeff_body_m,
+        moment_coeff_body=moment_coeff_body,
     )
 
 
