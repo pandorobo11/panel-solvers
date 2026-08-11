@@ -25,6 +25,7 @@ from .frames import (
     stl_to_body,
     velocity_hat_stl_from_tangent_angles,
 )
+from .mesh import MeshComponent, PanelMesh
 
 __all__ = (
     "CommonCasePayload",
@@ -34,11 +35,13 @@ __all__ = (
     "ContractValueError",
     "IntegratedCoefficients",
     "LocalLoads",
+    "MeshComponent",
     "ModelCasePayload",
     "NonFiniteError",
     "PanelFlowState",
     "PanelGeometry",
     "PanelLoadModel",
+    "PanelMesh",
     "PanelSolverError",
     "PayloadScalar",
     "PayloadValue",

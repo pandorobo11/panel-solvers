@@ -67,6 +67,12 @@ leading array dimensions and validate the trailing vector dimension explicitly.
 Legacy attitude-mode parsing and public angle-domain policy remain adapter-owned,
 so this extraction does not select either behavior recorded in D007.
 
+The topology contract pairs immutable vertices and triangular face indices with
+an already-validated `PanelGeometry` and ordered component/source metadata. It
+checks indexing and one-to-one face alignment but does not load or repair a mesh,
+derive geometric quantities, reject unresolved degeneracy, or select either
+mesh-strictness behavior recorded in D011.
+
 ## Ownership constraints
 
 | Concern | Owner |
