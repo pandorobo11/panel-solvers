@@ -32,10 +32,11 @@ scalars/metadata, and provides a canonical signature payload.
 specification. `fmfsolver` and `newtsolver` will remain thin compatibility
 frontends for existing entry points and imports.
 
-## Planned central contracts
+## Central contracts
 
-The exact Python API is deliberately deferred to Phase 2, after Phase 1 regression
-capture. The approved semantic boundary is:
+Phase 2 adopts the exact Python API in ADR 0002. Immutable, validated data and the
+model protocol are exported from `panelsolver.core`; explicit model registration
+and dispatch live in `panelsolver.models`. The semantic boundary is:
 
 ```text
 PanelGeometry + PanelFlowState + model case
@@ -51,6 +52,13 @@ The load vector is expressed per panel in an explicit frame and has shape
 `(n_faces, 3)`. The shared integrator applies face area, reference area, reference
 lengths, and moment reference point. It must not reconstruct tangential physics
 from `Cp`.
+
+Core owns `PanelGeometry`, `PanelFlowState`, `LocalLoads`, common/model case
+payloads, and common result envelopes without importing a concrete model. The
+models layer owns `ModelRegistry`, whose dispatch path validates the same
+`PanelLoadModel` protocol for every registered model. Contract arrays are private,
+read-only copies; metadata is deeply immutable. Physical equations, integration,
+artifact projection, and legacy adapters are not part of Phase 2.
 
 ## Ownership constraints
 

@@ -5,10 +5,10 @@
 It will provide one geometry/execution/integration platform while keeping the
 Sentman and hypersonic physical models independent.
 
-The repository is currently at **migration Phase 0**. It contains the package
-boundaries, engineering rules, architecture decisions, and CI quality gates,
-but intentionally contains no solver algorithm. Numerical code moves only after
-Phase 1 fixes both legacy implementations as regression oracles.
+The repository is currently at **migration Phase 2**. Phase 1 freezes both
+legacy implementations as regression oracles, and Phase 2 defines the immutable
+central contracts and model registry. It intentionally contains no solver
+algorithm; numerical code moves only in later migration phases.
 
 ## Target structure
 
@@ -22,9 +22,11 @@ src/
 └── newtsolver/     # legacy compatibility frontend only
 ```
 
-The shared model boundary will return a per-panel local load vector, not only a
-pressure coefficient. This is necessary to preserve the tangential contribution
-of the Sentman model.
+The shared model boundary returns a per-panel local load vector, not only a
+pressure coefficient. This preserves the tangential contribution of the Sentman
+model while representing Newton-family normal loads through the same API. The
+exact contract is recorded in
+[ADR 0002](docs/adr/0002-panel-load-vector-contract.md).
 
 ## Development setup
 
