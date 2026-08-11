@@ -1,0 +1,655 @@
+{
+  "csv": {
+    "columns": [
+      "case_id",
+      "stl_path",
+      "stl_scale_m_per_unit",
+      "Mach",
+      "gamma",
+      "windward_eq",
+      "leeward_eq",
+      "alpha_deg",
+      "beta_or_bank_deg",
+      "attitude_input",
+      "ref_x_m",
+      "ref_y_m",
+      "ref_z_m",
+      "Aref_m2",
+      "Lref_Cl_m",
+      "Lref_Cm_m",
+      "Lref_Cn_m",
+      "shielding_on",
+      "ray_backend",
+      "out_dir",
+      "save_vtp_on",
+      "save_npz_on",
+      "fixture_note",
+      "solver_version",
+      "case_signature",
+      "run_started_at_utc",
+      "run_finished_at_utc",
+      "run_elapsed_s",
+      "out_attitude_input",
+      "alpha_t_deg_resolved",
+      "beta_t_deg_resolved",
+      "scope",
+      "component_id",
+      "component_stl_path",
+      "ray_backend_used",
+      "CA",
+      "CY",
+      "CN",
+      "Cl",
+      "Cm",
+      "Cn",
+      "CD",
+      "CL",
+      "faces",
+      "shielded_faces",
+      "vtp_path",
+      "npz_path"
+    ],
+    "rows": [
+      {
+        "Aref_m2": 1,
+        "CA": 0.1503422427717429,
+        "CD": 0.03891143571275385,
+        "CL": -0.14521945507544748,
+        "CN": 0.0,
+        "CY": 0.0,
+        "Cl": 0.0,
+        "Cm": 0.0,
+        "Cn": 0.0,
+        "Lref_Cl_m": 1.0,
+        "Lref_Cm_m": 1,
+        "Lref_Cn_m": 1.0,
+        "Mach": 6,
+        "alpha_deg": 75,
+        "alpha_t_deg_resolved": 75.0,
+        "attitude_input": "beta_tan",
+        "beta_or_bank_deg": 0,
+        "beta_t_deg_resolved": 0.0,
+        "case_id": "newt_tangent_cone",
+        "case_signature": "<case-signature:path-and-version-dependent>",
+        "component_id": null,
+        "component_stl_path": null,
+        "faces": 2,
+        "fixture_note": "attached tangent-cone case",
+        "gamma": 1.4,
+        "leeward_eq": "shield",
+        "npz_path": "<fixture-root>/outputs/newt_tangent_cone.npz",
+        "out_attitude_input": "beta_tan",
+        "out_dir": "<fixture-root>/outputs",
+        "ray_backend": "rtree",
+        "ray_backend_used": "not_used",
+        "ref_x_m": 0.0,
+        "ref_y_m": 0.0,
+        "ref_z_m": 0.0,
+        "run_elapsed_s": "<nonnegative-elapsed-seconds>",
+        "run_finished_at_utc": "<utc-timestamp>",
+        "run_started_at_utc": "<utc-timestamp>",
+        "save_npz_on": 1,
+        "save_vtp_on": 1,
+        "scope": "total",
+        "shielded_faces": 0,
+        "shielding_on": 0,
+        "solver_version": "1.0.3",
+        "stl_path": "<fixture-root>/stl/plate.stl",
+        "stl_scale_m_per_unit": 1,
+        "vtp_path": "<fixture-root>/outputs/newt_tangent_cone.vtp",
+        "windward_eq": "tangent_cone"
+      }
+    ]
+  },
+  "normalized_input": {
+    "Aref_m2": 1,
+    "Lref_Cl_m": 1.0,
+    "Lref_Cm_m": 1,
+    "Lref_Cn_m": 1.0,
+    "Mach": 6,
+    "alpha_deg": 75,
+    "attitude_input": "beta_tan",
+    "beta_or_bank_deg": 0,
+    "case_id": "newt_tangent_cone",
+    "fixture_note": "attached tangent-cone case",
+    "gamma": 1.4,
+    "leeward_eq": "shield",
+    "out_dir": "<fixture-root>/outputs",
+    "ray_backend": "rtree",
+    "ref_x_m": 0.0,
+    "ref_y_m": 0.0,
+    "ref_z_m": 0.0,
+    "save_npz_on": 1,
+    "save_vtp_on": 1,
+    "shielding_on": 0,
+    "stl_path": "<fixture-root>/stl/plate.stl",
+    "stl_scale_m_per_unit": 1,
+    "windward_eq": "tangent_cone"
+  },
+  "npz": {
+    "arrays": {
+      "Aref_m2": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 1.0
+      },
+      "CA": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.1503422427717429
+      },
+      "CD": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.03891143571275385
+      },
+      "CL": {
+        "dtype": "float64",
+        "shape": [],
+        "values": -0.14521945507544748
+      },
+      "CN": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "CY": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "C_M_body": {
+        "dtype": "float64",
+        "shape": [
+          3
+        ],
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "C_force_body": {
+        "dtype": "float64",
+        "shape": [
+          3
+        ],
+        "values": [
+          -0.1503422427717429,
+          0.0,
+          -0.0
+        ]
+      },
+      "C_force_stl": {
+        "dtype": "float64",
+        "shape": [
+          3
+        ],
+        "values": [
+          0.1503422427717429,
+          0.0,
+          0.0
+        ]
+      },
+      "Cl": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "Cm": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "Cn": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "Cp_n": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.1503422427717429,
+          0.1503422427717429
+        ]
+      },
+      "Vhat_stl": {
+        "dtype": "float64",
+        "shape": [
+          3
+        ],
+        "values": [
+          0.25881904510252074,
+          -0.0,
+          0.9659258262890683
+        ]
+      },
+      "alpha_t_deg_resolved": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 75.0
+      },
+      "areas_m2": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "attitude_input": {
+        "dtype": "string",
+        "shape": [],
+        "values": "beta_tan"
+      },
+      "beta_t_deg_resolved": {
+        "dtype": "float64",
+        "shape": [],
+        "values": 0.0
+      },
+      "centers_stl_m": {
+        "dtype": "float64",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          [
+            0.0,
+            -0.16666666666666666,
+            0.16666666666666666
+          ],
+          [
+            0.0,
+            0.16666666666666666,
+            -0.16666666666666666
+          ]
+        ]
+      },
+      "face_stl_index": {
+        "dtype": "int32",
+        "shape": [
+          2
+        ],
+        "values": [
+          0,
+          0
+        ]
+      },
+      "faces": {
+        "dtype": "int64",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            0,
+            2,
+            3
+          ]
+        ]
+      },
+      "normals_out_stl": {
+        "dtype": "float64",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "ray_backend_used": {
+        "dtype": "string",
+        "shape": [],
+        "values": "not_used"
+      },
+      "shielded": {
+        "dtype": "bool",
+        "shape": [
+          2
+        ],
+        "values": [
+          false,
+          false
+        ]
+      },
+      "stl_paths": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "<fixture-root>/stl/plate.stl"
+        ]
+      },
+      "vertices": {
+        "dtype": "float64",
+        "shape": [
+          4,
+          3
+        ],
+        "values": [
+          [
+            0.0,
+            -0.5,
+            -0.5
+          ],
+          [
+            0.0,
+            -0.5,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            0.5
+          ],
+          [
+            0.0,
+            0.5,
+            -0.5
+          ]
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "case_id": "newt_tangent_cone",
+    "coverage": [
+      "nonzero_attitude",
+      "unshielded",
+      "tangent_cone",
+      "panel_loads",
+      "integrated_coefficients",
+      "csv",
+      "vtp",
+      "npz"
+    ],
+    "effective_backend": "not_used",
+    "environment": "uv sync --locked --python 3.12 --extra rayaccel",
+    "generation_command": "uv run python scripts/generate_phase1_goldens.py --fmf-repo ../fmfsolver --newt-repo ../newtsolver",
+    "python": "3.12",
+    "requested_backend": "rtree",
+    "source_commit": "dc1357d0d50bbedfdc8b3429cab37e6b98b56c70",
+    "source_lock_sha256": "8889c4ee33ea806086da41d32f4a424f99bfddd841edfaa5dd8e09633f58ba3f",
+    "source_repository": "https://github.com/pandorobo11/newtsolver",
+    "source_version": "1.0.3",
+    "tolerance_profile": "newt_tangent_cone"
+  },
+  "relations": {
+    "case_signature_csv_vtp_recomputed_equal": true,
+    "csv_rows_share_run_metadata": true,
+    "timestamps_utc_and_ordered": true
+  },
+  "schema_version": 1,
+  "vtp": {
+    "cell_data": {
+      "C_face_stl": {
+        "dtype": "float64",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          [
+            0.07517112138587145,
+            -0.0,
+            -0.0
+          ],
+          [
+            0.07517112138587145,
+            -0.0,
+            -0.0
+          ]
+        ]
+      },
+      "Cp_n": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.1503422427717429,
+          0.1503422427717429
+        ]
+      },
+      "area_m2": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "center_x_stl_m": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.0,
+          0.0
+        ]
+      },
+      "center_y_stl_m": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          -0.16666666666666666,
+          0.16666666666666666
+        ]
+      },
+      "center_z_stl_m": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          0.16666666666666666,
+          -0.16666666666666666
+        ]
+      },
+      "shielded": {
+        "dtype": "uint8",
+        "shape": [
+          2
+        ],
+        "values": [
+          0,
+          0
+        ]
+      },
+      "stl_index": {
+        "dtype": "int32",
+        "shape": [
+          2
+        ],
+        "values": [
+          0,
+          0
+        ]
+      },
+      "theta_deg": {
+        "dtype": "float64",
+        "shape": [
+          2
+        ],
+        "values": [
+          105.0,
+          105.0
+        ]
+      }
+    },
+    "faces": {
+      "dtype": "int64",
+      "shape": [
+        8
+      ],
+      "values": [
+        3,
+        0,
+        1,
+        2,
+        3,
+        0,
+        2,
+        3
+      ]
+    },
+    "field_data": {
+      "alpha_t_deg_resolved": {
+        "dtype": "float64",
+        "shape": [
+          1
+        ],
+        "values": [
+          75.0
+        ]
+      },
+      "attitude_input_used": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "beta_tan"
+        ]
+      },
+      "beta_t_deg_resolved": {
+        "dtype": "float64",
+        "shape": [
+          1
+        ],
+        "values": [
+          0.0
+        ]
+      },
+      "case_id": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "newt_tangent_cone"
+        ]
+      },
+      "case_signature": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "<case-signature:path-and-version-dependent>"
+        ]
+      },
+      "leeward_eq_used": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "shield"
+        ]
+      },
+      "ray_backend_used": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "not_used"
+        ]
+      },
+      "solver_version": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "1.0.3"
+        ]
+      },
+      "stl_count": {
+        "dtype": "int64",
+        "shape": [
+          1
+        ],
+        "values": [
+          1
+        ]
+      },
+      "stl_paths_json": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "[\"<fixture-root>/stl/plate.stl\"]"
+        ]
+      },
+      "windward_eq_used": {
+        "dtype": "string",
+        "shape": [
+          1
+        ],
+        "values": [
+          "tangent_cone"
+        ]
+      }
+    },
+    "points": {
+      "dtype": "float64",
+      "shape": [
+        4,
+        3
+      ],
+      "values": [
+        [
+          0.0,
+          -0.5,
+          -0.5
+        ],
+        [
+          0.0,
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.5,
+          -0.5
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,2 @@
+case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m
+newt_equation_count,../stl/plate.stl;../stl/plate_offset_x2.stl,1,6,1.4,newtonian;modified_newtonian;tangent_wedge,shield,0,0,0,0,0,1,1,1,1

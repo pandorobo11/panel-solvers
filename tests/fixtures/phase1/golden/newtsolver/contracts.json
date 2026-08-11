@@ -1,0 +1,397 @@
+{
+  "cli": {
+    "help": "usage: newtsolver-cli [-h] -i INPUT [-o OUTPUT] [-j WORKERS]\n                      [--cases [CASES ...]]\n                      [--flush-every-cases FLUSH_EVERY_CASES]\n\nRun newtsolver from CSV/Excel input without GUI.\n\noptions:\n  -h, --help            show this help message and exit\n  -i INPUT, --input INPUT\n                        Input cases file (.csv/.xlsx/.xlsm/.xls)\n  -o OUTPUT, --output OUTPUT\n                        Output result CSV path (default:\n                        <input_dir>/outputs/<input_stem>_result.csv)\n  -j WORKERS, --workers WORKERS\n                        Number of parallel workers (default: 1)\n  --cases [CASES ...]   Run only selected case_id values (space/comma\n                        separated).\n  --flush-every-cases FLUSH_EVERY_CASES\n                        Checkpoint output every N completed cases (0 to\n                        disable, default: 100).\n",
+    "program": "newtsolver-cli"
+  },
+  "cli_run": {
+    "case_order": [
+      "newt_zero_newtonian",
+      "newt_modified_offset",
+      "newt_tangent_wedge",
+      "newt_tangent_cone",
+      "newt_prandtl_meyer",
+      "newt_beta_sin_boundary",
+      "newt_bank_multicomponent",
+      "newt_shield_rtree",
+      "newt_shield_embree"
+    ],
+    "exit_code": 0,
+    "result_csv_columns": [
+      "case_id",
+      "stl_path",
+      "stl_scale_m_per_unit",
+      "Mach",
+      "gamma",
+      "windward_eq",
+      "leeward_eq",
+      "alpha_deg",
+      "beta_or_bank_deg",
+      "attitude_input",
+      "ref_x_m",
+      "ref_y_m",
+      "ref_z_m",
+      "Aref_m2",
+      "Lref_Cl_m",
+      "Lref_Cm_m",
+      "Lref_Cn_m",
+      "shielding_on",
+      "ray_backend",
+      "out_dir",
+      "save_vtp_on",
+      "save_npz_on",
+      "fixture_note",
+      "solver_version",
+      "case_signature",
+      "run_started_at_utc",
+      "run_finished_at_utc",
+      "run_elapsed_s",
+      "out_attitude_input",
+      "alpha_t_deg_resolved",
+      "beta_t_deg_resolved",
+      "scope",
+      "component_id",
+      "component_stl_path",
+      "ray_backend_used",
+      "CA",
+      "CY",
+      "CN",
+      "Cl",
+      "Cm",
+      "Cn",
+      "CD",
+      "CL",
+      "faces",
+      "shielded_faces",
+      "vtp_path",
+      "npz_path"
+    ],
+    "stdout": "[RUN] cases=9 workers=1 input=<fixture-root>/newtsolver_cases.csv\n[INFO] Ray backend: Embree (ray_pyembree).\n[RUN] (1/9) case_id=newt_shield_embree\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[RUN] (2/9) case_id=newt_shield_rtree\n[RUN] (3/9) case_id=newt_zero_newtonian\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[RUN] (4/9) case_id=newt_modified_offset\n[RUN] (5/9) case_id=newt_tangent_wedge\n[RUN] (6/9) case_id=newt_tangent_cone\n[RUN] (7/9) case_id=newt_prandtl_meyer\n[RUN] (8/9) case_id=newt_beta_sin_boundary\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[RUN] (9/9) case_id=newt_bank_multicomponent\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[OK] Wrote results: <fixture-root>/newtsolver_results.csv\n"
+  },
+  "environments": {
+    "locked": {
+      "backend_selection": {
+        "auto": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        },
+        "embree": {
+          "error_type": "ValueError",
+          "message": "ray_backend='embree' was requested, but Embree is not available. Install optional dependency 'rayaccel' or use ray_backend='rtree'.",
+          "status": "error"
+        },
+        "rtree": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        }
+      },
+      "embree_binding": {
+        "available": false,
+        "distribution": null,
+        "version": null
+      },
+      "name": "locked",
+      "packages": {
+        "numpy": "2.4.1",
+        "pandas": "3.0.0",
+        "pyvista": "0.46.5",
+        "rtree": "1.4.1",
+        "scipy": "1.17.0",
+        "trimesh": "4.11.1",
+        "vtk": "9.5.2"
+      },
+      "python": "3.12",
+      "trimesh_has_embree": false,
+      "variables": {
+        "NEWTSOLVER_PARALLEL_CHUNK_CASES": {
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_PARALLEL_CHUNK_CASES must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit scheduler argument > environment > default",
+          "unset": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_5": {
+            "status": "ok",
+            "value": 5
+          }
+        },
+        "NEWTSOLVER_SHIELD_BATCH_SIZE": {
+          "explicit_5_over_env": {
+            "status": "ok",
+            "value": 5
+          },
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_SHIELD_BATCH_SIZE must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit argument > environment > backend default",
+          "unset_embree": {
+            "status": "ok",
+            "value": 64
+          },
+          "unset_rtree": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_17": {
+            "status": "ok",
+            "value": 17
+          }
+        },
+        "NEWTSOLVER_SHIELD_CACHE_MAX": {
+          "import_time_value": 1,
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_SHIELD_CACHE_MAX must be an integer >= 0.",
+            "status": "error"
+          },
+          "precedence": "module import/global for mask cache; resolver reads environment",
+          "unset": {
+            "status": "ok",
+            "value": 1
+          },
+          "valid_3": {
+            "status": "ok",
+            "value": 3
+          }
+        }
+      }
+    },
+    "rayaccel": {
+      "backend_selection": {
+        "auto": {
+          "status": "ok",
+          "value": {
+            "effective": "embree",
+            "intersector_module": "trimesh.ray.ray_pyembree"
+          }
+        },
+        "embree": {
+          "status": "ok",
+          "value": {
+            "effective": "embree",
+            "intersector_module": "trimesh.ray.ray_pyembree"
+          }
+        },
+        "rtree": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        }
+      },
+      "embree_binding": {
+        "available": true,
+        "distribution": "<platform-specific-embree-distribution>",
+        "version": "<platform-specific-embree-version>"
+      },
+      "name": "rayaccel",
+      "packages": {
+        "numpy": "2.4.1",
+        "pandas": "3.0.0",
+        "pyvista": "0.46.5",
+        "rtree": "1.4.1",
+        "scipy": "1.17.0",
+        "trimesh": "4.11.1",
+        "vtk": "9.5.2"
+      },
+      "python": "3.12",
+      "trimesh_has_embree": true,
+      "variables": {
+        "NEWTSOLVER_PARALLEL_CHUNK_CASES": {
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_PARALLEL_CHUNK_CASES must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit scheduler argument > environment > default",
+          "unset": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_5": {
+            "status": "ok",
+            "value": 5
+          }
+        },
+        "NEWTSOLVER_SHIELD_BATCH_SIZE": {
+          "explicit_5_over_env": {
+            "status": "ok",
+            "value": 5
+          },
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_SHIELD_BATCH_SIZE must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit argument > environment > backend default",
+          "unset_embree": {
+            "status": "ok",
+            "value": 64
+          },
+          "unset_rtree": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_17": {
+            "status": "ok",
+            "value": 17
+          }
+        },
+        "NEWTSOLVER_SHIELD_CACHE_MAX": {
+          "import_time_value": 1,
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "NEWTSOLVER_SHIELD_CACHE_MAX must be an integer >= 0.",
+            "status": "error"
+          },
+          "precedence": "module import/global for mask cache; resolver reads environment",
+          "unset": {
+            "status": "ok",
+            "value": 1
+          },
+          "valid_3": {
+            "status": "ok",
+            "value": 3
+          }
+        }
+      }
+    }
+  },
+  "invalid_inputs": {
+    "newt_equation_count.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "newt_equation_count",
+          "field": "windward_eq",
+          "message": "windward_eq must have 1 entry or 2 entries (to match stl_path), got 3.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='newt_equation_count', windward_eq: windward_eq must have 1 entry or 2 entries (to match stl_path), got 3.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "newt_equation_name.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "newt_equation_name",
+          "field": "windward_eq",
+          "message": "Invalid windward_eq: 'empirical'. Expected one of: newtonian, modified_newtonian, tangent_wedge, tangent_cone.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='newt_equation_name', windward_eq: Invalid windward_eq: 'empirical'. Expected one of: newtonian, modified_newtonian, tangent_wedge, tangent_cone.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "newt_gamma_flag.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "newt_gamma_flag",
+          "field": "gamma",
+          "message": "must be > 1.",
+          "row_number": 2
+        },
+        {
+          "case_id": "newt_gamma_flag",
+          "field": "shielding_on",
+          "message": "must be 0 or 1.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='newt_gamma_flag', gamma: must be > 1.\n- row 2, case_id='newt_gamma_flag', shielding_on: must be 0 or 1.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "newt_missing_header.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": null,
+          "field": "header",
+          "message": "Missing required columns: ['stl_scale_m_per_unit', 'Mach', 'gamma', 'alpha_deg', 'beta_or_bank_deg', 'ref_x_m', 'ref_y_m', 'ref_z_m', 'Aref_m2', 'Lref_Cl_m', 'Lref_Cm_m', 'Lref_Cn_m']",
+          "row_number": 1
+        }
+      ],
+      "message": "Invalid input table:\n- row 1, header: Missing required columns: ['stl_scale_m_per_unit', 'Mach', 'gamma', 'alpha_deg', 'beta_or_bank_deg', 'ref_x_m', 'ref_y_m', 'ref_z_m', 'Aref_m2', 'Lref_Cl_m', 'Lref_Cm_m', 'Lref_Cn_m']",
+      "stage": "read_cases",
+      "status": "error"
+    }
+  },
+  "legacy_suite": {
+    "command": "python -m unittest discover -s tests -p test_*.py -v",
+    "status": "passed",
+    "tests_run": 90
+  },
+  "module_paths": [
+    "newtsolver",
+    "newtsolver.app",
+    "newtsolver.app.cli_app",
+    "newtsolver.app.gui_app",
+    "newtsolver.app.main_window",
+    "newtsolver.app.ui_cases",
+    "newtsolver.app.ui_utils",
+    "newtsolver.app.viewer",
+    "newtsolver.common",
+    "newtsolver.core",
+    "newtsolver.core.attitude",
+    "newtsolver.core.case_signature",
+    "newtsolver.core.mesh_utils",
+    "newtsolver.core.panel_core",
+    "newtsolver.core.panel_forces",
+    "newtsolver.core.parallel_scheduler",
+    "newtsolver.core.pressure_models",
+    "newtsolver.core.pressure_models.modified_newtonian",
+    "newtsolver.core.pressure_models.prandtl_meyer",
+    "newtsolver.core.pressure_models.tangent_cone",
+    "newtsolver.core.pressure_models.tangent_wedge",
+    "newtsolver.core.shielding",
+    "newtsolver.core.solver",
+    "newtsolver.core.version",
+    "newtsolver.io",
+    "newtsolver.io.csv_out",
+    "newtsolver.io.exporters",
+    "newtsolver.io.io_cases",
+    "newtsolver.surface_equations"
+  ],
+  "package": {
+    "name": "newtsolver",
+    "package_all": [],
+    "scripts": {
+      "newtsolver": "newtsolver.app.gui_app:main",
+      "newtsolver-cli": "newtsolver.app.cli_app:main",
+      "newtsolver-gui": "newtsolver.app.gui_app:main"
+    },
+    "version": "1.0.3"
+  },
+  "provenance": {
+    "cli_run_environment": "uv sync --locked --python 3.12 --extra rayaccel",
+    "environments": [
+      "uv sync --locked --python 3.12",
+      "uv sync --locked --python 3.12 --extra rayaccel"
+    ],
+    "generation_command": "uv run python scripts/generate_phase1_goldens.py --fmf-repo ../fmfsolver --newt-repo ../newtsolver",
+    "legacy_suite_environment": "uv sync --locked --python 3.12",
+    "python": "3.12",
+    "source_commit": "dc1357d0d50bbedfdc8b3429cab37e6b98b56c70",
+    "source_lock_sha256": "8889c4ee33ea806086da41d32f4a424f99bfddd841edfaa5dd8e09633f58ba3f",
+    "source_repository": "https://github.com/pandorobo11/newtsolver",
+    "source_version": "1.0.3"
+  },
+  "schema_version": 1
+}

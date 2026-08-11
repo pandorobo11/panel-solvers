@@ -35,6 +35,12 @@ fallback, and a separately approved removal phase.
 - A legacy discrepancy is recorded as two contracts until an ADR selects a
   unified behavior and defines compatibility handling.
 
+The Phase 1 evidence is frozen in `phase1/BEHAVIORAL_INVENTORY.md`, the dual
+contract ledger in `phase1/LEGACY_DIFFERENCES.md`, and semantic artifact captures
+under `tests/fixtures/phase1`. Per-quantity limits and normalization are defined
+in `phase1/TOLERANCES.md`; they are not a repository-wide license for numerical
+drift.
+
 ## Compatibility frontends
 
 `src/fmfsolver` and `src/newtsolver` may parse or translate legacy interfaces,
@@ -42,10 +48,12 @@ select a solver specification, and forward calls. They may not own physical
 equations, geometry, integration, caching, scheduling, artifact generation, or
 new application behavior.
 
-## Known Phase 0 non-compatibilities
+## Current implementation non-compatibilities
 
 - Legacy console commands are not registered.
 - Legacy Python modules beyond the package root do not exist.
 - No CSV, Excel, mesh, calculation, VTP, NPZ, CLI, or GUI operation is implemented.
 
 These gaps are intentional and must not be mistaken for a usable preview release.
+Phase 1 adds executable evidence only; it does not implement these compatibility
+surfaces in the shared packages.

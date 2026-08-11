@@ -71,6 +71,12 @@ one canonical validation case per physical model family.
   unknown, or compatibility decision required.
 - Baselines reproduce on a clean environment without editing legacy source.
 
+**Evidence:** `phase1/BEHAVIORAL_INVENTORY.md` records the public surfaces,
+`phase1/LEGACY_DIFFERENCES.md` preserves unresolved dual behavior,
+`phase1/GOLDEN_BASELINES.md` identifies the case matrix and Phase 2 inputs, and
+`phase1/TOLERANCES.md` defines the quantity-specific comparison rules. Executable
+captures and their manifest are under `tests/fixtures/phase1`.
+
 ## Phase 2 — Define central contracts
 
 **Scope:** Define and test immutable/validated contracts such as `PanelGeometry`,

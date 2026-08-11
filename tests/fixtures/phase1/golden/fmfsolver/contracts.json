@@ -1,0 +1,391 @@
+{
+  "cli": {
+    "help": "usage: fmfsolver-cli [-h] -i INPUT [-o OUTPUT] [-j WORKERS]\n                     [--cases CASES [CASES ...]]\n                     [--flush-every-cases FLUSH_EVERY_CASES]\n\nRun FMF solver from CSV/Excel input without GUI.\n\noptions:\n  -h, --help            show this help message and exit\n  -i INPUT, --input INPUT\n                        Input cases file (.csv/.xlsx/.xlsm/.xls)\n  -o OUTPUT, --output OUTPUT\n                        Output result CSV path (default:\n                        <input_dir>/outputs/<input_stem>_result.csv)\n  -j WORKERS, --workers WORKERS\n                        Number of parallel workers (default: 1)\n  --cases CASES [CASES ...]\n                        Run only selected case_id values (space/comma\n                        separated).\n  --flush-every-cases FLUSH_EVERY_CASES\n                        Checkpoint output every N completed cases (0 to\n                        disable, default: 100).\n",
+    "program": "fmfsolver-cli"
+  },
+  "cli_run": {
+    "case_order": [
+      "fmf_zero_plate",
+      "fmf_mode_b_offset",
+      "fmf_beta_sin_boundary",
+      "fmf_bank_multicomponent",
+      "fmf_shield_rtree",
+      "fmf_shield_embree"
+    ],
+    "exit_code": 0,
+    "result_csv_columns": [
+      "case_id",
+      "stl_path",
+      "stl_scale_m_per_unit",
+      "S",
+      "Ti_K",
+      "Mach",
+      "Altitude_km",
+      "Tw_K",
+      "alpha_deg",
+      "beta_or_bank_deg",
+      "attitude_input",
+      "ref_x_m",
+      "ref_y_m",
+      "ref_z_m",
+      "Aref_m2",
+      "Lref_Cl_m",
+      "Lref_Cm_m",
+      "Lref_Cn_m",
+      "shielding_on",
+      "ray_backend",
+      "out_dir",
+      "save_vtp_on",
+      "save_npz_on",
+      "fixture_note",
+      "solver_version",
+      "case_signature",
+      "run_started_at_utc",
+      "run_finished_at_utc",
+      "run_elapsed_s",
+      "mode",
+      "out_S",
+      "out_Ti_K",
+      "out_attitude_input",
+      "alpha_t_deg_resolved",
+      "beta_t_deg_resolved",
+      "scope",
+      "component_id",
+      "component_stl_path",
+      "ray_backend_used",
+      "CA",
+      "CY",
+      "CN",
+      "Cl",
+      "Cm",
+      "Cn",
+      "CD",
+      "CL",
+      "faces",
+      "shielded_faces",
+      "vtp_path",
+      "npz_path"
+    ],
+    "stdout": "[RUN] cases=6 workers=1 input=<fixture-root>/fmfsolver_cases.csv\n[INFO] Ray backend: Embree (ray_pyembree).\n[RUN] (1/6) case_id=fmf_shield_embree\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[RUN] (2/6) case_id=fmf_shield_rtree\n[RUN] (3/6) case_id=fmf_zero_plate\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[RUN] (4/6) case_id=fmf_mode_b_offset\n[RUN] (5/6) case_id=fmf_beta_sin_boundary\n[RUN] (6/6) case_id=fmf_bank_multicomponent\n[WARN] Mesh is not watertight (trimesh). Continuing anyway.\n[OK] Wrote results: <fixture-root>/fmfsolver_results.csv\n"
+  },
+  "environments": {
+    "locked": {
+      "backend_selection": {
+        "auto": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        },
+        "embree": {
+          "error_type": "ValueError",
+          "message": "ray_backend='embree' was requested, but Embree is not available. Install optional dependency 'rayaccel' or use ray_backend='rtree'.",
+          "status": "error"
+        },
+        "rtree": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        }
+      },
+      "embree_binding": {
+        "available": false,
+        "distribution": null,
+        "version": null
+      },
+      "name": "locked",
+      "packages": {
+        "numpy": "2.4.1",
+        "pandas": "3.0.0",
+        "pyvista": "0.46.5",
+        "rtree": "1.4.1",
+        "scipy": "1.17.0",
+        "trimesh": "4.11.1",
+        "vtk": "9.5.2"
+      },
+      "python": "3.12",
+      "trimesh_has_embree": false,
+      "variables": {
+        "FMFSOLVER_PARALLEL_CHUNK_CASES": {
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_PARALLEL_CHUNK_CASES must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit scheduler argument > environment > default",
+          "unset": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_5": {
+            "status": "ok",
+            "value": 5
+          }
+        },
+        "FMFSOLVER_SHIELD_BATCH_SIZE": {
+          "explicit_5_over_env": {
+            "status": "ok",
+            "value": 5
+          },
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_SHIELD_BATCH_SIZE must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit argument > environment > backend default",
+          "unset_embree": {
+            "status": "ok",
+            "value": 64
+          },
+          "unset_rtree": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_17": {
+            "status": "ok",
+            "value": 17
+          }
+        },
+        "FMFSOLVER_SHIELD_CACHE_MAX": {
+          "import_time_value": 1,
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_SHIELD_CACHE_MAX must be an integer >= 0.",
+            "status": "error"
+          },
+          "precedence": "module import/global for mask cache; resolver reads environment",
+          "unset": {
+            "status": "ok",
+            "value": 1
+          },
+          "valid_3": {
+            "status": "ok",
+            "value": 3
+          }
+        }
+      }
+    },
+    "rayaccel": {
+      "backend_selection": {
+        "auto": {
+          "status": "ok",
+          "value": {
+            "effective": "embree",
+            "intersector_module": "trimesh.ray.ray_pyembree"
+          }
+        },
+        "embree": {
+          "status": "ok",
+          "value": {
+            "effective": "embree",
+            "intersector_module": "trimesh.ray.ray_pyembree"
+          }
+        },
+        "rtree": {
+          "status": "ok",
+          "value": {
+            "effective": "rtree",
+            "intersector_module": "trimesh.ray.ray_triangle"
+          }
+        }
+      },
+      "embree_binding": {
+        "available": true,
+        "distribution": "<platform-specific-embree-distribution>",
+        "version": "<platform-specific-embree-version>"
+      },
+      "name": "rayaccel",
+      "packages": {
+        "numpy": "2.4.1",
+        "pandas": "3.0.0",
+        "pyvista": "0.46.5",
+        "rtree": "1.4.1",
+        "scipy": "1.17.0",
+        "trimesh": "4.11.1",
+        "vtk": "9.5.2"
+      },
+      "python": "3.12",
+      "trimesh_has_embree": true,
+      "variables": {
+        "FMFSOLVER_PARALLEL_CHUNK_CASES": {
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_PARALLEL_CHUNK_CASES must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit scheduler argument > environment > default",
+          "unset": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_5": {
+            "status": "ok",
+            "value": 5
+          }
+        },
+        "FMFSOLVER_SHIELD_BATCH_SIZE": {
+          "explicit_5_over_env": {
+            "status": "ok",
+            "value": 5
+          },
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_SHIELD_BATCH_SIZE must be an integer >= 1.",
+            "status": "error"
+          },
+          "precedence": "explicit argument > environment > backend default",
+          "unset_embree": {
+            "status": "ok",
+            "value": 64
+          },
+          "unset_rtree": {
+            "status": "ok",
+            "value": 8
+          },
+          "valid_17": {
+            "status": "ok",
+            "value": 17
+          }
+        },
+        "FMFSOLVER_SHIELD_CACHE_MAX": {
+          "import_time_value": 1,
+          "invalid": {
+            "error_type": "ValueError",
+            "message": "FMFSOLVER_SHIELD_CACHE_MAX must be an integer >= 0.",
+            "status": "error"
+          },
+          "precedence": "module import/global for mask cache; resolver reads environment",
+          "unset": {
+            "status": "ok",
+            "value": 1
+          },
+          "valid_3": {
+            "status": "ok",
+            "value": 3
+          }
+        }
+      }
+    }
+  },
+  "invalid_inputs": {
+    "fmf_beta_tan_90.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "fmf_beta_tan_90",
+          "field": "alpha_deg,beta_or_bank_deg",
+          "message": "beta_tan angles must be strictly between -90 and 90 degrees.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='fmf_beta_tan_90', alpha_deg,beta_or_bank_deg: beta_tan angles must be strictly between -90 and 90 degrees.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "fmf_both_modes.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "fmf_both_modes",
+          "field": "mode",
+          "message": "Specify either Mode A or Mode B, not both.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='fmf_both_modes', mode: Specify either Mode A or Mode B, not both.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "fmf_flags_backend.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": "fmf_flags_backend",
+          "field": "shielding_on",
+          "message": "must be 0 or 1.",
+          "row_number": 2
+        },
+        {
+          "case_id": "fmf_flags_backend",
+          "field": "ray_backend",
+          "message": "must be one of: auto, rtree, embree.",
+          "row_number": 2
+        }
+      ],
+      "message": "Invalid input table:\n- row 2, case_id='fmf_flags_backend', shielding_on: must be 0 or 1.\n- row 2, case_id='fmf_flags_backend', ray_backend: must be one of: auto, rtree, embree.",
+      "stage": "read_cases",
+      "status": "error"
+    },
+    "fmf_missing_header.csv": {
+      "error_type": "InputValidationError",
+      "issues": [
+        {
+          "case_id": null,
+          "field": "header",
+          "message": "Missing required columns: ['stl_scale_m_per_unit', 'alpha_deg', 'beta_or_bank_deg', 'Tw_K', 'ref_x_m', 'ref_y_m', 'ref_z_m', 'Aref_m2', 'Lref_Cl_m', 'Lref_Cm_m', 'Lref_Cn_m']",
+          "row_number": 1
+        }
+      ],
+      "message": "Invalid input table:\n- row 1, header: Missing required columns: ['stl_scale_m_per_unit', 'alpha_deg', 'beta_or_bank_deg', 'Tw_K', 'ref_x_m', 'ref_y_m', 'ref_z_m', 'Aref_m2', 'Lref_Cl_m', 'Lref_Cm_m', 'Lref_Cn_m']",
+      "stage": "read_cases",
+      "status": "error"
+    }
+  },
+  "legacy_suite": {
+    "command": "python -m unittest discover -s tests -p test_*.py -v",
+    "status": "passed",
+    "tests_run": 75
+  },
+  "module_paths": [
+    "fmfsolver",
+    "fmfsolver.app",
+    "fmfsolver.app.cli_app",
+    "fmfsolver.app.gui_app",
+    "fmfsolver.app.main_window",
+    "fmfsolver.app.ui_cases",
+    "fmfsolver.app.ui_utils",
+    "fmfsolver.app.viewer",
+    "fmfsolver.common",
+    "fmfsolver.core",
+    "fmfsolver.core.case_signature",
+    "fmfsolver.core.mesh_utils",
+    "fmfsolver.core.parallel_scheduler",
+    "fmfsolver.core.sentman_core",
+    "fmfsolver.core.shielding",
+    "fmfsolver.core.solver",
+    "fmfsolver.io",
+    "fmfsolver.io.csv_out",
+    "fmfsolver.io.exporters",
+    "fmfsolver.io.io_cases",
+    "fmfsolver.physics",
+    "fmfsolver.physics.us1976"
+  ],
+  "package": {
+    "name": "fmfsolver",
+    "package_all": [],
+    "scripts": {
+      "fmfsolver": "fmfsolver.app.gui_app:main",
+      "fmfsolver-cli": "fmfsolver.app.cli_app:main",
+      "fmfsolver-gui": "fmfsolver.app.gui_app:main"
+    },
+    "version": "1.3.8"
+  },
+  "provenance": {
+    "cli_run_environment": "uv sync --locked --python 3.12 --extra rayaccel",
+    "environments": [
+      "uv sync --locked --python 3.12",
+      "uv sync --locked --python 3.12 --extra rayaccel"
+    ],
+    "generation_command": "uv run python scripts/generate_phase1_goldens.py --fmf-repo ../fmfsolver --newt-repo ../newtsolver",
+    "legacy_suite_environment": "uv sync --locked --python 3.12",
+    "python": "3.12",
+    "source_commit": "b62bc844d02a8f5212e62a53dea3238a1414317d",
+    "source_lock_sha256": "5d51b35fd99993bb8827d59f82e30c4d5cdcab59bc7c365e0390b2c0e1db99fc",
+    "source_repository": "https://github.com/pandorobo11/fmfsolver",
+    "source_version": "1.3.8"
+  },
+  "schema_version": 1
+}
