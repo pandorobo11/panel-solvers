@@ -1,6 +1,13 @@
 """Model-independent central contracts for the shared numerical pipeline."""
 
 from .aggregation import aggregate_component_results, assemble_common_results
+from .artifacts import (
+    ArtifactProjectionPolicy,
+    NpzProjection,
+    VtpProjection,
+    project_npz_artifact,
+    project_vtp_artifact,
+)
 from .contracts import (
     CommonCasePayload,
     CommonResults,
@@ -30,6 +37,7 @@ from .integration import PanelIntegration, integrate_panel_loads
 from .mesh import MeshComponent, PanelMesh
 
 __all__ = (
+    "ArtifactProjectionPolicy",
     "CommonCasePayload",
     "CommonResults",
     "ComponentResult",
@@ -40,6 +48,7 @@ __all__ = (
     "MeshComponent",
     "ModelCasePayload",
     "NonFiniteError",
+    "NpzProjection",
     "PanelFlowState",
     "PanelGeometry",
     "PanelIntegration",
@@ -49,10 +58,13 @@ __all__ = (
     "PayloadScalar",
     "PayloadValue",
     "ShapeError",
+    "VtpProjection",
     "aggregate_component_results",
     "assemble_common_results",
     "body_to_stability",
     "integrate_panel_loads",
+    "project_npz_artifact",
+    "project_vtp_artifact",
     "stl_to_body",
     "velocity_hat_stl_from_tangent_angles",
 )

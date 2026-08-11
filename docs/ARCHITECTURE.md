@@ -84,6 +84,12 @@ IDs in ascending order, applies the same global reference quantities, and builds
 the already-adopted `ComponentResult` and `CommonResults` contracts. Component
 metadata remains caller-supplied and model-neutral.
 
+Artifact projection builds immutable semantic VTP/NPZ arrays from the mesh and
+common results. Adapter-supplied policy data carries run metadata and explicit
+product additions, so model-specific fields are preserved without a model-name
+branch or a universal superset schema in core. Serialization and CSV writing are
+separate concerns.
+
 ## Ownership constraints
 
 | Concern | Owner |
