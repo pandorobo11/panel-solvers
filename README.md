@@ -8,9 +8,9 @@ Sentman and hypersonic physical models independent.
 The repository has completed **migration Phase 2**, and Phase 3 is in progress.
 Phase 1 freezes both legacy implementations as regression oracles, Phase 2
 defines the immutable central contracts and model registry, and the initial
-Phase 3 slices extract resolved-attitude/frame transforms and topology-preserving
-mesh representation. It does not contain a physical-model equation or a runnable
-solver pipeline.
+Phase 3 slices extract resolved-attitude/frame transforms, topology-preserving
+mesh representation, and common force/moment integration. It does not contain a
+physical-model equation or a runnable solver pipeline.
 
 ## Target structure
 
