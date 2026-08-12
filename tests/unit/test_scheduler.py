@@ -499,7 +499,8 @@ class SchedulerTests(unittest.TestCase):
 
     def test_mid_frame_connection_failure_is_a_worker_exit_error(self) -> None:
         before = _worker_resource_state()
-        original_recv_bytes = scheduler_module.mp.connection.Connection.recv_bytes
+        connection_base = scheduler_module.mp.connection._ConnectionBase
+        original_recv_bytes = connection_base.recv_bytes
         failed = False
 
         def fail_after_readiness(connection, *args, **kwargs):
@@ -512,7 +513,7 @@ class SchedulerTests(unittest.TestCase):
             return payload
 
         with mock.patch.object(
-            scheduler_module.mp.connection.Connection,
+            connection_base,
             "recv_bytes",
             new=fail_after_readiness,
         ):
@@ -531,17 +532,24 @@ class SchedulerTests(unittest.TestCase):
         self.assert_no_new_worker_resources(before)
 
     def test_spawn_start_failure_is_wrapped(self) -> None:
-        local_worker = lambda case, _logfn: case
-        with self.assertRaises(WorkerStartupError):
-            list(
-                iter_case_results_parallel(
-                    (0, 1),
-                    2,
-                    local_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+        before = _worker_resource_state()
+        process_type = scheduler_module.mp.get_context("spawn").Process
+        with mock.patch.object(
+            process_type,
+            "start",
+            side_effect=OSError("synthetic spawn failure"),
+        ):
+            with self.assertRaisesRegex(WorkerStartupError, "synthetic spawn failure"):
+                list(
+                    iter_case_results_parallel(
+                        (0, 1),
+                        2,
+                        _identity_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    )
                 )
-            )
+        self.assert_no_new_worker_resources(before)
 
     def test_requires_explicit_policies_and_valid_complete_order(self) -> None:
         with self.assertRaisesRegex(SchedulerError, "log_policy"):

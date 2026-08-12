@@ -833,7 +833,10 @@ def iter_case_results_parallel[CaseT, ResultT](
                 payload = connection.recv_bytes()
             except (EOFError, OSError) as exc:
                 process = processes[expected_worker_id]
-                process.join(timeout=0.0)
+                # EOF can become visible just before multiprocessing records the
+                # child status.  Reap for a bounded interval so a real exit code
+                # is not exposed as ``None`` merely because of that race.
+                process.join(timeout=_CLEANUP_SECONDS)
                 raise WorkerUnexpectedExitError(
                     ((expected_worker_id, process.exitcode),)
                 ) from exc
