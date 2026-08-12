@@ -92,7 +92,7 @@ change legacy numerical output.
 
 ## Phase 3 — Extract low-risk shared core
 
-**Status:** Complete. Phase 4 has not started.
+**Status:** Complete.
 
 **Scope:** Migrate exporters, attitude/frame transforms, mesh data representation,
 force/moment integration, component aggregation, and common result types. Initially
@@ -113,9 +113,17 @@ tolerance profile.
 
 ### 4a Sentman
 
+**Status:** Complete.
+
 Wrap the existing Sentman equations, atmosphere-derived inputs, case validation,
 scalars, metadata, and signature payload behind `PanelLoadModel`. Preserve both
 normal and tangential local load contributions.
+
+**Evidence:** `PHASE4_MODELS.md` records the Sentman adapter boundary. Unit tests
+retain the independent analytic flat-plate reference; an exact audit covers all
+201 pinned US1976 rows. The six FMF Phase 1 cases are recomputed by the model and
+routed through the common integrator without changing their goldens or
+tolerances.
 
 ### 4b Hypersonic
 

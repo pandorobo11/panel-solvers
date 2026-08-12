@@ -50,6 +50,18 @@ class DependencyBoundaryTests(unittest.TestCase):
             ("panelsolver.app", "fmfsolver", "newtsolver"),
         )
 
+    def test_models_do_not_own_filesystem_or_execution_infrastructure(self) -> None:
+        self.assert_tree_avoids(
+            "panelsolver/models",
+            (
+                "pathlib",
+                "os",
+                "shutil",
+                "tempfile",
+                "panelsolver.app",
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
