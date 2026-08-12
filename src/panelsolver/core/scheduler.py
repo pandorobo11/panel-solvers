@@ -607,10 +607,14 @@ def _cleanup_workers(
 def _wait_for_worker_readiness(
     result_connections: Sequence[object],
     processes: Sequence[mp.Process],
+    *,
+    cancel_cb: Callable[[], bool] | None = None,
 ) -> None:
     ready: set[int] = set()
     deadline = time.monotonic() + _STARTUP_SECONDS
     while len(ready) < len(processes):
+        if cancel_cb is not None and bool(cancel_cb()):
+            raise SchedulerCancelled("Canceled by user at a case boundary.")
         remaining = deadline - time.monotonic()
         if remaining <= 0.0:
             missing = sorted(set(range(len(processes))) - ready)
@@ -622,28 +626,33 @@ def _wait_for_worker_readiness(
             timeout=min(_POLL_SECONDS, remaining),
         )
         if not readable:
-            dead_workers = [
-                (worker_id, process.exitcode)
-                for worker_id, process in enumerate(processes)
-                if worker_id not in ready and not process.is_alive()
-            ]
+            dead_workers: list[tuple[int, int | None]] = []
+            for worker_id, process in enumerate(processes):
+                if worker_id in ready or process.is_alive():
+                    continue
+                process.join(timeout=_CLEANUP_SECONDS)
+                dead_workers.append((worker_id, process.exitcode))
             if dead_workers:
-                details = ", ".join(
-                    f"worker {worker_id} (exit code {exitcode})"
-                    for worker_id, exitcode in dead_workers
-                )
-                raise WorkerStartupError(
-                    f"Spawn {details} exited before reporting ready."
-                )
+                raise WorkerUnexpectedExitError(dead_workers)
             continue
         connection = readable[0]
         expected_worker_id = result_connections.index(connection)
+        unexpected_exit: WorkerUnexpectedExitError | None = None
         try:
             payload = connection.recv_bytes()
         except (EOFError, OSError) as exc:
-            raise WorkerStartupError(
-                f"Spawn worker {expected_worker_id} closed before reporting ready."
-            ) from exc
+            process = processes[expected_worker_id]
+            process.join(timeout=_CLEANUP_SECONDS)
+            if not process.is_alive() and process.exitcode is not None:
+                unexpected_exit = WorkerUnexpectedExitError(
+                    ((expected_worker_id, process.exitcode),)
+                )
+            else:
+                raise WorkerStartupError(
+                    f"Spawn worker {expected_worker_id} closed before reporting ready."
+                ) from exc
+        if unexpected_exit is not None:
+            raise unexpected_exit
         try:
             message = _decode_worker_message(payload)
         except SchedulerError as exc:
@@ -813,7 +822,11 @@ def iter_case_results_parallel[CaseT, ResultT](
         except Exception as exc:
             raise WorkerStartupError(f"Could not start spawn worker: {exc}") from exc
 
-        _wait_for_worker_readiness(result_receivers, processes)
+        _wait_for_worker_readiness(
+            result_receivers,
+            processes,
+            cancel_cb=cancel_cb,
+        )
         for connection in child_connections:
             connection.close()
         for worker_id in range(worker_count):

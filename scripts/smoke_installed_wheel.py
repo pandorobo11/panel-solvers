@@ -212,6 +212,95 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
             raise RuntimeError(f"{product} component artifact paths changed")
 
 
+def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
+    products = (
+        ("fmfsolver", "fmfsolver_cases.csv"),
+        ("newtsolver", "newtsolver_cases.csv"),
+    )
+    for product, filename in products:
+        reader = importlib.import_module(f"{product}.io.io_cases").read_cases
+        solver = importlib.import_module(f"{product}.core.solver")
+        source = reader(inputs / filename)
+        cancel_calls = 0
+
+        def cancel() -> bool:
+            nonlocal cancel_calls
+            cancel_calls += 1
+            return True
+
+        try:
+            solver.run_cases(
+                source.iloc[0:0],
+                lambda _message: None,
+                cancel_cb=cancel,
+            )
+        except BaseException as exc:
+            if (
+                type(exc) is not RuntimeError
+                or str(exc) != "Canceled by user."
+                or exc.__cause__ is not None
+                or exc.__context__ is not None
+            ):
+                raise RuntimeError(f"{product} empty cancellation changed") from exc
+        else:
+            raise RuntimeError(f"{product} empty cancellation was ignored")
+        if cancel_calls != 1:
+            raise RuntimeError(f"{product} empty cancellation callback count changed")
+
+        missing = staging / "direct-errors" / product / "missing.stl"
+        try:
+            missing.resolve().stat()
+        except FileNotFoundError as exc:
+            expected_missing_message = str(exc)
+        else:
+            raise RuntimeError("installed-wheel missing-STL fixture exists")
+        row = source.iloc[0].to_dict()
+        row.update(
+            stl_path=str(missing),
+            out_dir=str(staging / "direct-errors" / product / "serial"),
+            save_vtp_on=1,
+            save_npz_on=1,
+        )
+        try:
+            solver.run_case(row, lambda _message: None)
+        except BaseException as exc:
+            if (
+                type(exc) is not FileNotFoundError
+                or str(exc) != expected_missing_message
+                or exc.__cause__ is not None
+                or exc.__context__ is not None
+            ):
+                raise RuntimeError(f"{product} serial missing-STL error changed") from exc
+        else:
+            raise RuntimeError(f"{product} serial missing STL succeeded")
+
+        parallel = source.iloc[[0, 0]].copy().reset_index(drop=True)
+        parallel["case_id"] = [f"{product}-missing-0", f"{product}-missing-1"]
+        parallel["stl_path"] = str(missing)
+        parallel["out_dir"] = [
+            str(staging / "direct-errors" / product / "parallel-0"),
+            str(staging / "direct-errors" / product / "parallel-1"),
+        ]
+        parallel["save_vtp_on"] = 1
+        parallel["save_npz_on"] = 1
+        try:
+            solver.run_cases(parallel, lambda _message: None, workers=2)
+        except BaseException as exc:
+            expected_first_line = f"[WorkerError] {expected_missing_message}"
+            if (
+                type(exc) is not RuntimeError
+                or str(exc).splitlines()[0] != expected_first_line
+                or "FileNotFoundError:" not in str(exc)
+                or exc.__cause__ is not None
+                or exc.__context__ is not None
+            ):
+                raise RuntimeError(
+                    f"{product} parallel missing-STL error changed"
+                ) from exc
+        else:
+            raise RuntimeError(f"{product} parallel missing STL succeeded")
+
+
 def main() -> int:
     repository = Path(sys.argv[1]).resolve()
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
@@ -254,6 +343,7 @@ def main() -> int:
             inputs,
         )
         _smoke_direct_solver_results(staging, inputs)
+        _smoke_direct_solver_errors(staging, inputs)
         for product in ("fmfsolver", "newtsolver"):
             command = _command_path(f"{product}-cli")
             help_result = subprocess.run(

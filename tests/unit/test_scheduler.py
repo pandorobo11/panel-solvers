@@ -24,6 +24,20 @@ from panelsolver.core import (
     resolve_parallel_chunk_cases,
 )
 
+_ORIGINAL_WORKER_PROCESS_ENTRY = scheduler_module._worker_process_entry
+
+
+def _delayed_worker_process_entry(*args) -> None:
+    time.sleep(0.5)
+    _ORIGINAL_WORKER_PROCESS_ENTRY(*args)
+
+
+def _exit_before_ready_process_entry(worker_id, *args) -> None:
+    if worker_id == 0:
+        os._exit(7)
+    time.sleep(0.5)
+    _ORIGINAL_WORKER_PROCESS_ENTRY(worker_id, *args)
+
 
 def _success_worker(case: tuple[int, float], logfn) -> int:
     value, delay_seconds = case
@@ -573,6 +587,124 @@ class SchedulerTests(unittest.TestCase):
                 )
         self.assertTrue(failed)
         self.assert_no_new_worker_resources(before)
+
+    def test_readiness_cancellation_is_typed_bounded_and_reaps_workers(self) -> None:
+        before = _worker_resource_state()
+        calls = 0
+
+        def cancel_during_readiness() -> bool:
+            nonlocal calls
+            calls += 1
+            return calls >= 2
+
+        with mock.patch.object(
+            scheduler_module,
+            "_worker_process_entry",
+            new=_delayed_worker_process_entry,
+        ):
+            with self.assertRaises(SchedulerCancelled) as caught:
+                list(
+                    iter_case_results_parallel(
+                        (0, 1),
+                        2,
+                        _identity_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                        cancel_cb=cancel_during_readiness,
+                    )
+                )
+        self.assertEqual("Canceled by user at a case boundary.", str(caught.exception))
+        self.assertGreaterEqual(calls, 2)
+        self.assert_no_new_worker_resources(before)
+
+    def test_real_pre_ready_exit_is_an_unexpected_exit_without_chain(self) -> None:
+        before = _worker_resource_state()
+        with mock.patch.object(
+            scheduler_module,
+            "_worker_process_entry",
+            new=_exit_before_ready_process_entry,
+        ):
+            with self.assertRaises(WorkerUnexpectedExitError) as caught:
+                list(
+                    iter_case_results_parallel(
+                        (0, 1),
+                        2,
+                        _identity_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    )
+                )
+        self.assertEqual(((0, 7),), caught.exception.exits)
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertIsNone(caught.exception.__context__)
+        self.assert_no_new_worker_resources(before)
+
+    def test_readiness_poll_and_eof_known_exit_share_unexpected_type(self) -> None:
+        class DeadProcess:
+            exitcode = 7
+
+            def is_alive(self) -> bool:
+                return False
+
+            def join(self, timeout=None) -> None:
+                self.join_timeout = timeout
+
+        class EofConnection:
+            def recv_bytes(self) -> bytes:
+                raise EOFError("synthetic pre-ready EOF")
+
+        for mode in ("poll", "eof"):
+            with self.subTest(mode=mode):
+                process = DeadProcess()
+                connection = EofConnection()
+                readable = [] if mode == "poll" else [connection]
+                with mock.patch.object(
+                    scheduler_module,
+                    "wait_connections",
+                    return_value=readable,
+                ):
+                    with self.assertRaises(WorkerUnexpectedExitError) as caught:
+                        scheduler_module._wait_for_worker_readiness(
+                            (connection,),
+                            (process,),
+                        )
+                self.assertEqual(((0, 7),), caught.exception.exits)
+                self.assertIsNone(caught.exception.__cause__)
+                self.assertIsNone(caught.exception.__context__)
+                self.assertEqual(scheduler_module._CLEANUP_SECONDS, process.join_timeout)
+
+    def test_readiness_eof_with_live_process_retains_startup_transport_chain(
+        self,
+    ) -> None:
+        class LiveProcess:
+            exitcode = None
+
+            def is_alive(self) -> bool:
+                return True
+
+            def join(self, timeout=None) -> None:
+                self.join_timeout = timeout
+
+        class EofConnection:
+            def recv_bytes(self) -> bytes:
+                raise EOFError("synthetic live pre-ready EOF")
+
+        process = LiveProcess()
+        connection = EofConnection()
+        with mock.patch.object(
+            scheduler_module,
+            "wait_connections",
+            return_value=[connection],
+        ):
+            with self.assertRaises(WorkerStartupError) as caught:
+                scheduler_module._wait_for_worker_readiness(
+                    (connection,),
+                    (process,),
+                )
+        self.assertIs(type(caught.exception.__cause__), EOFError)
+        self.assertIs(caught.exception.__cause__, caught.exception.__context__)
+        self.assertTrue(caught.exception.__suppress_context__)
+        self.assertEqual(scheduler_module._CLEANUP_SECONDS, process.join_timeout)
 
     def test_unpickleable_spawn_callable_is_rejected_before_child_start(self) -> None:
         before = _worker_resource_state()

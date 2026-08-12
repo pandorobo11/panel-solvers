@@ -7,9 +7,16 @@ from pathlib import Path
 
 import pandas as pd
 
-from panelsolver.core import CsvProjection
+from panelsolver.core import CsvProjection, MeshLoadError, SchedulerError
 
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
+from .legacy_scheduler import (
+    _callback_error,
+    _LegacyCallbackError,
+    legacy_callback,
+    legacy_cancel_callback,
+    translate_legacy_scheduler_error,
+)
 from .runtime import ProductBatchRunResult
 
 _LEGACY_COMPONENT_RESULT_COLUMNS = (
@@ -68,6 +75,7 @@ def run_legacy_cases(
     frame: pd.DataFrame,
     runtime_run_cases: Callable[..., ProductBatchRunResult],
     *,
+    legacy_env_prefix: str,
     input_columns: Sequence[str],
     renames: Mapping[str, str] | None = None,
     legacy_signature_builder=None,
@@ -79,8 +87,23 @@ def run_legacy_cases(
     chunk_cb=None,
 ) -> pd.DataFrame:
     """Run shared execution and retain the frozen DataFrame callback shape."""
+    compat_cancel_cb = legacy_cancel_callback(cancel_cb)
     if frame.empty:
+        flush_every = int(flush_every_cases or 0)
+        if flush_every < 0:
+            raise ValueError("flush_every_cases must be >= 0.")
+        callback_error: BaseException | None = None
+        try:
+            if compat_cancel_cb is not None:
+                compat_cancel_cb()
+        except _LegacyCallbackError as exc:
+            callback_error = _callback_error(exc)
+        if callback_error is not None:
+            raise callback_error
         return pd.DataFrame()
+    compat_logfn = legacy_callback(logfn)
+    compat_progress_cb = legacy_callback(progress_cb)
+    compat_chunk_cb = legacy_callback(chunk_cb)
     direct_input_columns = tuple(
         dict.fromkeys((*input_columns, *(str(name) for name in frame.columns)))
     )
@@ -115,23 +138,39 @@ def run_legacy_cases(
         return result_frame
 
     def snapshot(projection, done: int, total: int, final: bool) -> None:
-        if chunk_cb is not None:
-            chunk_cb(
+        if compat_chunk_cb is not None:
+            compat_chunk_cb(
                 converted(projection),
                 done,
                 total,
                 final,
             )
 
-    result = runtime_run_cases(
-        frame.to_dict(orient="records"),
-        workers=workers,
-        logfn=logfn,
-        progress_cb=progress_cb,
-        cancel_cb=cancel_cb,
-        flush_every_cases=flush_every_cases,
-        snapshot_cb=snapshot if chunk_cb is not None else None,
-    )
+    translated_error: BaseException | None = None
+    try:
+        result = runtime_run_cases(
+            frame.to_dict(orient="records"),
+            workers=workers,
+            logfn=compat_logfn,
+            progress_cb=compat_progress_cb,
+            cancel_cb=compat_cancel_cb,
+            flush_every_cases=flush_every_cases,
+            snapshot_cb=snapshot if compat_chunk_cb is not None else None,
+        )
+    except _LegacyCallbackError as exc:
+        translated_error = _callback_error(exc)
+    except MeshLoadError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            translated_error = exc.__cause__
+        else:
+            raise
+    except SchedulerError as exc:
+        translated_error = translate_legacy_scheduler_error(
+            exc,
+            legacy_env_prefix=legacy_env_prefix,
+        )
+    if translated_error is not None:
+        raise translated_error
     return converted(result.csv)
 
 
