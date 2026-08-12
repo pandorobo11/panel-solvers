@@ -48,9 +48,34 @@ exact shielding result, immutable `CommonResults`, canonical signature, warnings
 and cache-hit state. Artifact projection remains a separate Phase 3 operation;
 serialization remains outside this engine.
 
-## Deferred to Phase 5e
+## Spawn scheduler
 
-Worker processes, grouping, logging policy, cancellation, progress, partial
-results, failure propagation, and checkpoint-ready snapshots remain scheduler
-work. One-case execution raises the original model/geometry/shielding error and
-does not catch it as a worker failure.
+`iter_execution_results_parallel` runs the same one-case engine in spawn
+workers. Cache-aware bucket keys are scheduling hints; the versioned mesh,
+shielding, signature, and result-cache identities still decide every reuse.
+Results are delivered with stable input indices as workers finish.
+`ordered_success_snapshot` reconstructs input-ordered, checkpoint-ready
+successful snapshots, while `SchedulerProgress` counts accepted completions.
+
+Cancellation sets a process-shared event. Workers observe it only between cases,
+so an active ray query, root solve, or ODE is allowed to finish before the worker
+reports cancellation. No new chunks are dispatched after the request. Worker
+startup failure, a remote Python exception and traceback, and an unexpected
+process exit have distinct scheduler errors and always trigger cleanup.
+
+The two pinned D015 logging behaviors remain `WorkerLogPolicy.FORWARD` and
+`WorkerLogPolicy.DROP`. The differing worker-failure behavior remains
+`PartialResultPolicy.YIELD_COMPLETED` and
+`PartialResultPolicy.DISCARD_CHUNK`. Both are required arguments; core does not
+choose one product's behavior for the other. Product adapters will select their
+legacy policy when their runnable surfaces migrate: FMF selects
+`FORWARD`/`DISCARD_CHUNK`, while newtsolver selects
+`DROP`/`YIELD_COMPLETED`.
+
+`PANELSOLVER_PARALLEL_CHUNK_CASES` has precedence over exactly one explicitly
+selected `FMFSOLVER_PARALLEL_CHUNK_CASES` or
+`NEWTSOLVER_PARALLEL_CHUNK_CASES`; an explicit function argument has highest
+precedence and the default remains 8.
+
+Phase 5 deliberately adds no CLI, GUI lifecycle, or artifact writer. Those
+remain later-phase application and compatibility work.

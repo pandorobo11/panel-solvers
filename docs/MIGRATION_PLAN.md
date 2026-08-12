@@ -159,6 +159,15 @@ contaminate geometry/model/algorithm variants; backend goldens match; worker sta
 failure, cancellation, and partial-result tests are deterministic; signature
 schema/versioning conforms to ADR 0005.
 
+**Status:** Complete. Phase 5a–5e introduced content-safe mesh loading and
+fingerprints, explicit rtree/Embree shielding and caches, the ADR 0005 canonical
+signature and bounded result cache, one model-neutral execution engine, and the
+spawn scheduler. The scheduler requires explicit D015 log and worker-failure
+partial-result policies, observes cancellation between cases, propagates remote
+tracebacks and unexpected exits, and produces input-ordered successful snapshots.
+All 15 Phase 1 cases continue to match their frozen semantic goldens and
+tolerances through the common engine; no numerical baseline was changed.
+
 ## Phase 6 — Share the GUI and viewer
 
 **Scope:** Implement one `SolverSpec`-driven main window, cases panel, and viewer.
