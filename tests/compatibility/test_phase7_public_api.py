@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import inspect
 import json
 import tempfile
 import unittest
@@ -12,14 +13,15 @@ import pandas as pd
 import pyvista as pv
 
 import fmfsolver
+import fmfsolver.io.exporters as fmf_exporters
 import newtsolver
+import newtsolver.io.exporters as newt_exporters
 from fmfsolver.core.case_signature import build_case_signature as build_fmf_signature
 from fmfsolver.core.parallel_scheduler import (
     iter_case_results_parallel as iter_fmf_case_results_parallel,
 )
 from fmfsolver.core.sentman_core import sentman_dC_dA_vector
 from fmfsolver.core.solver import run_case as run_fmf_case
-from fmfsolver.io.exporters import export_npz, export_vtp
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from fmfsolver.physics.us1976 import load_us1976_tables, sample_at_altitude_km
 from newtsolver.core.case_signature import build_case_signature as build_newt_signature
@@ -33,6 +35,7 @@ from newtsolver.io.io_cases import read_cases as read_newt_cases
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "phase1"
 CONTRACTS = FIXTURES / "golden"
+EXPORTER_MODULES = (fmf_exporters, newt_exporters)
 
 PANEL_CORE_ALL = [
     "ATTITUDE_INPUT_VALUES",
@@ -213,7 +216,7 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                 self.assertEqual(result["component_rows"], [])
                 self.assertAlmostEqual(result["CA"], expected_ca, places=14)
 
-    def test_atmosphere_and_direct_serializers_keep_legacy_return_shapes(self) -> None:
+    def test_atmosphere_tables_keep_legacy_return_shapes(self) -> None:
         table1, table2 = load_us1976_tables()
         self.assertEqual(list(table1.columns), ["Z", "T", "c"])
         self.assertEqual(list(table2.columns), ["Z", "V"])
@@ -223,24 +226,86 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
         table1.loc[:, "T"] = -1.0
         self.assertEqual(sample_at_altitude_km(0.0)["T_K"], expected_temperature)
 
+    def test_direct_exporters_keep_exact_pinned_callable_contracts(self) -> None:
+        signatures = {
+            "export_vtp": (
+                "(out_path: 'str', vertices: 'np.ndarray', faces: 'np.ndarray', "
+                "cell_data: 'dict', field_data: 'dict | None' = None)"
+            ),
+            "export_npz": "(out_path: 'str', **arrays)",
+        }
+        for module in EXPORTER_MODULES:
+            for name, signature in signatures.items():
+                function = getattr(module, name)
+                with self.subTest(module=module.__name__, function=name):
+                    self.assertEqual(str(inspect.signature(function)), signature)
+                    self.assertEqual(function.__name__, name)
+                    self.assertEqual(function.__module__, module.__name__)
+                    self.assertNotIn("return", function.__annotations__)
+        self.assertIsNot(fmf_exporters.export_vtp, newt_exporters.export_vtp)
+        self.assertIsNot(fmf_exporters.export_npz, newt_exporters.export_npz)
+
+    def test_direct_exporters_keep_exact_semantic_artifacts_and_none_return(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir)
             vertices = np.array(
-                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                dtype=np.float32,
             )
-            faces = np.array([[0, 1, 2]], dtype=np.int64)
-            export_vtp(
-                output / "direct.vtp",
-                vertices,
-                faces,
-                {"Cp_n": np.array([1.25])},
-                {"case_id": "direct"},
-            )
-            export_npz(output / "direct.npz", Cp_n=np.array([1.25]))
-            poly = pv.read(output / "direct.vtp")
-            np.testing.assert_array_equal(poly.cell_data["Cp_n"], [1.25])
-            with np.load(output / "direct.npz") as archive:
-                np.testing.assert_array_equal(archive["Cp_n"], [1.25])
+            faces = np.array([[0, 1, 2]], dtype=np.int32)
+            cell_data = {
+                "panel_id": np.array([7], dtype=np.int16),
+                "Cp_n": np.array([1.25], dtype=np.float32),
+            }
+            field_data = {
+                "case_id": "direct",
+                "component_ids": np.array([2, 4], dtype=np.int16),
+            }
+            npz_arrays = {
+                "panel_id": np.array([7], dtype=np.int16),
+                "loads": np.array([[1.25, -0.5, 0.0]], dtype=np.float32),
+            }
+
+            for module in EXPORTER_MODULES:
+                product = module.__name__.split(".", maxsplit=1)[0]
+                vtp_path = output / product / "nested" / "direct.vtp"
+                npz_path = output / product / "nested" / "direct.npz"
+                with self.subTest(product=product, artifact="vtp"):
+                    result = module.export_vtp(
+                        out_path=vtp_path,
+                        vertices=vertices,
+                        faces=faces,
+                        cell_data=cell_data,
+                        field_data=field_data,
+                    )
+                    self.assertIsNone(result)
+                    poly = pv.read(vtp_path)
+                    expected_points = vertices.astype(float)
+                    expected_faces = np.array([3, 0, 1, 2], dtype=np.int64)
+                    np.testing.assert_array_equal(poly.points, expected_points)
+                    self.assertEqual(poly.points.dtype, expected_points.dtype)
+                    np.testing.assert_array_equal(poly.faces, expected_faces)
+                    self.assertEqual(poly.faces.dtype, expected_faces.dtype)
+                    self.assertEqual(list(poly.cell_data), list(cell_data))
+                    for name, expected in cell_data.items():
+                        np.testing.assert_array_equal(poly.cell_data[name], expected)
+                        self.assertEqual(poly.cell_data[name].dtype, expected.dtype)
+                    self.assertEqual(list(poly.field_data), list(field_data))
+                    for name, value in field_data.items():
+                        expected = np.asarray([value])
+                        np.testing.assert_array_equal(poly.field_data[name], expected)
+                        self.assertEqual(poly.field_data[name].dtype, expected.dtype)
+
+                with self.subTest(product=product, artifact="npz"):
+                    result = module.export_npz(out_path=npz_path, **npz_arrays)
+                    self.assertIsNone(result)
+                    with np.load(npz_path) as archive:
+                        self.assertEqual(archive.files, list(npz_arrays))
+                        for name, expected in npz_arrays.items():
+                            np.testing.assert_array_equal(archive[name], expected)
+                            self.assertEqual(archive[name].dtype, expected.dtype)
 
 
 if __name__ == "__main__":

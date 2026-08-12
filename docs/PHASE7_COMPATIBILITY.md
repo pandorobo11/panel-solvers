@@ -169,6 +169,15 @@ formula, geometry, cache, shielding, scheduler, or serializer implementation.
 Installed-wheel smoke testing imports every frozen module and checks the exact
 root/version/D025 export contracts before exercising both command families.
 
+Phase 8 restored the pinned direct-exporter call shape in both compatibility
+packages. `fmfsolver.io.exporters` and `newtsolver.io.exporters` independently
+define `export_vtp(out_path, vertices, faces, cell_data, field_data=None)` and
+`export_npz(out_path, **arrays)` under their product module/name identities. The
+functions write the requested artifact and return `None`, while the shared
+internal serializers retain their `path` parameter and `Path` return for
+application use. This correction changes no VTP/NPZ semantic array, metadata,
+path, numerical value, or artifact schema.
+
 ## Final acceptance evidence
 
 Phase 7 can be marked complete only when:

@@ -77,6 +77,27 @@ not by file bytes. The precise inventory is in
 `phase1/BEHAVIORAL_INVENTORY.md` and the tolerances are in
 `phase1/TOLERANCES.md`.
 
+Direct Python artifact calls remain product-specific compatibility APIs:
+
+```python
+from fmfsolver.io.exporters import export_npz, export_vtp
+
+export_vtp(
+    out_path="case.vtp",
+    vertices=vertices,
+    faces=faces,
+    cell_data=cell_data,
+    field_data=field_data,
+)
+export_npz(out_path="case.npz", **arrays)
+```
+
+The same names are available from `newtsolver.io.exporters`. Both functions
+write the supplied `out_path` and return `None`, as in the pinned products. Keep
+the path in caller state if it is needed later; the shared application's
+internal serializers return `Path`, but that is not the compatibility contract.
+The internal `path=` spelling is not a public synonym for `out_path=`.
+
 ### Direct common-core flow direction
 
 The compatibility CLI and GUI adapters deterministically resolve

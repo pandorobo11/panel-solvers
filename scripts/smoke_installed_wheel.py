@@ -6,12 +6,16 @@ from __future__ import annotations
 import csv
 import importlib
 import importlib.metadata
+import inspect
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import numpy as np
+import pyvista as pv
 
 EXPECTED_ENTRY_POINTS = {
     "fmfsolver": "fmfsolver.app.gui_app:main",
@@ -55,12 +59,80 @@ EXPECTED_PRESSURE_MODELS_ALL = [
     "_tangent_cone_detach_limit",
     "tangent_cone_pressure_coefficient",
 ]
+EXPECTED_EXPORTER_SIGNATURES = {
+    "export_vtp": (
+        "(out_path: 'str', vertices: 'np.ndarray', faces: 'np.ndarray', "
+        "cell_data: 'dict', field_data: 'dict | None' = None)"
+    ),
+    "export_npz": "(out_path: 'str', **arrays)",
+}
 
 
 def _command_path(name: str) -> Path:
     scripts = Path(sys.executable).parent
     suffix = ".exe" if sys.platform == "win32" else ""
     return scripts / f"{name}{suffix}"
+
+
+def _smoke_direct_exporters(staging: Path) -> None:
+    vertices = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        dtype=np.float32,
+    )
+    faces = np.array([[0, 1, 2]], dtype=np.int32)
+    cell_data = {"Cp_n": np.array([1.25], dtype=np.float32)}
+    field_data = {"case_id": "installed-direct"}
+    npz_arrays = {
+        "panel_id": np.array([7], dtype=np.int16),
+        "loads": np.array([[1.25, -0.5, 0.0]], dtype=np.float32),
+    }
+
+    for product in ("fmfsolver", "newtsolver"):
+        module_name = f"{product}.io.exporters"
+        module = importlib.import_module(module_name)
+        for name, expected_signature in EXPECTED_EXPORTER_SIGNATURES.items():
+            function = getattr(module, name)
+            if str(inspect.signature(function)) != expected_signature:
+                raise RuntimeError(f"{module_name}.{name} signature changed")
+            if function.__name__ != name or function.__module__ != module_name:
+                raise RuntimeError(f"{module_name}.{name} identity changed")
+
+        output = staging / "direct-exporters" / product
+        vtp_path = output / "direct.vtp"
+        result = module.export_vtp(
+            out_path=vtp_path,
+            vertices=vertices,
+            faces=faces,
+            cell_data=cell_data,
+            field_data=field_data,
+        )
+        if result is not None:
+            raise RuntimeError(f"{module_name}.export_vtp must return None")
+        poly = pv.read(vtp_path)
+        if list(poly.cell_data) != list(cell_data):
+            raise RuntimeError(f"{module_name}.export_vtp cell names changed")
+        if list(poly.field_data) != list(field_data):
+            raise RuntimeError(f"{module_name}.export_vtp metadata names changed")
+        if not np.array_equal(poly.cell_data["Cp_n"], cell_data["Cp_n"]):
+            raise RuntimeError(f"{module_name}.export_vtp cell values changed")
+        if poly.cell_data["Cp_n"].dtype != cell_data["Cp_n"].dtype:
+            raise RuntimeError(f"{module_name}.export_vtp cell dtype changed")
+        expected_case_id = np.asarray([field_data["case_id"]])
+        if not np.array_equal(poly.field_data["case_id"], expected_case_id):
+            raise RuntimeError(f"{module_name}.export_vtp metadata changed")
+
+        npz_path = output / "direct.npz"
+        result = module.export_npz(out_path=npz_path, **npz_arrays)
+        if result is not None:
+            raise RuntimeError(f"{module_name}.export_npz must return None")
+        with np.load(npz_path) as archive:
+            if archive.files != list(npz_arrays):
+                raise RuntimeError(f"{module_name}.export_npz names changed")
+            for name, expected in npz_arrays.items():
+                if not np.array_equal(archive[name], expected):
+                    raise RuntimeError(f"{module_name}.export_npz {name} changed")
+                if archive[name].dtype != expected.dtype:
+                    raise RuntimeError(f"{module_name}.export_npz {name} dtype changed")
 
 
 def main() -> int:
@@ -98,6 +170,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)
+        _smoke_direct_exporters(staging)
         inputs = staging / "inputs"
         shutil.copytree(
             repository / "tests" / "fixtures" / "phase1" / "inputs",
