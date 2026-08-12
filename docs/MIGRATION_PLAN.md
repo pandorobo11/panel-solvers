@@ -200,9 +200,12 @@ Do not archive legacy repositories yet.
 match; Windows/macOS/Linux CI covers both models; no common implementation remains
 duplicated in the compatibility packages.
 
-**Status:** Not started. Phase 6 deliberately leaves case readers, execution and
-serialization adapters, command registration, public import forwarding, and
-distribution/release mechanics to this phase.
+**Status:** In progress. ADR 0007 selects one `panel-solvers` distribution while
+retaining independent FMF/newtsolver compatibility versions on their frozen
+public surfaces. `PHASE7_COMPATIBILITY.md` records the serialized Phase 7a–7f
+issue sequence. Case readers, execution and serialization adapters, command
+registration, public import forwarding, installed samples, and final GUI smoke
+remain incomplete until their dependent slices merge.
 
 ## Phase 8 — Independent final audit
 
