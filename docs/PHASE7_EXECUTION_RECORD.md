@@ -9,8 +9,8 @@ execution record, related ADRs, and both pinned legacy implementations were read
 before editing. The references matched `MIGRATION_SOURCES.md` and remained
 read-only and clean:
 
-- FMF: `b62bc844b37c411050ff617a1f53560f08f3fccc`;
-- newtsolver: `dc1357d0a7c027384ac40bc258bf1e7aa3d58870`.
+- FMF: `b62bc844d02a8f5212e62a53dea3238a1414317d`;
+- newtsolver: `dc1357d0d50bbedfdc8b3429cab37e6b98b56c70`.
 
 Phase 7 was split in dependency order. Every slice used one Issue, one new
 worktree from the latest accepted `origin/main`, and one draft PR. Each draft was
