@@ -164,9 +164,13 @@ their legacy built-in exceptions. A true `run_cases(..., cancel_cb=...)`
 callback raises `RuntimeError("Canceled by user.")`, including for an empty input
 table. A negative `flush_every_cases` still raises
 `ValueError("flush_every_cases must be >= 0.")` before the cancellation callback
-is consulted. Empty non-cancel runs currently omit the pinned backend-hint log;
-that known logging-only difference is tracked separately in #98. In parallel
-execution the request is polled while workers start and remains immediate:
+is consulted. A direct `run_case()` reports case-owned warnings but does not
+print the ray-backend hint or batch `[RUN]`/`[OK]` messages, and it does not use up
+the one-time hint. The first non-cancel empty `run_cases()` call prints only that
+product's backend hint and returns an empty DataFrame; later calls are silent.
+If its log callback raises, the same exception is returned and the hint remains
+available for retry. FMF and newtsolver track this state independently. In
+parallel execution the request is polled while workers start and remains immediate:
 results still active in workers are not added to progress or checkpoint
 snapshots. Files written before the request is observed, or by an in-flight
 worker before cancellation cleanup finishes, are not rolled back; callers must

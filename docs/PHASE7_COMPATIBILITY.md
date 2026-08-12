@@ -169,10 +169,18 @@ work the compatibility callback is polled while spawn workers report readiness
 as well as during execution, and raises immediately, so active results are not
 accepted into progress or checkpoint snapshots after the request. Empty input
 still validates `flush_every_cases` before cancellation, matching the non-empty
-runtime. The pinned empty-input backend-hint log remains the separate pending
-#98 logging-contract correction and is intentionally not implemented by this
-#73 error-contract change. Serial missing-STL failures expose the original
-built-in `FileNotFoundError`; parallel
+runtime. Phase 8 Issue #98 separately restored the pinned logging boundary:
+direct `run_case()` skips the one-time ray-backend hint and batch-owned `[RUN]`
+and `[OK]` messages, while retaining case-owned mesh/model warnings, and does not
+consume the product's hint state. A non-cancel empty `run_cases()` emits only the
+same product-specific hint as a non-empty batch and returns an empty DataFrame;
+the hint becomes silent after its callback succeeds. FMF and newtsolver retain
+independent one-time state and rtree installation text. Flush validation and
+initial cancellation precede the empty hint, and a caller exception from the
+hint leaves it retryable. As in the pinned callables, the required direct logger
+is checked lazily only when a message is emitted. CLI, GUI, non-empty batch,
+worker-log, and partial-result orchestration remain unchanged. Serial missing-STL
+failures expose the original built-in `FileNotFoundError`; parallel
 Python failures expose a built-in `RuntimeError` whose first line is
 `[WorkerError]` plus the legacy cause wording. The full shared remote traceback
 is retained, including the underlying `FileNotFoundError` evidence when mesh

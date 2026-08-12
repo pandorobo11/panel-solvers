@@ -258,14 +258,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     )
                     self.assertEqual(0, calls)
 
-    def test_empty_non_cancel_backend_hint_remains_pending_issue_98(self) -> None:
-        for product, _reader, _run_one, run_many, _filename in self.products():
-            with self.subTest(product=product):
-                logs: list[str] = []
-                result = run_many(pd.DataFrame(), logs.append)
-                self.assertTrue(result.empty)
-                self.assertEqual([], logs)
-
     def test_serial_boundary_cancel_retains_one_completed_checkpoint(self) -> None:
         for product, reader, _run_one, run_many, filename in self.products():
             with self.subTest(product=product):

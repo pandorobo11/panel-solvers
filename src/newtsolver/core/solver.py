@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from panelsolver.app.legacy_results import direct_legacy_result, run_legacy_cases
+from panelsolver.app.legacy_results import run_legacy_case, run_legacy_cases
 from panelsolver.app.legacy_scheduler import legacy_execution_order
 
 from ..csv_adapter import CSV_PROJECTION_POLICY
+from ..runtime import RUNTIME_POLICY
 from ..runtime import run_cases as _runtime_run_cases
 from .case_signature import build_case_signature
 
@@ -19,8 +20,15 @@ def _build_execution_order(df: pd.DataFrame) -> list[int]:
 
 
 def run_case(row: dict, logfn) -> dict:
-    result = run_cases(pd.DataFrame([row]), logfn, workers=1)
-    return direct_legacy_result(result)
+    return run_legacy_case(
+        row,
+        RUNTIME_POLICY,
+        legacy_env_prefix="NEWTSOLVER",
+        input_columns=CSV_PROJECTION_POLICY.input_columns,
+        renames=_RENAMES,
+        legacy_signature_builder=build_case_signature,
+        logfn=logfn,
+    )
 
 
 def run_cases(
@@ -39,6 +47,7 @@ def run_cases(
         input_columns=CSV_PROJECTION_POLICY.input_columns,
         renames=_RENAMES,
         legacy_signature_builder=build_case_signature,
+        runtime_policy=RUNTIME_POLICY,
         workers=workers,
         logfn=logfn,
         progress_cb=progress_cb,

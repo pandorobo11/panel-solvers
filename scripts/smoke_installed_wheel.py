@@ -83,6 +83,17 @@ EXPECTED_DIRECT_COMPONENT_KEYS = [
     "vtp_path",
     "npz_path",
 ]
+MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
+
+
+def _expected_backend_hint(product: str, *, embree: bool) -> str:
+    if embree:
+        return "[INFO] Ray backend: Embree (ray_pyembree)."
+    return (
+        "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
+        "available: uv sync --extra rayaccel (or pip install "
+        f'"{product}[rayaccel]").'
+    )
 
 
 def _command_path(name: str) -> Path:
@@ -157,14 +168,57 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         ("fmfsolver", "fmfsolver_cases.csv", 3),
         ("newtsolver", "newtsolver_cases.csv", 6),
     )
+    runtime = importlib.import_module("panelsolver.app.runtime")
     for product, filename, multi_index in products:
         reader = importlib.import_module(f"{product}.io.io_cases").read_cases
-        run_case = importlib.import_module(f"{product}.core.solver").run_case
-        row = reader(inputs / filename).iloc[multi_index].to_dict()
+        solver = importlib.import_module(f"{product}.core.solver")
+        source = reader(inputs / filename)
+        row = source.iloc[multi_index].to_dict()
         output = staging / "direct-solvers" / product
         row.update(out_dir=str(output), save_vtp_on=0, save_npz_on=0)
 
-        result = run_case(row, lambda _message: None)
+        runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(product)
+        direct_logs: list[str] = []
+        result = solver.run_case(row, direct_logs.append)
+        if direct_logs != [MESH_WARNING]:
+            raise RuntimeError(f"{product} direct-case logs changed: {direct_logs!r}")
+        if product in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+            raise RuntimeError(f"{product} direct case consumed backend hint")
+
+        owned = LookupError(f"{product} installed hint callback")
+
+        def fail_hint(_message: str, error: BaseException = owned) -> None:
+            raise error
+
+        try:
+            solver.run_cases(source.iloc[0:0], fail_hint)
+        except BaseException as exc:
+            if exc is not owned:
+                raise RuntimeError(
+                    f"{product} empty hint callback identity changed"
+                ) from exc
+        else:
+            raise RuntimeError(f"{product} empty hint callback error was ignored")
+        if product in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+            raise RuntimeError(f"{product} failed hint callback consumed state")
+
+        empty_logs: list[str] = []
+        empty = solver.run_cases(source.iloc[0:0], empty_logs.append)
+        if not empty.empty or tuple(empty.shape) != (0, 0):
+            raise RuntimeError(f"{product} empty direct batch result changed")
+        expected_hint = _expected_backend_hint(
+            product,
+            embree=bool(runtime.trimesh_ray.has_embree),
+        )
+        if empty_logs != [expected_hint]:
+            raise RuntimeError(f"{product} empty backend hint changed: {empty_logs!r}")
+        if product not in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+            raise RuntimeError(f"{product} successful backend hint was not recorded")
+        hot_logs: list[str] = []
+        solver.run_cases(source.iloc[0:0], hot_logs.append)
+        if hot_logs:
+            raise RuntimeError(f"{product} repeated empty hint: {hot_logs!r}")
+
         components = result["component_rows"]
         expected_sources = row["stl_path"].split(";")
         if any(list(item) != EXPECTED_DIRECT_COMPONENT_KEYS for item in components):
