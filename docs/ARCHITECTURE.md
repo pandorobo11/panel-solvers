@@ -90,6 +90,14 @@ product additions, so model-specific fields are preserved without a model-name
 branch or a universal superset schema in core. Serialization and CSV writing are
 separate concerns.
 
+The Phase 7 application runtime composes adapted case requests, the shared
+spawn scheduler, semantic projections, and filesystem serializers. Its runtime
+policy requires each compatibility frontend to select worker-log and
+failure-partial behavior, CSV schema/durability, compatibility version, and
+model-specific projection additions explicitly. Successful checkpoint and final
+snapshots are assembled in input order even when shielding reuse changes
+execution order or workers complete out of order.
+
 Summary CSV projection likewise receives an ordered schema from a product
 adapter. Core calculates shared total/component cells while adapter-supplied run
 values fill product fields. The FMF and newtsolver adapters retain separate

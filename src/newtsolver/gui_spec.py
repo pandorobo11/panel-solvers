@@ -18,6 +18,7 @@ _PREFERRED_SCALARS = (
     "center_z_stl_m",
     "stl_index",
 )
+_DEFAULT_ADAPTERS = object()
 
 
 def _present(value: object) -> str | None:
@@ -63,8 +64,18 @@ def format_case(row: Mapping[str, object]) -> str:
     )
 
 
-def solver_spec(*, adapters: SolverGuiAdapters | None = None) -> SolverSpec:
-    """Return the newtsolver identity and retained GUI policies."""
+def solver_spec(
+    *,
+    adapters: SolverGuiAdapters | None | object = _DEFAULT_ADAPTERS,
+) -> SolverSpec:
+    """Return the newtsolver identity with real adapters by default."""
+    selected_adapters: SolverGuiAdapters | None
+    if adapters is _DEFAULT_ADAPTERS:
+        from .runtime import GUI_ADAPTERS
+
+        selected_adapters = GUI_ADAPTERS
+    else:
+        selected_adapters = adapters  # type: ignore[assignment]
     return SolverSpec(
         product_id="newtsolver",
         model_id="hypersonic",
@@ -73,7 +84,7 @@ def solver_spec(*, adapters: SolverGuiAdapters | None = None) -> SolverSpec:
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,
         close_policy=ClosePolicy.IMMEDIATE,
-        adapters=adapters,
+        adapters=selected_adapters,
     )
 
 
