@@ -29,6 +29,7 @@ from .errors import PanelSolverError
 from .frames import velocity_hat_stl_from_tangent_angles
 from .mesh import PanelMesh
 from .mesh_loading import (
+    LoadedPanelMesh,
     MeshValidationPolicy,
     load_panel_mesh,
 )
@@ -230,18 +231,17 @@ def _rebind_cached_results(
     )
 
 
-def execute_case(
+def _prepare_case_execution(
     request: CaseExecutionRequest,
-    *,
-    result_cache: ResultCache[CommonResults] | None = None,
-    warning_callback: Callable[[str], None] | None = None,
-) -> CaseExecutionResult:
-    """Execute one case without concrete-model branches or artifact writes."""
-    if not isinstance(request, CaseExecutionRequest):
-        raise TypeError("request must be a CaseExecutionRequest instance")
-    if result_cache is not None and not isinstance(result_cache, ResultCache):
-        raise TypeError("result_cache must be a ResultCache instance")
-
+    warning_callback: Callable[[str], None] | None,
+) -> tuple[
+    tuple[str, str],
+    LoadedPanelMesh,
+    ShieldingResult,
+    PanelFlowState,
+    CaseSignature,
+]:
+    """Resolve the exact geometry/shielding identity used by execution."""
     identity = _model_identity(request.model)
     request.model.validate_case(request.model_case)
     model_signature_payload = request.model.signature_payload(request.model_case)
@@ -266,6 +266,41 @@ def execute_case(
         model_algorithm_version=identity[1],
         model_case_payload=model_signature_payload,
         shielding_config=shielding.config,
+    )
+    return identity, loaded, shielding, flow_state, signature
+
+
+def prepare_case_signature(
+    request: CaseExecutionRequest,
+    *,
+    warning_callback: Callable[[str], None] | None = None,
+) -> CaseSignature:
+    """Build the execution signature without evaluating physical panel loads.
+
+    Mesh loading and shielding identity use the same path as :func:`execute_case`.
+    Shielding itself is resolved because the effective backend and batch size are
+    part of ADR 0005 and cannot be inferred safely from the requested selector.
+    """
+    if not isinstance(request, CaseExecutionRequest):
+        raise TypeError("request must be a CaseExecutionRequest instance")
+    return _prepare_case_execution(request, warning_callback)[4]
+
+
+def execute_case(
+    request: CaseExecutionRequest,
+    *,
+    result_cache: ResultCache[CommonResults] | None = None,
+    warning_callback: Callable[[str], None] | None = None,
+) -> CaseExecutionResult:
+    """Execute one case without concrete-model branches or artifact writes."""
+    if not isinstance(request, CaseExecutionRequest):
+        raise TypeError("request must be a CaseExecutionRequest instance")
+    if result_cache is not None and not isinstance(result_cache, ResultCache):
+        raise TypeError("result_cache must be a ResultCache instance")
+
+    identity, loaded, shielding, flow_state, signature = _prepare_case_execution(
+        request,
+        warning_callback,
     )
 
     if result_cache is not None:
@@ -327,4 +362,5 @@ __all__ = (
     "ExecutionError",
     "ExecutionModelError",
     "execute_case",
+    "prepare_case_signature",
 )

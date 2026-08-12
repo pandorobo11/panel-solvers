@@ -41,6 +41,7 @@ from .execution import (
     ExecutionError,
     ExecutionModelError,
     execute_case,
+    prepare_case_signature,
 )
 from .frames import (
     body_to_stability,
@@ -182,6 +183,7 @@ __all__ = (
     "match_case_signature",
     "mesh_cache_stats",
     "ordered_success_snapshot",
+    "prepare_case_signature",
     "project_npz_artifact",
     "project_summary_csv",
     "project_vtp_artifact",
