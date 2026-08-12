@@ -18,6 +18,7 @@ _PREFERRED_SCALARS = (
     "center_z_stl_m",
     "stl_index",
 )
+_DEFAULT_ADAPTERS = object()
 
 
 def _present(value: object) -> str | None:
@@ -70,8 +71,18 @@ def _attitude_fields(row: Mapping[str, object]) -> tuple[tuple[str, object], ...
     return (("alpha_t", alpha), ("beta_t", beta))
 
 
-def solver_spec(*, adapters: SolverGuiAdapters | None = None) -> SolverSpec:
-    """Return the FMF product identity and retained GUI policies."""
+def solver_spec(
+    *,
+    adapters: SolverGuiAdapters | None | object = _DEFAULT_ADAPTERS,
+) -> SolverSpec:
+    """Return the FMF product identity with real adapters by default."""
+    selected_adapters: SolverGuiAdapters | None
+    if adapters is _DEFAULT_ADAPTERS:
+        from .runtime import GUI_ADAPTERS
+
+        selected_adapters = GUI_ADAPTERS
+    else:
+        selected_adapters = adapters  # type: ignore[assignment]
     return SolverSpec(
         product_id="fmfsolver",
         model_id="sentman",
@@ -80,7 +91,7 @@ def solver_spec(*, adapters: SolverGuiAdapters | None = None) -> SolverSpec:
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,
         close_policy=ClosePolicy.DEFER_UNTIL_IDLE,
-        adapters=adapters,
+        adapters=selected_adapters,
     )
 
 

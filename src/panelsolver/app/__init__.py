@@ -1,5 +1,6 @@
 """Shared command-line and graphical application layer."""
 
+from .artifact_io import write_npz_projection, write_vtp_projection
 from .attitude import ATTITUDE_INPUT_VALUES, ResolvedAttitude, resolve_attitude
 from .case_adapter import (
     AdaptedCase,
@@ -27,6 +28,17 @@ from .legacy_adapter import (
     LegacyRunContext,
     adapt_legacy_panels,
     project_legacy_phase3_case,
+)
+from .runtime import (
+    PreparedProductCase,
+    ProductBatchRunResult,
+    ProductCaseRunResult,
+    ProductProjectionAdditions,
+    ProductRuntimePolicy,
+    combine_csv_projections,
+    prepare_product_cases,
+    run_and_write_product_cases,
+    run_product_cases,
 )
 from .solver_spec import (
     ArtifactSignatureCandidates,
@@ -64,7 +76,12 @@ __all__ = (
     "LegacyPanelSnapshot",
     "LegacyPhase3Projection",
     "LegacyRunContext",
+    "PreparedProductCase",
+    "ProductBatchRunResult",
     "ProductCasePolicy",
+    "ProductCaseRunResult",
+    "ProductProjectionAdditions",
+    "ProductRuntimePolicy",
     "ResolvedAttitude",
     "ScalarField",
     "SolverGuiAdapters",
@@ -75,16 +92,22 @@ __all__ = (
     "adapt_legacy_panels",
     "artifact_display_allowed",
     "build_artifact_signature_candidates",
+    "combine_csv_projections",
     "default_model_registry",
     "discover_scalar_fields",
     "field_data_scalar",
     "match_artifact_case",
+    "prepare_product_cases",
     "project_legacy_phase3_case",
     "read_case_table",
     "request_from_registry",
     "resolve_attitude",
     "resolve_matching_case_row",
+    "run_and_write_product_cases",
+    "run_product_cases",
     "scalar_color_limits",
     "validate_csv_output_path",
     "write_csv_atomic",
+    "write_npz_projection",
+    "write_vtp_projection",
 )

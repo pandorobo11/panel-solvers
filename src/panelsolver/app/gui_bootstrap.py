@@ -13,13 +13,12 @@ from .solver_spec import SolverGuiAdapters, SolverSpec
 
 
 class GuiAdaptersUnavailable(RuntimeError):
-    """Raised when a Phase 7 product I/O adapter is invoked in Phase 6."""
+    """Raised when an explicitly unconfigured GUI specification is invoked."""
 
 
 def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
     message = (
-        f"{product_id} case I/O and execution adapters remain Phase 7 work. "
-        "Use the pinned legacy product for calculations."
+        f"{product_id} case I/O and execution adapters are not configured."
     )
 
     def unavailable(*_args, **_kwargs):
@@ -35,7 +34,7 @@ def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
 
 
 def prepare_gui_spec(spec: SolverSpec) -> SolverSpec:
-    """Supply non-calculating Phase 6 adapters when launchers have none."""
+    """Supply explicit failing adapters only for an unconfigured specification."""
     if not isinstance(spec, SolverSpec):
         raise TypeError("spec must be a SolverSpec")
     if spec.adapters is not None:
@@ -55,8 +54,7 @@ def create_main_window(
     window = window_factory(prepare_gui_spec(spec))
     if adapters_were_missing:
         window.cases_panel.logln(
-            "[INFO] Case I/O and execution remain in the pinned legacy product "
-            "until Phase 7."
+            "[ERROR] Case I/O and execution adapters are not configured."
         )
     return window
 

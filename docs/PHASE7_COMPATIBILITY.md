@@ -90,6 +90,26 @@ loads. Ordered pinned legacy hashes remain product-owned fallback identities.
 They use the frozen `1.3.8` and `1.0.3` compatibility versions and are neither
 interpreted by core nor treated as interchangeable with the primary signature.
 
+## Execution, serialization, and GUI adapters
+
+The shared runtime executes adapted requests serially or through the Phase 5
+spawn scheduler, while each product selects its D015 worker-log and failed-chunk
+partial-result policy. Shielding reuse may change execution order, but every
+checkpoint and final summary is reconstructed in input order. Cancellation is
+observed at case boundaries and worker failures retain their remote traceback.
+
+Each complete case projects and writes VTP/NPZ according to its flags, including
+the retained output-directory side effect when both flags are off. Summary CSV
+snapshots use the existing product schemas and D010 atomic-write policies. FMF
+adds only `mode`, resolved `S`/`Ti_K`, and its NPZ physical values; newtsolver
+adds only its canonical equation VTP metadata. Both artifacts and CSV carry the
+primary ADR 0005 signature and frozen product-facing version.
+
+Both default GUI specifications now contain real readers, signature builders,
+execution, collision validation, and wind-direction adapters. The non-calculating
+fallback remains only for an explicitly adapter-free specification and is not
+used by either normal product launcher.
+
 ## Final acceptance evidence
 
 Phase 7 can be marked complete only when:
