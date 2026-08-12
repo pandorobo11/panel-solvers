@@ -90,6 +90,14 @@ product additions, so model-specific fields are preserved without a model-name
 branch or a universal superset schema in core. Serialization and CSV writing are
 separate concerns.
 
+Summary CSV projection likewise receives an ordered schema from a product
+adapter. Core calculates shared total/component cells while adapter-supplied run
+values fill product fields. The FMF and newtsolver adapters retain separate
+input/result column lists, collision sets, and atomic-write policies: FMF uses a
+same-directory named temporary file plus flush/`fsync`, while newtsolver uses a
+same-directory UUID name without explicit `fsync`. These policies preserve D009,
+D010, and D029 without choosing a universal behavior.
+
 ## Ownership constraints
 
 | Concern | Owner |
