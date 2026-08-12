@@ -24,7 +24,7 @@ transforms, panel flow state, shielding, integration, component aggregation,
 signatures, artifacts, caching, and execution/scheduling. It cannot know which
 physical model is selected.
 
-`panelsolver.models` will contain independent Sentman and hypersonic models. Each
+`panelsolver.models` contains independent Sentman and hypersonic models. Each
 model parses its own case fields, evaluates local panel loads, provides display
 scalars/metadata, and provides a canonical signature payload.
 
@@ -105,6 +105,16 @@ contracts, and routes one case through shared integration, aggregation, and all
 three semantic projections. Product wrappers add only the explicit CSV/artifact
 policy fields documented in `PHASE3_ADAPTERS.md`; they do not call or contain a
 physical equation.
+
+Phase 4a places the pinned Sentman vector equation and Mode A/B atmosphere
+resolution behind `PanelLoadModel`. The model returns the legacy equation's
+local numerator before reference-area normalization; the Phase 3 integrator
+continues to own `area_m2 / Aref_m2`. `Cp_n` and `theta_deg` remain Sentman
+visualization scalars, while resolved `mode`, `S`, `Ti_K`, and `Tw_K` remain
+model metadata. Pinned US1976 interpolation columns are in-package numeric
+constants, so model evaluation performs no filesystem access. The concrete
+model exposes only its normalized model-case signature payload; signature
+envelope construction remains Phase 5 work.
 
 ## Ownership constraints
 

@@ -52,8 +52,10 @@ new application behavior.
 
 - Legacy console commands are not registered.
 - Legacy Python modules beyond the Phase 3 CSV/computed-data adapters do not exist.
-- No CSV/Excel input reader, STL loader/repair, shielding engine, physical model,
-  VTP/NPZ serializer, scheduler, CLI, or GUI is implemented.
+- No CSV/Excel input reader, STL loader/repair, shielding engine, hypersonic
+  physical model, VTP/NPZ serializer, scheduler, CLI, or GUI is implemented.
+- The shared Sentman model is an internal Phase 4a migration surface; legacy
+  `fmfsolver` computational imports and commands are not forwarded yet.
 - The Phase 3 CSV writer and semantic VTP/NPZ projections are internal migration
   surfaces, not a runnable solver pipeline.
 
