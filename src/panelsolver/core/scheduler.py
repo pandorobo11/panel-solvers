@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import os
-import queue
+import sys
 import time
 import traceback
 from collections import OrderedDict, deque
 from collections.abc import Callable, Hashable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
+from multiprocessing.connection import wait as wait_connections
 
 import numpy as np
 
@@ -20,6 +21,7 @@ from .execution import CaseExecutionRequest, CaseExecutionResult, execute_case
 _DEFAULT_CHUNK_CASES = 8
 _POLL_SECONDS = 0.1
 _CLEANUP_SECONDS = 2.0
+_STARTUP_SECONDS = 30.0
 
 
 class SchedulerError(PanelSolverError, RuntimeError):
@@ -62,6 +64,10 @@ class WorkerUnexpectedExitError(SchedulerError):
             for worker_id, exitcode in self.exits
         )
         super().__init__(f"[WorkerError] {detail} exited without returning a result.")
+
+
+class _WorkerConnectionClosed(Exception):
+    """The parent closed its IPC endpoint during cancellation or cleanup."""
 
 
 class WorkerLogPolicy(str, Enum):
@@ -265,23 +271,148 @@ def _null_log(_message: str) -> None:
     return None
 
 
+def _exception_detail(exc: Exception) -> str:
+    try:
+        return str(exc)
+    except Exception:
+        return "<exception text unavailable>"
+
+
+def _safe_exception_text(exc: Exception) -> str:
+    return f"{type(exc).__name__}: {_exception_detail(exc)}"
+
+
+def _encode_parent_message(message: Mapping[str, object]) -> memoryview:
+    """Serialize tasks synchronously before sending one Pipe frame."""
+    try:
+        return mp.reduction.ForkingPickler.dumps(dict(message))
+    except Exception as exc:
+        raise SchedulerError(
+            f"Could not serialize worker task: {_safe_exception_text(exc)}"
+        ) from exc
+
+
+def _encode_worker_message(message: Mapping[str, object]) -> memoryview:
+    """Serialize before Pipe.send_bytes so failures are observable."""
+    try:
+        return mp.reduction.ForkingPickler.dumps(dict(message))
+    except Exception as exc:
+        message_type = str(message.get("type", "unknown"))
+        worker_id = int(message.get("worker_id", -1))
+        serialization_error = _safe_exception_text(exc)
+        original_error = _exception_detail(message.get("error")) if isinstance(
+            message.get("error"), Exception
+        ) else str(message.get("error") or "")
+        original_traceback = str(message.get("traceback") or "")
+        if original_error:
+            error = (
+                f"{original_error}; additionally could not serialize worker "
+                f"{message_type} message: {serialization_error}"
+            )
+        else:
+            error = (
+                f"Could not serialize worker {message_type} message: "
+                f"{serialization_error}"
+            )
+        serialization_traceback = traceback.format_exc()
+        combined_traceback = original_traceback
+        if combined_traceback:
+            combined_traceback += "\n\nDuring worker message serialization:\n"
+        combined_traceback += serialization_traceback
+        fallback = {
+            "type": "error",
+            "worker_id": worker_id,
+            "error": error,
+            "traceback": combined_traceback,
+            "logs": (),
+            "results": (),
+        }
+        return mp.reduction.ForkingPickler.dumps(fallback)
+
+
+def _put_worker_message(
+    result_connection: object,
+    message: Mapping[str, object],
+) -> None:
+    try:
+        result_connection.send_bytes(_encode_worker_message(message))
+    except (BrokenPipeError, EOFError, OSError) as exc:
+        raise _WorkerConnectionClosed from exc
+
+
+def _decode_worker_message(payload: object) -> Mapping[str, object]:
+    if not isinstance(payload, bytes):
+        raise SchedulerError("worker returned a non-bytes message payload.")
+    try:
+        message = mp.reduction.ForkingPickler.loads(payload)
+    except Exception as exc:
+        raise SchedulerError(
+            f"worker returned an undecodable message: {_safe_exception_text(exc)}"
+        ) from exc
+    if not isinstance(message, Mapping):
+        raise SchedulerError("worker returned a non-mapping message.")
+    return message
+
+
 def _worker_loop[CaseT, ResultT](
     worker_id: int,
-    task_queue: object,
-    result_queue: object,
+    task_connection: object,
+    result_connection: object,
     cancel_event: object,
     run_case_fn: Callable[[CaseT, Callable[[str], None]], ResultT],
     capture_logs: bool,
     include_partial_results: bool,
 ) -> None:
     """Execute complete cases; cancellation is observed only between cases."""
+    _put_worker_message(
+        result_connection,
+        {
+            "type": "ready",
+            "worker_id": worker_id,
+        },
+    )
     while True:
-        message = task_queue.get()
+        try:
+            task_payload = task_connection.recv_bytes()
+        except (EOFError, OSError):
+            return
+        try:
+            message = mp.reduction.ForkingPickler.loads(task_payload)
+        except Exception as exc:
+            _put_worker_message(
+                result_connection,
+                {
+                    "type": "error",
+                    "worker_id": worker_id,
+                    "error": (
+                        "Could not decode worker task: "
+                        f"{_safe_exception_text(exc)}"
+                    ),
+                    "traceback": traceback.format_exc(),
+                    "logs": (),
+                    "results": (),
+                },
+            )
+            return
+        if not isinstance(message, Mapping):
+            _put_worker_message(
+                result_connection,
+                {
+                    "type": "error",
+                    "worker_id": worker_id,
+                    "error": "Worker task was not a mapping.",
+                    "traceback": "",
+                    "logs": (),
+                    "results": (),
+                },
+            )
+            return
         message_type = message.get("type")
         if message_type == "shutdown":
             return
         if message_type != "run_chunk":
-            result_queue.put(
+            _put_worker_message(
+                result_connection,
                 {
                     "type": "error",
                     "worker_id": worker_id,
@@ -297,7 +428,8 @@ def _worker_loop[CaseT, ResultT](
         indices = tuple(message.get("indices") or ())
         cases = tuple(message.get("cases") or ())
         if len(indices) != len(cases):
-            result_queue.put(
+            _put_worker_message(
+                result_connection,
                 {
                     "type": "error",
                     "worker_id": worker_id,
@@ -319,12 +451,13 @@ def _worker_loop[CaseT, ResultT](
                     break
                 results.append((int(index), run_case_fn(case, logfn)))
         except Exception as exc:
-            result_queue.put(
+            _put_worker_message(
+                result_connection,
                 {
                     "type": "error",
                     "worker_id": worker_id,
                     "bucket": bucket,
-                    "error": str(exc),
+                    "error": _exception_detail(exc),
                     "traceback": traceback.format_exc(),
                     "logs": tuple(logs),
                     "results": tuple(results) if include_partial_results else (),
@@ -332,7 +465,8 @@ def _worker_loop[CaseT, ResultT](
             )
             return
 
-        result_queue.put(
+        _put_worker_message(
+            result_connection,
             {
                 "type": "chunk_done",
                 "worker_id": worker_id,
@@ -344,34 +478,183 @@ def _worker_loop[CaseT, ResultT](
         )
 
 
+def _worker_process_entry[CaseT, ResultT](
+    worker_id: int,
+    task_connection: object,
+    result_connection: object,
+    cancel_event: object,
+    run_case_fn: Callable[[CaseT, Callable[[str], None]], ResultT],
+    capture_logs: bool,
+    include_partial_results: bool,
+) -> None:
+    try:
+        _worker_loop(
+            worker_id,
+            task_connection,
+            result_connection,
+            cancel_event,
+            run_case_fn,
+            capture_logs,
+            include_partial_results,
+        )
+    except _WorkerConnectionClosed:
+        return
+
+
 def _cleanup_workers(
     cancel_event: object,
-    task_queues: Sequence[object],
+    task_connections: Sequence[object],
+    result_connections: Sequence[object],
+    child_connections: Sequence[object],
     started_processes: Sequence[mp.Process],
-) -> None:
-    cancel_event.set()
-    for task_queue in task_queues:
+) -> tuple[str, ...]:
+    errors: list[str] = []
+    try:
+        cancel_event.set()
+    except Exception as exc:
+        errors.append(f"could not set worker cancellation: {_safe_exception_text(exc)}")
+    # Closing is non-blocking and wakes idle receivers with EOF.  A synchronous
+    # shutdown frame could itself block while a busy worker is not reading.
+    for task_connection in task_connections:
         try:
-            task_queue.put({"type": "shutdown"}, block=False)
-        except Exception:
-            pass
+            task_connection.close()
+        except Exception as exc:
+            errors.append(
+                f"worker task connection cleanup failed: {_safe_exception_text(exc)}"
+            )
+    for connection in (*result_connections, *child_connections):
+        try:
+            connection.close()
+        except Exception as exc:
+            errors.append(
+                f"worker connection cleanup failed: {_safe_exception_text(exc)}"
+            )
 
-    deadline = time.monotonic() + _CLEANUP_SECONDS
-    for process in started_processes:
-        process.join(timeout=max(0.0, deadline - time.monotonic()))
-    for process in started_processes:
-        if process.is_alive():
-            process.terminate()
-    deadline = time.monotonic() + _CLEANUP_SECONDS
-    for process in started_processes:
-        if process.is_alive():
-            process.join(timeout=max(0.0, deadline - time.monotonic()))
-    for task_queue in task_queues:
+    def join_until_deadline() -> None:
+        deadline = time.monotonic() + _CLEANUP_SECONDS
+        for process in started_processes:
+            try:
+                if not process.is_alive():
+                    process.join()
+                    continue
+                process.join(timeout=max(0.0, deadline - time.monotonic()))
+            except Exception as exc:
+                errors.append(
+                    f"worker {process.pid} join failed: {_safe_exception_text(exc)}"
+                )
+
+    def alive_processes() -> list[mp.Process]:
+        alive: list[mp.Process] = []
+        for process in started_processes:
+            try:
+                if process.is_alive():
+                    alive.append(process)
+            except Exception as exc:
+                errors.append(
+                    f"worker {process.pid} liveness check failed: "
+                    f"{_safe_exception_text(exc)}"
+                )
+        return alive
+
+    join_until_deadline()
+    for process in alive_processes():
         try:
-            task_queue.cancel_join_thread()
-            task_queue.close()
-        except Exception:
-            pass
+            process.terminate()
+        except Exception as exc:
+            errors.append(
+                f"worker {process.pid} terminate failed: {_safe_exception_text(exc)}"
+            )
+    join_until_deadline()
+    for process in alive_processes():
+        try:
+            process.kill()
+        except Exception as exc:
+            errors.append(
+                f"worker {process.pid} kill failed: {_safe_exception_text(exc)}"
+            )
+    join_until_deadline()
+
+    survivors = alive_processes()
+    if survivors:
+        errors.append(
+            "workers remained alive after kill: "
+            + ", ".join(str(process.pid) for process in survivors)
+        )
+    for process in started_processes:
+        if process in survivors:
+            continue
+        try:
+            process.close()
+        except Exception as exc:
+            errors.append(
+                f"worker {process.pid} close failed: {_safe_exception_text(exc)}"
+            )
+
+    return tuple(errors)
+
+
+def _wait_for_worker_readiness(
+    result_connections: Sequence[object],
+    processes: Sequence[mp.Process],
+) -> None:
+    ready: set[int] = set()
+    deadline = time.monotonic() + _STARTUP_SECONDS
+    while len(ready) < len(processes):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0.0:
+            missing = sorted(set(range(len(processes))) - ready)
+            raise WorkerStartupError(
+                f"Spawn workers did not become ready before timeout: {missing}."
+            )
+        readable = wait_connections(
+            result_connections,
+            timeout=min(_POLL_SECONDS, remaining),
+        )
+        if not readable:
+            dead_workers = [
+                (worker_id, process.exitcode)
+                for worker_id, process in enumerate(processes)
+                if worker_id not in ready and not process.is_alive()
+            ]
+            if dead_workers:
+                details = ", ".join(
+                    f"worker {worker_id} (exit code {exitcode})"
+                    for worker_id, exitcode in dead_workers
+                )
+                raise WorkerStartupError(
+                    f"Spawn {details} exited before reporting ready."
+                )
+            continue
+        connection = readable[0]
+        expected_worker_id = result_connections.index(connection)
+        try:
+            payload = connection.recv_bytes()
+        except (EOFError, OSError) as exc:
+            raise WorkerStartupError(
+                f"Spawn worker {expected_worker_id} closed before reporting ready."
+            ) from exc
+        try:
+            message = _decode_worker_message(payload)
+        except SchedulerError as exc:
+            raise WorkerStartupError(str(exc)) from exc
+        finally:
+            del payload
+        if message.get("type") != "ready":
+            raise WorkerStartupError(
+                f"Spawn worker returned {message.get('type')!r} before ready."
+            )
+        worker_id = int(message.get("worker_id", -1))
+        if worker_id < 0 or worker_id >= len(processes):
+            raise WorkerStartupError("Spawn worker returned an invalid worker_id.")
+        if worker_id in ready:
+            raise WorkerStartupError(
+                f"Spawn worker {worker_id} returned duplicate ready messages."
+            )
+        if worker_id != expected_worker_id:
+            raise WorkerStartupError(
+                f"Spawn worker {expected_worker_id} reported worker_id {worker_id}."
+            )
+        ready.add(worker_id)
 
 
 def iter_case_results_parallel[CaseT, ResultT](
@@ -437,15 +720,20 @@ def iter_case_results_parallel[CaseT, ResultT](
 
     context = mp.get_context("spawn")
     cancel_event = context.Event()
-    task_queues = [context.Queue(maxsize=1) for _ in range(worker_count)]
-    result_queue = context.Queue()
+    task_pairs = [context.Pipe(duplex=False) for _ in range(worker_count)]
+    task_receivers = [pair[0] for pair in task_pairs]
+    task_senders = [pair[1] for pair in task_pairs]
+    result_pairs = [context.Pipe(duplex=False) for _ in range(worker_count)]
+    result_receivers = [pair[0] for pair in result_pairs]
+    result_senders = [pair[1] for pair in result_pairs]
+    child_connections = (*task_receivers, *result_senders)
     processes = [
         context.Process(
-            target=_worker_loop,
+            target=_worker_process_entry,
             args=(
                 worker_id,
-                task_queues[worker_id],
-                result_queue,
+                task_receivers[worker_id],
+                result_senders[worker_id],
                 cancel_event,
                 run_case_fn,
                 selected_log_policy is WorkerLogPolicy.FORWARD,
@@ -471,14 +759,24 @@ def iter_case_results_parallel[CaseT, ResultT](
         if picked is None:
             return False
         bucket, indices = picked
-        task_queues[worker_id].put(
-            {
-                "type": "run_chunk",
-                "bucket": bucket,
-                "indices": indices,
-                "cases": tuple(records[index] for index in indices),
-            }
-        )
+        try:
+            task_senders[worker_id].send_bytes(
+                _encode_parent_message(
+                    {
+                        "type": "run_chunk",
+                        "bucket": bucket,
+                        "indices": indices,
+                        "cases": tuple(records[index] for index in indices),
+                    }
+                )
+            )
+        except SchedulerError:
+            raise
+        except Exception as exc:
+            raise SchedulerError(
+                f"Could not dispatch work to worker {worker_id}: "
+                f"{_safe_exception_text(exc)}"
+            ) from exc
         worker_busy[worker_id] = True
         return True
 
@@ -500,6 +798,9 @@ def iter_case_results_parallel[CaseT, ResultT](
         except Exception as exc:
             raise WorkerStartupError(f"Could not start spawn worker: {exc}") from exc
 
+        _wait_for_worker_readiness(result_receivers, processes)
+        for connection in child_connections:
+            connection.close()
         for worker_id in range(worker_count):
             assign_next(worker_id)
 
@@ -514,9 +815,8 @@ def iter_case_results_parallel[CaseT, ResultT](
             if cancellation_requested and not any(worker_busy):
                 raise SchedulerCancelled("Canceled by user at a case boundary.")
 
-            try:
-                message = result_queue.get(timeout=_POLL_SECONDS)
-            except queue.Empty:
+            readable = wait_connections(result_receivers, timeout=_POLL_SECONDS)
+            if not readable:
                 dead_workers = [
                     (worker_id, processes[worker_id].exitcode)
                     for worker_id in range(worker_count)
@@ -527,11 +827,28 @@ def iter_case_results_parallel[CaseT, ResultT](
                     cancel_event.set()
                     raise WorkerUnexpectedExitError(dead_workers)
                 continue
+            connection = readable[0]
+            expected_worker_id = result_receivers.index(connection)
+            try:
+                payload = connection.recv_bytes()
+            except (EOFError, OSError) as exc:
+                process = processes[expected_worker_id]
+                process.join(timeout=0.0)
+                raise WorkerUnexpectedExitError(
+                    ((expected_worker_id, process.exitcode),)
+                ) from exc
+            message = _decode_worker_message(payload)
+            del payload
 
             worker_id = int(message.get("worker_id", -1))
             if worker_id < 0 or worker_id >= worker_count:
                 cancel_event.set()
                 raise SchedulerError("worker returned an invalid worker_id.")
+            if worker_id != expected_worker_id:
+                cancel_event.set()
+                raise SchedulerError(
+                    f"worker {expected_worker_id} reported worker_id {worker_id}."
+                )
             worker_busy[worker_id] = False
 
             if selected_log_policy is WorkerLogPolicy.FORWARD and logfn is not None:
@@ -570,12 +887,19 @@ def iter_case_results_parallel[CaseT, ResultT](
         if cancellation_requested:
             raise SchedulerCancelled("Canceled by user at a case boundary.")
     finally:
-        _cleanup_workers(cancel_event, task_queues, started_processes)
-        try:
-            result_queue.cancel_join_thread()
-            result_queue.close()
-        except Exception:
-            pass
+        cleanup_errors = _cleanup_workers(
+            cancel_event,
+            task_senders,
+            result_receivers,
+            child_connections,
+            started_processes,
+        )
+        if cleanup_errors:
+            detail = "Worker cleanup failed: " + "; ".join(cleanup_errors)
+            active_error = sys.exception()
+            if active_error is None or isinstance(active_error, GeneratorExit):
+                raise SchedulerError(detail)
+            active_error.add_note(detail)
 
 
 def _execute_request_worker(

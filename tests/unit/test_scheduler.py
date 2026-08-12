@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import multiprocessing as mp
 import os
+import signal
+import tempfile
+import threading
 import time
 import unittest
+from pathlib import Path
+from unittest import mock
 
+import panelsolver.core.scheduler as scheduler_module
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -39,7 +46,102 @@ def _unexpected_exit_worker(case: int, _logfn) -> int:
     return case
 
 
+def _unpickleable_worker(case: str, logfn):
+    if case == "result":
+        return lambda: None
+    if case == "log":
+        logfn(lambda: None)
+        return 1
+    if case == "error":
+        raise ValueError("failure after an unpickleable partial result")
+    return 1
+
+
+def _identity_worker(case, _logfn):
+    return case
+
+
+def _touch_after_delay(path_text: str) -> None:
+    time.sleep(0.02)
+    Path(path_text).touch()
+
+
+def _large_result_worker(case: tuple[str, str, str], _logfn):
+    behavior, ready_text, release_text = case
+    ready = Path(ready_text)
+    release = Path(release_text)
+    if behavior == "large":
+        payload = b"x" * (64 * 1024 * 1024)
+        ready.touch()
+        deadline = time.monotonic() + 5.0
+        while not release.exists():
+            if time.monotonic() >= deadline:
+                raise RuntimeError("large-result release was not signaled")
+            time.sleep(0.005)
+        return payload
+    deadline = time.monotonic() + 5.0
+    while not ready.exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError("large-result worker did not become ready")
+        time.sleep(0.005)
+    threading.Thread(
+        target=_touch_after_delay,
+        args=(release_text,),
+        daemon=True,
+    ).start()
+    return 1
+
+
+def _stubborn_worker(case: tuple[str, str], _logfn) -> int:
+    behavior, marker_text = case
+    marker = Path(marker_text)
+    if behavior == "block":
+        if os.name != "nt":
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        marker.touch()
+        while True:
+            time.sleep(0.05)
+    deadline = time.monotonic() + 5.0
+    while not marker.exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError("blocking worker did not become ready")
+        time.sleep(0.01)
+    return 1
+
+
+def _worker_resource_state() -> tuple[set[int], set[int]]:
+    process_ids = {
+        int(process.pid)
+        for process in mp.active_children()
+        if process.pid is not None
+    }
+    feeder_ids = {
+        int(thread.ident)
+        for thread in threading.enumerate()
+        if thread.name == "QueueFeederThread" and thread.ident is not None
+    }
+    return process_ids, feeder_ids
+
+
 class SchedulerTests(unittest.TestCase):
+    def assert_no_new_worker_resources(
+        self,
+        before: tuple[set[int], set[int]],
+    ) -> None:
+        deadline = time.monotonic() + 2.0
+        while True:
+            after = _worker_resource_state()
+            new_processes = after[0] - before[0]
+            new_feeders = after[1] - before[1]
+            if not new_processes and not new_feeders:
+                return
+            if time.monotonic() >= deadline:
+                self.fail(
+                    f"worker resources leaked: processes={sorted(new_processes)}, "
+                    f"queue_feeders={sorted(new_feeders)}"
+                )
+            time.sleep(0.02)
+
     def test_chunk_environment_precedence_and_validation(self) -> None:
         environment = {
             "PANELSOLVER_PARALLEL_CHUNK_CASES": "3",
@@ -75,6 +177,7 @@ class SchedulerTests(unittest.TestCase):
             resolve_parallel_chunk_cases(legacy_env_prefix="UNKNOWN")
 
     def test_completion_progress_logs_and_ordered_snapshots(self) -> None:
+        before = _worker_resource_state()
         logs: list[str] = []
         progress = []
         snapshots = []
@@ -102,8 +205,10 @@ class SchedulerTests(unittest.TestCase):
             ((2, 20), (0, 0), (1, 10)),
             ordered_success_snapshot(dict(results), (2, 0, 1)),
         )
+        self.assert_no_new_worker_resources(before)
 
     def test_drop_logs_and_discard_failed_chunk_results(self) -> None:
+        before = _worker_resource_state()
         logs: list[str] = []
         yielded: list[tuple[int, int]] = []
         iterator = iter_case_results_parallel(
@@ -122,8 +227,10 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([], logs)
         self.assertIn("deliberate worker failure", caught.exception.remote_error)
         self.assertIn("ValueError", caught.exception.remote_traceback)
+        self.assert_no_new_worker_resources(before)
 
     def test_forward_logs_and_yield_completed_failed_chunk_results(self) -> None:
+        before = _worker_resource_state()
         logs: list[str] = []
         iterator = iter_case_results_parallel(
             (0, 1, 2),
@@ -139,8 +246,10 @@ class SchedulerTests(unittest.TestCase):
         with self.assertRaises(WorkerExecutionError):
             next(iterator)
         self.assertEqual(["case=0", "case=1"], logs)
+        self.assert_no_new_worker_resources(before)
 
     def test_cancellation_waits_for_case_boundary_and_stops_dispatch(self) -> None:
+        before = _worker_resource_state()
         progress = []
         yielded: list[tuple[int, int]] = []
 
@@ -162,8 +271,10 @@ class SchedulerTests(unittest.TestCase):
         self.assertGreaterEqual(len(yielded), 1)
         self.assertLess(len(yielded), 4)
         self.assertEqual(list(range(1, len(yielded) + 1)), [p.completed for p in progress])
+        self.assert_no_new_worker_resources(before)
 
     def test_unexpected_exit_is_reported_with_exit_code(self) -> None:
+        before = _worker_resource_state()
         with self.assertRaises(WorkerUnexpectedExitError) as caught:
             list(
                 iter_case_results_parallel(
@@ -176,6 +287,248 @@ class SchedulerTests(unittest.TestCase):
                 )
             )
         self.assertIn((0, 7), caught.exception.exits)
+        self.assert_no_new_worker_resources(before)
+
+    def test_fast_unexpected_exit_is_repeatable_after_all_workers_are_ready(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        for _ in range(5):
+            with self.assertRaises(WorkerUnexpectedExitError):
+                list(
+                    iter_case_results_parallel(
+                        (0, 1),
+                        2,
+                        _unexpected_exit_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                        chunk_cases=1,
+                    )
+                )
+        self.assert_no_new_worker_resources(before)
+
+    def test_unpickleable_result_is_a_bounded_worker_error(self) -> None:
+        before = _worker_resource_state()
+        with self.assertRaisesRegex(WorkerExecutionError, "serialize worker chunk_done"):
+            list(
+                iter_case_results_parallel(
+                    ("result", "ok"),
+                    2,
+                    _unpickleable_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    bucket_keys=("same", "same"),
+                    chunk_cases=2,
+                )
+            )
+        self.assert_no_new_worker_resources(before)
+
+    def test_unpickleable_case_is_rejected_before_pipe_dispatch(self) -> None:
+        before = _worker_resource_state()
+        unpickleable_case = lambda: None
+        with self.assertRaisesRegex(SchedulerError, "serialize worker task"):
+            list(
+                iter_case_results_parallel(
+                    (unpickleable_case, 1),
+                    2,
+                    _identity_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    chunk_cases=1,
+                )
+            )
+        self.assert_no_new_worker_resources(before)
+
+    def test_unpickleable_partial_result_is_a_bounded_delivery_error(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        yielded = []
+        iterator = iter_case_results_parallel(
+            ("result", "error"),
+            2,
+            _unpickleable_worker,
+            log_policy=WorkerLogPolicy.DROP,
+            partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+            bucket_keys=("same", "same"),
+            chunk_cases=2,
+        )
+        with self.assertRaisesRegex(
+            WorkerExecutionError,
+            "serialize worker error",
+        ) as caught:
+            yielded.extend(iterator)
+        self.assertEqual([], yielded)
+        self.assertIn(
+            "failure after an unpickleable partial result",
+            str(caught.exception),
+        )
+        self.assert_no_new_worker_resources(before)
+
+    def test_early_close_interrupts_a_backpressured_large_result(self) -> None:
+        before = _worker_resource_state()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            ready = str(root / "large-ready")
+            release = str(root / "large-release")
+            iterator = iter_case_results_parallel(
+                (("large", ready, release), ("fast", ready, release)),
+                2,
+                _large_result_worker,
+                log_policy=WorkerLogPolicy.DROP,
+                partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                bucket_keys=("large", "fast"),
+                chunk_cases=1,
+            )
+            self.assertEqual((1, 1), next(iterator))
+            time.sleep(0.05)
+            started = time.monotonic()
+            iterator.close()
+            self.assertLess(time.monotonic() - started, 7.0)
+        self.assert_no_new_worker_resources(before)
+
+    def test_unpickleable_forwarded_log_is_a_bounded_worker_error(self) -> None:
+        before = _worker_resource_state()
+        with self.assertRaisesRegex(WorkerExecutionError, "serialize worker chunk_done"):
+            list(
+                iter_case_results_parallel(
+                    ("log", "ok"),
+                    2,
+                    _unpickleable_worker,
+                    log_policy=WorkerLogPolicy.FORWARD,
+                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    bucket_keys=("same", "same"),
+                    chunk_cases=2,
+                )
+            )
+        self.assert_no_new_worker_resources(before)
+
+    def test_early_iterator_close_kills_and_reaps_a_resistant_worker(self) -> None:
+        before = _worker_resource_state()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            marker = str(Path(temp_dir) / "blocking-worker-ready")
+            iterator = iter_case_results_parallel(
+                (("block", marker), ("fast", marker)),
+                2,
+                _stubborn_worker,
+                log_policy=WorkerLogPolicy.DROP,
+                partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                bucket_keys=("block", "fast"),
+                chunk_cases=1,
+            )
+            self.assertEqual((1, 1), next(iterator))
+            started = time.monotonic()
+            iterator.close()
+            self.assertLess(time.monotonic() - started, 7.0)
+        self.assert_no_new_worker_resources(before)
+
+    def test_cleanup_failure_during_generator_close_is_not_hidden(self) -> None:
+        before = _worker_resource_state()
+        original_cleanup = scheduler_module._cleanup_workers
+
+        def cleanup_with_report(*args):
+            errors = original_cleanup(*args)
+            return (*errors, "synthetic cleanup failure")
+
+        with mock.patch.object(
+            scheduler_module,
+            "_cleanup_workers",
+            side_effect=cleanup_with_report,
+        ):
+            iterator = iter_case_results_parallel(
+                ((0, 0.0), (1, 0.1)),
+                2,
+                _success_worker,
+                log_policy=WorkerLogPolicy.DROP,
+                partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                chunk_cases=1,
+            )
+            next(iterator)
+            with self.assertRaisesRegex(SchedulerError, "synthetic cleanup failure"):
+                iterator.close()
+        self.assert_no_new_worker_resources(before)
+
+    def test_cleanup_reports_a_process_that_survives_kill_without_blocking(self) -> None:
+        calls: list[str] = []
+
+        class FakeEvent:
+            def set(self) -> None:
+                calls.append("cancel")
+
+        class FakeConnection:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def send_bytes(self, _payload: bytes) -> None:
+                calls.append(f"{self.name}:send")
+
+            def close(self) -> None:
+                calls.append(f"{self.name}:close")
+
+        class FakeProcess:
+            pid = 4242
+
+            def is_alive(self) -> bool:
+                return True
+
+            def join(self, timeout=None) -> None:
+                calls.append(f"join:{timeout is not None}")
+
+            def terminate(self) -> None:
+                calls.append("terminate")
+
+            def kill(self) -> None:
+                calls.append("kill")
+
+            def close(self) -> None:
+                calls.append("process:close")
+
+        errors = scheduler_module._cleanup_workers(
+            FakeEvent(),
+            (FakeConnection("task"),),
+            (FakeConnection("result"),),
+            (FakeConnection("child"),),
+            (FakeProcess(),),
+        )
+        self.assertTrue(any("remained alive after kill" in error for error in errors))
+        self.assertIn("terminate", calls)
+        self.assertIn("kill", calls)
+        self.assertNotIn("task:send", calls)
+        self.assertNotIn("process:close", calls)
+        self.assertTrue(all(call == "join:True" for call in calls if call.startswith("join")))
+
+    def test_mid_frame_connection_failure_is_a_worker_exit_error(self) -> None:
+        before = _worker_resource_state()
+        original_recv_bytes = scheduler_module.mp.connection.Connection.recv_bytes
+        failed = False
+
+        def fail_after_readiness(connection, *args, **kwargs):
+            nonlocal failed
+            payload = original_recv_bytes(connection, *args, **kwargs)
+            message = scheduler_module._decode_worker_message(payload)
+            if message.get("type") != "ready" and not failed:
+                failed = True
+                raise OSError("got end of file during message")
+            return payload
+
+        with mock.patch.object(
+            scheduler_module.mp.connection.Connection,
+            "recv_bytes",
+            new=fail_after_readiness,
+        ):
+            with self.assertRaises(WorkerUnexpectedExitError):
+                list(
+                    iter_case_results_parallel(
+                        ((0, 0.0), (1, 0.05)),
+                        2,
+                        _success_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                        chunk_cases=1,
+                    )
+                )
+        self.assertTrue(failed)
+        self.assert_no_new_worker_resources(before)
 
     def test_spawn_start_failure_is_wrapped(self) -> None:
         local_worker = lambda case, _logfn: case
