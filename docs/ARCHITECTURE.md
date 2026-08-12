@@ -124,6 +124,14 @@ expansion, Mach/gamma validation, detached branches, Taylor–Maccoll integratio
 and inverse Prandtl–Meyer iteration remain owned by the hypersonic model. No
 Sentman case field, scalar, or metadata superset is introduced.
 
+Phase 5a adds model-neutral STL loading in core. It preserves the two recorded
+normal-repair failure policies through an explicit loader option while always
+enforcing the Phase 2 finite, positive-area geometry contract. Mesh-cache
+identity uses source content, scale, policy, and loader version; a separate
+versioned geometry fingerprint covers the ordered numerical mesh contract for
+shielding, signatures, and later execution caches. Paths and file timestamps do
+not define numerical geometry identity.
+
 ## Ownership constraints
 
 | Concern | Owner |

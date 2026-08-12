@@ -41,8 +41,23 @@ from .frames import (
 )
 from .integration import PanelIntegration, integrate_panel_loads
 from .mesh import MeshComponent, PanelMesh
+from .mesh_loading import (
+    GEOMETRY_FINGERPRINT_SCHEMA_VERSION,
+    MESH_LOADER_ALGORITHM_VERSION,
+    LoadedPanelMesh,
+    MeshCacheStats,
+    MeshLoadError,
+    MeshSourceFingerprint,
+    MeshValidationPolicy,
+    clear_mesh_cache,
+    geometry_fingerprint,
+    load_panel_mesh,
+    mesh_cache_stats,
+)
 
 __all__ = (
+    "GEOMETRY_FINGERPRINT_SCHEMA_VERSION",
+    "MESH_LOADER_ALGORITHM_VERSION",
     "ArtifactProjectionPolicy",
     "CommonCasePayload",
     "CommonResults",
@@ -53,8 +68,13 @@ __all__ = (
     "CsvProjection",
     "CsvProjectionPolicy",
     "IntegratedCoefficients",
+    "LoadedPanelMesh",
     "LocalLoads",
+    "MeshCacheStats",
     "MeshComponent",
+    "MeshLoadError",
+    "MeshSourceFingerprint",
+    "MeshValidationPolicy",
     "ModelCasePayload",
     "NonFiniteError",
     "NpzProjection",
@@ -71,7 +91,11 @@ __all__ = (
     "aggregate_component_results",
     "assemble_common_results",
     "body_to_stability",
+    "clear_mesh_cache",
+    "geometry_fingerprint",
     "integrate_panel_loads",
+    "load_panel_mesh",
+    "mesh_cache_stats",
     "project_npz_artifact",
     "project_summary_csv",
     "project_vtp_artifact",

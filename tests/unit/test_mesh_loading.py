@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
+import trimesh
+
+from panelsolver.core import (
+    MeshLoadError,
+    MeshValidationPolicy,
+    clear_mesh_cache,
+    geometry_fingerprint,
+    load_panel_mesh,
+    mesh_cache_stats,
+)
+
+FIXTURE_STL = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs" / "stl"
+
+
+class MeshLoadingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        clear_mesh_cache()
+
+    def test_loads_ordered_components_into_immutable_contract(self) -> None:
+        loaded = load_panel_mesh(
+            [FIXTURE_STL / "plate.stl", FIXTURE_STL / "plate_offset_x2.stl"],
+            1.0,
+        )
+
+        self.assertEqual(4, loaded.mesh.n_faces)
+        np.testing.assert_array_equal(loaded.mesh.face_component_ids, [0, 0, 1, 1])
+        self.assertEqual(
+            ["plate.stl", "plate_offset_x2.stl"],
+            [Path(component.source).name for component in loaded.mesh.components],
+        )
+        self.assertFalse(loaded.mesh.vertices_stl_m.flags.writeable)
+        self.assertFalse(loaded.mesh.geometry.normals_out_stl.flags.writeable)
+        self.assertRegex(loaded.geometry_fingerprint, r"^[0-9a-f]{64}$")
+
+    def test_cache_is_keyed_by_content_scale_and_policy(self) -> None:
+        path = FIXTURE_STL / "cube.stl"
+        first = load_panel_mesh([path], 1.0)
+        second = load_panel_mesh([path], 1.0)
+        self.assertIs(first, second)
+        stats = mesh_cache_stats()
+        self.assertEqual((stats.entries, stats.hits, stats.misses), (1, 1, 1))
+
+        scaled = load_panel_mesh([path], 0.5)
+        permissive = load_panel_mesh(
+            [path], 0.5, validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR
+        )
+        self.assertNotEqual(first.geometry_fingerprint, scaled.geometry_fingerprint)
+        self.assertEqual(scaled.geometry_fingerprint, permissive.geometry_fingerprint)
+        self.assertEqual(mesh_cache_stats().misses, 3)
+
+    def test_same_size_metadata_preserving_replacement_misses_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "mesh.stl"
+            first_mesh = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+            second_mesh = first_mesh.copy()
+            second_mesh.apply_translation((0.25, 0.0, 0.0))
+            original = first_mesh.export(file_type="stl")
+            replacement = second_mesh.export(file_type="stl")
+            self.assertIsInstance(original, bytes)
+            self.assertIsInstance(replacement, bytes)
+            self.assertEqual(len(original), len(replacement))
+            path.write_bytes(original)
+            original_stat = path.stat()
+            first = load_panel_mesh([path], 1.0)
+
+            path.write_bytes(replacement)
+            os.utime(path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+            second = load_panel_mesh([path], 1.0)
+
+        self.assertNotEqual(
+            first.source_fingerprints[0].sha256,
+            second.source_fingerprints[0].sha256,
+        )
+        self.assertEqual(mesh_cache_stats().misses, 2)
+
+    def test_repair_failure_policy_remains_explicit(self) -> None:
+        path = FIXTURE_STL / "cube.stl"
+        with patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")):
+            with self.assertRaisesRegex(MeshLoadError, "Failed to repair"):
+                load_panel_mesh([path], 1.0)
+
+        clear_mesh_cache()
+        messages: list[str] = []
+        with patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")):
+            loaded = load_panel_mesh(
+                [path],
+                1.0,
+                validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR,
+                warning_callback=messages.append,
+            )
+        self.assertTrue(any("Failed to repair" in message for message in messages))
+        self.assertEqual(tuple(messages), loaded.warnings)
+
+    def test_rejects_degenerate_nonfinite_and_invalid_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "degenerate.stl"
+            trimesh.Trimesh(
+                vertices=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+                faces=[[0, 1, 2]],
+                process=False,
+            ).export(path)
+            for policy in MeshValidationPolicy:
+                clear_mesh_cache()
+                with self.subTest(policy=policy):
+                    with self.assertRaisesRegex(MeshLoadError, "shared contract"):
+                        load_panel_mesh([path], 1.0, validation_policy=policy)
+
+        invalid_scales = (0.0, -1.0, float("nan"), float("inf"), True, "bad")
+        for scale in invalid_scales:
+            with self.subTest(scale=scale):
+                with self.assertRaises(MeshLoadError):
+                    load_panel_mesh([FIXTURE_STL / "cube.stl"], scale)
+        with self.assertRaises(MeshLoadError):
+            load_panel_mesh([], 1.0)
+        with self.assertRaises(MeshLoadError):
+            load_panel_mesh(str(FIXTURE_STL / "cube.stl"), 1.0)
+
+    def test_fingerprint_is_content_based_and_field_sensitive(self) -> None:
+        first = load_panel_mesh([FIXTURE_STL / "cube.stl"], 1.0)
+        clear_mesh_cache()
+        with tempfile.TemporaryDirectory() as temporary:
+            copied = Path(temporary) / "renamed.stl"
+            copied.write_bytes((FIXTURE_STL / "cube.stl").read_bytes())
+            second = load_panel_mesh([copied], 1.0)
+
+        self.assertEqual(first.geometry_fingerprint, second.geometry_fingerprint)
+        self.assertEqual(first.geometry_fingerprint, geometry_fingerprint(first.mesh))
+        self.assertNotEqual(
+            first.geometry_fingerprint,
+            load_panel_mesh([FIXTURE_STL / "cube.stl"], 2.0).geometry_fingerprint,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
