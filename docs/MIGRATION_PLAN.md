@@ -200,14 +200,18 @@ Do not archive legacy repositories yet.
 match; Windows/macOS/Linux CI covers both models; no common implementation remains
 duplicated in the compatibility packages.
 
-**Status:** In progress. ADR 0007 selects one `panel-solvers` distribution while
+**Status:** Complete. ADR 0007 selects one `panel-solvers` distribution while
 retaining independent FMF/newtsolver compatibility versions on their frozen
-public surfaces. `PHASE7_COMPATIBILITY.md` records the serialized Phase 7a–7f
-issue sequence. Case readers, execution and serialization adapters, command
-registration, public import forwarding, installed samples, and final GUI smoke
-remain incomplete until their dependent slices merge.
+public surfaces. Issues #47–#52 were implemented serially as one worktree and
+one draft PR each. Case readers, execution and serialization adapters, all six
+commands, the complete frozen import inventories, clean-wheel sample runs, and
+both manual macOS GUI smokes are accepted. Every Phase 1 golden and tolerance is
+unchanged. `PHASE7_COMPATIBILITY.md`, `PHASE7_USER_GUIDE.md`, and
+`PHASE7_EXECUTION_RECORD.md` record the contracts and evidence.
 
 ## Phase 8 — Independent final audit
+
+**Status:** Not started.
 
 **Scope:** Audit numerical correctness, architecture/dependencies, compatibility,
 parallelism/caching, performance, GUI lifecycle, tests, and installed artifacts.

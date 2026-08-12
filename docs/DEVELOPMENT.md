@@ -72,7 +72,9 @@ quantity limits are in `docs/phase1/TOLERANCES.md`.
 
 ## Versioning and releases
 
-The unified distribution begins at `0.1.0` while migration is incomplete. A tag
-must be `v<project.version>`. Compatibility command/package versions and the
-shared distribution strategy remain governed by the migration plan; do not infer
-compatibility from this initial version.
+The unified distribution is `panel-solvers`; its version is currently `0.1.0`.
+A tag must be `v<project.version>`. The CI release job publishes one wheel and
+source distribution only after the complete Ubuntu, Windows, macOS, installed-
+wheel, and artifact gates pass. FMF `1.3.8` and newtsolver `1.0.3` are frozen
+product-facing compatibility values, not distribution versions. ADR 0007 and
+`PHASE7_USER_GUIDE.md` define the release and rollback order.

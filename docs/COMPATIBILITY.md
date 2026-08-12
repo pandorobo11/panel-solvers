@@ -70,6 +70,13 @@ new application behavior.
 - The Phase 3 CSV and semantic artifact projections are composed with the Phase
   5 engine and are also reachable through the frozen legacy Python call shapes.
 
-Phase 7 is not complete until Issue #52 supplies final installed-sample/release
-documentation and records both manual macOS GUI smokes. Until that acceptance is
-merged, continue treating the pinned legacy products as the release baseline.
+Phase 7 is complete. The clean installed wheel runs both unchanged Phase 1
+sample sets and imports both frozen module inventories. Computer Use manually
+confirmed both real macOS GUI launchers through input load, execution, progress,
+matching VTP display, scalar/camera controls, PNG export, and close. The exact
+evidence is in `PHASE7_EXECUTION_RECORD.md`; installation and rollback are in
+`PHASE7_USER_GUIDE.md`.
+
+This is migration compatibility acceptance, not the independent Phase 8 audit.
+No legacy name is deprecated and the pinned legacy repositories remain
+unarchived references.
