@@ -12,12 +12,18 @@ from panelsolver.core import CsvProjection, MeshLoadError, SchedulerError
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from .legacy_scheduler import (
     _callback_error,
+    _legacy_log_callback,
     _LegacyCallbackError,
     legacy_callback,
     legacy_cancel_callback,
     translate_legacy_scheduler_error,
 )
-from .runtime import ProductBatchRunResult
+from .runtime import (
+    ProductBatchRunResult,
+    ProductRuntimePolicy,
+    _maybe_log_ray_accel_hint,
+    _run_product_case_without_orchestration,
+)
 
 _LEGACY_COMPONENT_RESULT_COLUMNS = (
     "scope",
@@ -79,6 +85,7 @@ def run_legacy_cases(
     input_columns: Sequence[str],
     renames: Mapping[str, str] | None = None,
     legacy_signature_builder=None,
+    runtime_policy: ProductRuntimePolicy | None = None,
     workers: int = 1,
     logfn=None,
     progress_cb=None,
@@ -100,8 +107,19 @@ def run_legacy_cases(
             callback_error = _callback_error(exc)
         if callback_error is not None:
             raise callback_error
+        if runtime_policy is not None:
+            hint_error: BaseException | None = None
+            try:
+                _maybe_log_ray_accel_hint(
+                    runtime_policy,
+                    _legacy_log_callback(logfn),
+                )
+            except _LegacyCallbackError as exc:
+                hint_error = _callback_error(exc)
+            if hint_error is not None:
+                raise hint_error
         return pd.DataFrame()
-    compat_logfn = legacy_callback(logfn)
+    compat_logfn = _legacy_log_callback(logfn)
     compat_progress_cb = legacy_callback(progress_cb)
     compat_chunk_cb = legacy_callback(chunk_cb)
     direct_input_columns = tuple(
@@ -172,6 +190,41 @@ def run_legacy_cases(
     if translated_error is not None:
         raise translated_error
     return converted(result.csv)
+
+
+def run_legacy_case(
+    row: Mapping[str, object],
+    runtime_policy: ProductRuntimePolicy,
+    *,
+    legacy_env_prefix: str,
+    input_columns: Sequence[str],
+    renames: Mapping[str, str] | None = None,
+    legacy_signature_builder=None,
+    logfn=None,
+) -> dict[str, object]:
+    """Run one frozen direct case without batch-orchestration logging."""
+
+    def runtime_run_case(rows, **runtime_kwargs) -> ProductBatchRunResult:
+        if len(rows) != 1:
+            raise RuntimeError("direct legacy execution requires exactly one row")
+        result = _run_product_case_without_orchestration(
+            rows[0],
+            runtime_policy,
+            logfn=runtime_kwargs["logfn"],
+        )
+        return ProductBatchRunResult((result,), result.csv)
+
+    frame = run_legacy_cases(
+        pd.DataFrame([dict(row)]),
+        runtime_run_case,
+        legacy_env_prefix=legacy_env_prefix,
+        input_columns=input_columns,
+        renames=renames,
+        legacy_signature_builder=legacy_signature_builder,
+        runtime_policy=runtime_policy,
+        logfn=logfn,
+    )
+    return direct_legacy_result(frame)
 
 
 def direct_legacy_result(frame: pd.DataFrame) -> dict[str, object]:

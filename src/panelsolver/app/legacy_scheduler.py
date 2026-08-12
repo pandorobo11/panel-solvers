@@ -76,6 +76,18 @@ def legacy_callback[ReturnT](
     return wrapped
 
 
+def _legacy_log_callback(callback) -> Callable[..., object]:
+    """Defer the frozen required-log callback check until a message is emitted."""
+
+    def wrapped(*args, **kwargs):
+        try:
+            return callback(*args, **kwargs)
+        except BaseException as exc:
+            raise _LegacyCallbackError(exc) from None
+
+    return wrapped
+
+
 def _legacy_remote_error(exc: WorkerExecutionError) -> str:
     remote_error = exc.remote_error
     if remote_error.startswith("Unable to read mesh source "):
