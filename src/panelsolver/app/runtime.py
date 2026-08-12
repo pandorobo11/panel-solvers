@@ -20,6 +20,7 @@ from panelsolver.core import (
     CsvProjectionPolicy,
     PartialResultPolicy,
     SchedulerCancelled,
+    SchedulerError,
     WorkerLogPolicy,
     case_execution_bucket_keys,
     execute_case,
@@ -394,7 +395,7 @@ def run_product_cases(
     else:
         logger(f"[RUN] Parallel execution with {workers} worker(s)")
         requests = tuple(case.adapted.request for case in cases)
-        for index, result in iter_case_results_parallel(
+        parallel_results = iter_case_results_parallel(
             cases,
             workers,
             _run_prepared_product_case,
@@ -405,8 +406,16 @@ def run_product_cases(
             legacy_env_prefix=policy.case_policy.legacy_env_prefix,
             cancel_cb=cancel_cb,
             logfn=logger,
-        ):
-            accept(int(index), result, parallel=True)
+        )
+        for index, result in parallel_results:
+            try:
+                accept(int(index), result, parallel=True)
+            except BaseException as exc:
+                try:
+                    parallel_results.close()
+                except SchedulerError as cleanup_exc:
+                    exc.add_note(str(cleanup_exc))
+                raise
 
     ordered = tuple(case for case in completed if case is not None)
     if len(ordered) != total:

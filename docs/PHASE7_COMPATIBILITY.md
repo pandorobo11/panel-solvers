@@ -161,6 +161,63 @@ solver calls return the pinned legacy signature while normal Phase 7 runtime
 artifacts continue to carry the primary ADR 0005 identity and accept ordered
 legacy identities as fallbacks.
 
+Phase 8 restored the pinned direct-solver failure boundary while retaining the
+typed shared exception surface used by the CLI and GUI. For both products, a true
+`run_cases()` cancellation callback is observed even for an empty table and
+raises the exact built-in `RuntimeError("Canceled by user.")`. During parallel
+work the compatibility callback is polled while spawn workers report readiness
+as well as during execution, and raises immediately, so active results are not
+accepted into progress or checkpoint snapshots after the request. Empty input
+still validates `flush_every_cases` before cancellation, matching the non-empty
+runtime. The pinned empty-input backend-hint log remains the separate pending
+#98 logging-contract correction and is intentionally not implemented by this
+#73 error-contract change. Serial missing-STL failures expose the original
+built-in `FileNotFoundError`; parallel
+Python failures expose a built-in `RuntimeError` whose first line is
+`[WorkerError]` plus the legacy cause wording. The full shared remote traceback
+is retained, including the underlying `FileNotFoundError` evidence when mesh
+loading supplied it.
+
+Spawn-callable serialization and `Process.start()` failures again expose their
+original built-in exception at the compatibility scheduler boundary. An
+unexpected exit retains the independent product grammar: FMF uses
+`Worker exited unexpectedly: worker N exitcode=X`, while newtsolver uses
+`worker N (exit code X) exited without returning a result.` Direct probes at the
+authoritative FMF `b62bc844d02a8f5212e62a53dea3238a1414317d` and newtsolver
+`dc1357d0d50bbedfdc8b3429cab37e6b98b56c70` commits also observed exact
+`cause=None`, `_queue.Empty` context, and `suppress_context=False`: the legacy
+exception was raised inside its empty-Queue polling handler. The Pipe scheduler
+does not naturally retain that Queue implementation detail, so the compatibility
+adapter restores a synthetic empty `_queue.Empty` context only for this frozen
+polling case. If an unexpected exit instead carries an EOF/OSError chain from a
+broken Pipe frame, the adapter retains that transport cause/context rather than
+overwriting it with `_queue.Empty`. Other translated legacy exceptions have no
+synthetic cause/context chain.
+
+A worker that exits before its readiness frame is classified by the same
+unexpected-exit contract once a bounded join establishes its exit code. This
+removes the platform-dependent poll-versus-EOF distinction: both paths reach the
+FMF/newtsolver product grammar and pinned empty-Queue context. If the process is
+still alive or its status remains unknown, the shared startup error retains the
+underlying EOF/OSError chain as a Phase 8 transport diagnostic.
+
+New bounded failures introduced by the Phase 8 Pipe/termination safety
+correction, such as an unencodable worker result or broken IPC frame, have no
+finite pinned legacy outcome because the old Queue path could hang or leak. They
+surface as a built-in `RuntimeError` with the safety diagnostic while preserving
+bounded kill/reap cleanup. Exceptions raised by caller-owned `logfn`,
+`progress_cb`, `cancel_cb`, or `chunk_cb` callbacks are not runtime failures and
+pass through by object identity with their type, message, cause, context, and
+attached traceback evidence retained. A cleanup failure detected while such a
+callback exception is active is copied to that original exception's notes rather
+than being lost with the private boundary marker. For a parent-side progress,
+checkpoint, or `[OK]` callback after a parallel result is yielded, the shared
+runtime explicitly closes the active scheduler iterator during that unwind so
+worker cleanup finishes before the callback exception crosses the public
+boundary. This documented safety difference does not change D015 worker logs,
+same-chunk partial results, execution order, numerical values, or artifact
+schemas.
+
 Phase 8 also restored the pinned direct-solver values before compatibility
 DataFrame construction. Total rows expose `component_id` and
 `component_stl_path` as exact empty strings; component rows expose Python `int`

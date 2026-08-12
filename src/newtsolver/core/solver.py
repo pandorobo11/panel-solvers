@@ -35,6 +35,7 @@ def run_cases(
     return run_legacy_cases(
         df,
         _runtime_run_cases,
+        legacy_env_prefix="NEWTSOLVER",
         input_columns=CSV_PROJECTION_POLICY.input_columns,
         renames=_RENAMES,
         legacy_signature_builder=build_case_signature,

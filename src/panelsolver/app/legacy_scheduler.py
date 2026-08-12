@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import queue
 from collections.abc import Callable, Iterator
 
 import pandas as pd
@@ -9,8 +10,10 @@ import pandas as pd
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
+    SchedulerError,
     WorkerExecutionError,
     WorkerLogPolicy,
+    WorkerStartupError,
     WorkerUnexpectedExitError,
     iter_case_results_parallel,
     resolve_parallel_chunk_cases,
@@ -19,9 +22,150 @@ from panelsolver.core import (
 from .attitude import resolve_attitude
 
 
+class _LegacyCallbackError(BaseException):
+    """Carry one callback-owned exception through shared runtime handling."""
+
+    def __init__(self, error: BaseException) -> None:
+        self.error = error
+        super().__init__()
+
+
+def _callback_error(exc: _LegacyCallbackError) -> BaseException:
+    for note in getattr(exc, "__notes__", ()):
+        exc.error.add_note(note)
+    return exc.error
+
+
 def resolve_legacy_parallel_chunk_cases(legacy_env_prefix: str) -> int:
     """Resolve the product's frozen environment variable and default."""
     return resolve_parallel_chunk_cases(legacy_env_prefix=legacy_env_prefix)
+
+
+def legacy_cancel_callback(
+    cancel_cb: Callable[[], bool] | None,
+) -> Callable[[], bool] | None:
+    """Restore the frozen immediate-cancellation callback contract."""
+    if cancel_cb is None:
+        return None
+
+    def wrapped() -> bool:
+        try:
+            requested = bool(cancel_cb())
+        except BaseException as exc:
+            raise _LegacyCallbackError(exc) from None
+        if requested:
+            raise RuntimeError("Canceled by user.")
+        return False
+
+    return wrapped
+
+
+def legacy_callback[ReturnT](
+    callback: Callable[..., ReturnT] | None,
+) -> Callable[..., ReturnT] | None:
+    """Tag callback-owned exceptions so runtime errors alone are translated."""
+    if callback is None:
+        return None
+
+    def wrapped(*args, **kwargs) -> ReturnT:
+        try:
+            return callback(*args, **kwargs)
+        except BaseException as exc:
+            raise _LegacyCallbackError(exc) from None
+
+    return wrapped
+
+
+def _legacy_remote_error(exc: WorkerExecutionError) -> str:
+    remote_error = exc.remote_error
+    if remote_error.startswith("Unable to read mesh source "):
+        marker = "FileNotFoundError: "
+        for line in exc.remote_traceback.splitlines():
+            stripped = line.strip()
+            if stripped.startswith(marker):
+                return stripped.removeprefix(marker)
+    return remote_error
+
+
+def _preserve_scheduler_notes(
+    translated: BaseException,
+    source: SchedulerError,
+) -> BaseException:
+    for note in getattr(source, "__notes__", ()):
+        translated.add_note(note)
+    return translated
+
+
+def _restore_unexpected_exit_context(
+    translated: RuntimeError,
+    source: WorkerUnexpectedExitError,
+) -> RuntimeError:
+    """Reproduce polling context or retain a Phase 8 transport failure chain."""
+    if source.__cause__ is not None or source.__context__ is not None:
+        translated.__cause__ = source.__cause__
+        translated.__context__ = source.__context__
+        translated.__suppress_context__ = source.__suppress_context__
+        return translated
+    translated.__cause__ = None
+    translated.__context__ = queue.Empty()
+    translated.__suppress_context__ = False
+    return translated
+
+
+def translate_legacy_scheduler_error(
+    exc: SchedulerError,
+    *,
+    legacy_env_prefix: str,
+) -> BaseException:
+    """Translate shared scheduler failures at a frozen Python boundary."""
+    strict = legacy_env_prefix == "FMFSOLVER"
+    if isinstance(exc, SchedulerCancelled):
+        translated: BaseException = RuntimeError("Canceled by user.")
+        return _preserve_scheduler_notes(translated, exc)
+    if isinstance(exc, WorkerExecutionError):
+        detail = f"[WorkerError] {_legacy_remote_error(exc)}"
+        if exc.remote_traceback:
+            detail = f"{detail}\n{exc.remote_traceback}"
+        translated = RuntimeError(detail)
+        return _preserve_scheduler_notes(translated, exc)
+    if isinstance(exc, WorkerUnexpectedExitError):
+        if strict:
+            details = ", ".join(
+                f"worker {worker_id} exitcode={exitcode}"
+                for worker_id, exitcode in exc.exits
+            )
+        else:
+            details = ", ".join(
+                f"worker {worker_id} (exit code {exitcode})"
+                for worker_id, exitcode in exc.exits
+            )
+            translated = RuntimeError(
+                f"[WorkerError] {details} exited without returning a result."
+            )
+            translated = _restore_unexpected_exit_context(translated, exc)
+            return _preserve_scheduler_notes(translated, exc)
+        translated = RuntimeError(
+            f"[WorkerError] Worker exited unexpectedly: {details}"
+        )
+        translated = _restore_unexpected_exit_context(translated, exc)
+        return _preserve_scheduler_notes(translated, exc)
+    if (
+        isinstance(exc, WorkerStartupError)
+        and exc.__cause__ is not None
+        and str(exc).startswith(
+            (
+                "Could not serialize spawn worker callable:",
+                "Could not start spawn worker:",
+            )
+        )
+    ):
+        return _preserve_scheduler_notes(exc.__cause__, exc)
+    translated = RuntimeError(str(exc))
+    if isinstance(exc, WorkerStartupError):
+        translated.__cause__ = exc.__cause__
+        translated.__context__ = exc.__context__
+        translated.__suppress_context__ = exc.__suppress_context__
+    return _preserve_scheduler_notes(translated, exc)
 
 
 def _bucket_key(row: dict[str, object], index: int, *, strict: bool) -> tuple:
@@ -81,6 +225,7 @@ def iter_legacy_case_results_parallel(
         _bucket_key(record, index, strict=strict)
         for index, record in enumerate(records)
     )
+    translated_error: BaseException | None = None
     try:
         yield from iter_case_results_parallel(
             records,
@@ -96,26 +241,18 @@ def iter_legacy_case_results_parallel(
             bucket_keys=bucket_keys,
             chunk_cases=chunk_cases,
             legacy_env_prefix=legacy_env_prefix,
-            cancel_cb=cancel_cb,
-            logfn=logfn,
+            cancel_cb=legacy_cancel_callback(cancel_cb),
+            logfn=legacy_callback(logfn),
         )
-    except SchedulerCancelled as exc:
-        raise RuntimeError("Canceled by user.") from exc
-    except WorkerExecutionError as exc:
-        detail = f"[WorkerError] {exc.remote_error}"
-        if exc.remote_traceback:
-            detail = f"{detail}\n{exc.remote_traceback}"
-        raise RuntimeError(detail) from exc
-    except WorkerUnexpectedExitError as exc:
-        if not strict:
-            raise
-        details = ", ".join(
-            f"worker {worker_id} exitcode={exitcode}"
-            for worker_id, exitcode in exc.exits
+    except _LegacyCallbackError as exc:
+        translated_error = _callback_error(exc)
+    except SchedulerError as exc:
+        translated_error = translate_legacy_scheduler_error(
+            exc,
+            legacy_env_prefix=legacy_env_prefix,
         )
-        raise RuntimeError(
-            f"[WorkerError] Worker exited unexpectedly: {details}"
-        ) from exc
+    if translated_error is not None:
+        raise translated_error
 
 
 __all__ = (

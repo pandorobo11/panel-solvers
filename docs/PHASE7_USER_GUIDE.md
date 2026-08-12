@@ -157,6 +157,46 @@ configured flush interval is met; neither product emits a final snapshot after
 the error. Already-written per-case artifacts are not rolled back by either
 policy.
 
+### Direct Python cancellation and failures
+
+The frozen `fmfsolver.core.solver` and `newtsolver.core.solver` Python APIs use
+their legacy built-in exceptions. A true `run_cases(..., cancel_cb=...)`
+callback raises `RuntimeError("Canceled by user.")`, including for an empty input
+table. A negative `flush_every_cases` still raises
+`ValueError("flush_every_cases must be >= 0.")` before the cancellation callback
+is consulted. Empty non-cancel runs currently omit the pinned backend-hint log;
+that known logging-only difference is tracked separately in #98. In parallel
+execution the request is polled while workers start and remains immediate:
+results still active in workers are not added to progress or checkpoint
+snapshots. Files written before the request is observed, or by an in-flight
+worker before cancellation cleanup finishes, are not rolled back; callers must
+treat failed-run artifact paths as partial run state.
+
+A missing STL raises `FileNotFoundError` from serial `run_case()` or
+`run_cases()` calls. From a parallel worker it raises a built-in `RuntimeError`
+whose first line starts `[WorkerError]` and whose remaining text contains the
+remote traceback. Other caught worker Python exceptions use the same
+`[WorkerError]` form. FMF and newtsolver continue to apply their distinct
+worker-log and failed-chunk partial-result policies described above.
+
+The public compatibility scheduler also retains product-specific unexpected-exit
+wording and its historical empty-Queue exception context. A broken Pipe frame
+retains its EOF/OSError chain instead. The adapter exposes raw spawn-start or
+callable-pickling exceptions; other IPC, serialization, or cleanup failures for
+which the pinned Queue scheduler could hang instead return a bounded built-in
+`RuntimeError` diagnostic. Exceptions raised by a caller's `logfn`,
+`progress_cb`, `cancel_cb`, or `chunk_cb` pass through unchanged. These rules
+apply to the frozen direct Python interfaces; shared internal runtime, CLI, and
+GUI code continues to use typed scheduler exceptions for lifecycle handling.
+If a worker exits before reporting ready and its exit code is available, it uses
+the same product-specific unexpected-exit wording and empty-Queue context; an
+unresolved live-process transport failure remains a startup error with its
+EOF/OSError chain. Cleanup diagnostics discovered while a caller callback is
+unwinding are attached as notes to that same callback exception object. This
+also applies to parent-side progress, checkpoint, and `[OK]` callbacks after a
+parallel result is yielded: the active scheduler iterator is closed before the
+original callback exception returns to the caller.
+
 ## Known retained differences
 
 Phase 7 does not choose between product contracts. Notable retained differences
