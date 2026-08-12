@@ -170,3 +170,8 @@ Phase 7 can be marked complete only when:
 
 These checks are migration acceptance, not the independent correctness,
 architecture, performance, and lifecycle audit reserved for Phase 8.
+
+**Status:** Complete. Issues #47–#52 and their dependent draft PRs passed the
+listed gates and merged serially. `PHASE7_USER_GUIDE.md` is the user/release
+handoff and `PHASE7_EXECUTION_RECORD.md` records the exact CI, installed-wheel,
+numerical, and manual GUI evidence. Phase 8 remains not started.

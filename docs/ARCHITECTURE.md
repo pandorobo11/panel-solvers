@@ -28,9 +28,9 @@ physical model is selected.
 model parses its own case fields, evaluates local panel loads, provides display
 scalars/metadata, and provides a canonical signature payload.
 
-`panelsolver.app` owns shared GUI orchestration through a solver specification;
-shared CLI orchestration remains Phase 7 work. `fmfsolver` and `newtsolver`
-remain thin compatibility frontends for existing entry points and imports.
+`panelsolver.app` owns shared GUI and CLI orchestration through product-selected
+specifications and policies. `fmfsolver` and `newtsolver` remain thin
+compatibility frontends for existing entry points and imports.
 
 ## Central contracts
 
@@ -216,9 +216,10 @@ not write files, drive GUI state, or run the scheduler.
 One shared GUI shell receives a solver specification containing identity, window
 title, case schema, adapter callbacks, close behavior, overlay formatting, and
 preferred display scalars. The viewer discovers available VTP cell arrays
-dynamically. The thin `fmfsolver.app.gui_app` and
-`newtsolver.app.gui_app` modules select the appropriate specification; legacy
-console command registration remains Phase 7 work.
+dynamically. The thin `fmfsolver.app.gui_app` and `newtsolver.app.gui_app`
+modules select the appropriate specification. The corresponding CLI selector
+modules use the same real readers, runtime, and serializers, and all six legacy
+console names are registered by the single distribution.
 
 ## Signature target
 

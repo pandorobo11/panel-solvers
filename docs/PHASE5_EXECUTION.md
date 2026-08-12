@@ -67,10 +67,9 @@ The two pinned D015 logging behaviors remain `WorkerLogPolicy.FORWARD` and
 `WorkerLogPolicy.DROP`. The differing worker-failure behavior remains
 `PartialResultPolicy.YIELD_COMPLETED` and
 `PartialResultPolicy.DISCARD_CHUNK`. Both are required arguments; core does not
-choose one product's behavior for the other. Product adapters will select their
-legacy policy when their runnable surfaces migrate: FMF selects
-`FORWARD`/`DISCARD_CHUNK`, while newtsolver selects
-`DROP`/`YIELD_COMPLETED`.
+choose one product's behavior for the other. The migrated product adapters
+retain the pinned pairing: FMF selects `FORWARD`/`YIELD_COMPLETED`, while
+newtsolver selects `DROP`/`DISCARD_CHUNK`.
 
 `PANELSOLVER_PARALLEL_CHUNK_CASES` has precedence over exactly one explicitly
 selected `FMFSOLVER_PARALLEL_CHUNK_CASES` or
