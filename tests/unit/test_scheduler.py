@@ -207,7 +207,7 @@ class SchedulerTests(unittest.TestCase):
         )
         self.assert_no_new_worker_resources(before)
 
-    def test_drop_logs_and_discard_failed_chunk_results(self) -> None:
+    def test_forward_logs_and_discard_failed_chunk_results(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
         yielded: list[tuple[int, int]] = []
@@ -215,7 +215,7 @@ class SchedulerTests(unittest.TestCase):
             (0, 1, 2),
             2,
             _failure_worker,
-            log_policy=WorkerLogPolicy.DROP,
+            log_policy=WorkerLogPolicy.FORWARD,
             partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
             bucket_keys=("same", "same", "same"),
             chunk_cases=3,
@@ -224,19 +224,19 @@ class SchedulerTests(unittest.TestCase):
         with self.assertRaises(WorkerExecutionError) as caught:
             yielded.extend(iterator)
         self.assertEqual([], yielded)
-        self.assertEqual([], logs)
+        self.assertEqual(["case=0", "case=1"], logs)
         self.assertIn("deliberate worker failure", caught.exception.remote_error)
         self.assertIn("ValueError", caught.exception.remote_traceback)
         self.assert_no_new_worker_resources(before)
 
-    def test_forward_logs_and_yield_completed_failed_chunk_results(self) -> None:
+    def test_drop_logs_and_yield_completed_failed_chunk_results(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
         iterator = iter_case_results_parallel(
             (0, 1, 2),
             2,
             _failure_worker,
-            log_policy=WorkerLogPolicy.FORWARD,
+            log_policy=WorkerLogPolicy.DROP,
             partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
             bucket_keys=("same", "same", "same"),
             chunk_cases=3,
@@ -245,7 +245,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual((0, 0), next(iterator))
         with self.assertRaises(WorkerExecutionError):
             next(iterator)
-        self.assertEqual(["case=0", "case=1"], logs)
+        self.assertEqual([], logs)
         self.assert_no_new_worker_resources(before)
 
     def test_cancellation_waits_for_case_boundary_and_stops_dispatch(self) -> None:

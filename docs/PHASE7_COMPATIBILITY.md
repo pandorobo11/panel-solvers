@@ -52,7 +52,9 @@ Phase 7 implements product policy rather than choosing a universal behavior:
 - D009/D010: collision scope and CSV temporary-file/durability policy remain
   product-selected;
 - D015: worker logging and failure-partial policies remain explicit scheduler
-  inputs;
+  inputs: when a later case raises a caught Python exception, FMF forwards worker
+  logs and discards completed results from that chunk, while newtsolver drops
+  worker logs and yields those completed results before reporting the error;
 - D017/D018: the ADR 0005 signature is primary and ordered legacy hashes remain
   opaque fallbacks, including distinct direct/file variants;
 - D019/D020/D029: VTP, NPZ, and result CSV model fields remain separate;
@@ -93,8 +95,11 @@ interpreted by core nor treated as interchangeable with the primary signature.
 ## Execution, serialization, and GUI adapters
 
 The shared runtime executes adapted requests serially or through the Phase 5
-spawn scheduler, while each product selects its D015 worker-log and failed-chunk
-partial-result policy. Shielding reuse may change execution order, but every
+spawn scheduler. FMF selects `FORWARD`/`DISCARD_CHUNK`; newtsolver selects
+`DROP`/`YIELD_COMPLETED`. Phase 8 independently found that the original Phase 7
+policy wiring and documentation had the partial-result choices reversed, then
+restored the pinned same-chunk failure behavior without changing successful
+results. Shielding reuse may change execution order, but every
 checkpoint and final summary is reconstructed in input order. Cancellation is
 observed at case boundaries and worker failures retain their remote traceback.
 

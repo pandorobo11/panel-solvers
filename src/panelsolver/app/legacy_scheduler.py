@@ -88,9 +88,9 @@ def iter_legacy_case_results_parallel(
             run_case_fn,
             log_policy=(WorkerLogPolicy.FORWARD if strict else WorkerLogPolicy.DROP),
             partial_result_policy=(
-                PartialResultPolicy.YIELD_COMPLETED
+                PartialResultPolicy.DISCARD_CHUNK
                 if strict
-                else PartialResultPolicy.DISCARD_CHUNK
+                else PartialResultPolicy.YIELD_COMPLETED
             ),
             execution_order=execution_order,
             bucket_keys=bucket_keys,

@@ -8,11 +8,15 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pyvista as pv
 
 import fmfsolver
 import newtsolver
 from fmfsolver.core.case_signature import build_case_signature as build_fmf_signature
+from fmfsolver.core.parallel_scheduler import (
+    iter_case_results_parallel as iter_fmf_case_results_parallel,
+)
 from fmfsolver.core.sentman_core import sentman_dC_dA_vector
 from fmfsolver.core.solver import run_case as run_fmf_case
 from fmfsolver.io.exporters import export_npz, export_vtp
@@ -20,6 +24,9 @@ from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from fmfsolver.physics.us1976 import load_us1976_tables, sample_at_altitude_km
 from newtsolver.core.case_signature import build_case_signature as build_newt_signature
 from newtsolver.core.panel_core import panel_force_density
+from newtsolver.core.parallel_scheduler import (
+    iter_case_results_parallel as iter_newt_case_results_parallel,
+)
 from newtsolver.core.solver import run_case as run_newt_case
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 
@@ -60,6 +67,14 @@ PRESSURE_MODELS_ALL = [
     "_tangent_cone_detach_limit",
     "tangent_cone_pressure_coefficient",
 ]
+
+
+def _public_scheduler_good_then_fail(row, logfn):
+    case_id = str(row["case_id"])
+    logfn(f"case={case_id}")
+    if case_id == "bad":
+        raise ValueError("public wrapper failure")
+    return {"case_id": case_id}
 
 
 class Phase7PublicImportTests(unittest.TestCase):
@@ -103,6 +118,47 @@ class Phase7PublicImportTests(unittest.TestCase):
 
 
 class Phase7PublicBehaviorTests(unittest.TestCase):
+    def test_public_parallel_wrappers_preserve_failed_chunk_policies(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "case_id": case_id,
+                "shielding_on": 1,
+                "stl_path": "same.stl",
+                "stl_scale_m_per_unit": 1.0,
+                "alpha_deg": 0.0,
+                "beta_or_bank_deg": 0.0,
+                "attitude_input": "beta_tan",
+                "ray_backend": "rtree",
+            }
+            for case_id in ("good", "bad")
+        )
+
+        fmf_logs: list[str] = []
+        fmf_results: list[tuple[int, dict]] = []
+        fmf_iterator = iter_fmf_case_results_parallel(
+            frame,
+            [0, 1],
+            2,
+            _public_scheduler_good_then_fail,
+            chunk_cases=2,
+            logfn=fmf_logs.append,
+        )
+        with self.assertRaisesRegex(RuntimeError, "public wrapper failure"):
+            fmf_results.extend(fmf_iterator)
+        self.assertEqual([], fmf_results)
+        self.assertEqual(["case=good", "case=bad"], fmf_logs)
+
+        newt_iterator = iter_newt_case_results_parallel(
+            frame,
+            [0, 1],
+            2,
+            _public_scheduler_good_then_fail,
+            chunk_cases=2,
+        )
+        self.assertEqual((0, {"case_id": "good"}), next(newt_iterator))
+        with self.assertRaisesRegex(RuntimeError, "public wrapper failure"):
+            next(newt_iterator)
+
     def test_model_specific_callable_signatures_retain_pinned_values(self) -> None:
         sentman = sentman_dC_dA_vector(
             np.array([1.0, 0.0, 0.0]),

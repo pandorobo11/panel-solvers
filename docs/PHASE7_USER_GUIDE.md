@@ -89,9 +89,14 @@ mixes both product prefixes:
 | shielding ray batch | `PANELSOLVER_SHIELD_BATCH_SIZE`, then selected legacy prefix | Embree 64; rtree 8 |
 | scheduler chunk cases | `PANELSOLVER_PARALLEL_CHUNK_CASES`, then selected legacy prefix | 8 |
 
-Values must be integers in the documented positive/nonnegative domain. FMF
-retains forwarded worker logs and completed results from a failing chunk;
-newtsolver retains dropped worker logs and discards that chunk's partial results.
+Values must be integers in the documented positive/nonnegative domain. If a
+later case in one worker chunk raises a caught Python exception, FMF forwards
+worker logs but discards earlier completed results from that chunk. newtsolver
+drops worker logs but yields those completed cases before reporting the worker
+error. Yielded cases update progress and reach a CSV checkpoint only when the
+configured flush interval is met; neither product emits a final snapshot after
+the error. Already-written per-case artifacts are not rolled back by either
+policy.
 
 ## Known retained differences
 

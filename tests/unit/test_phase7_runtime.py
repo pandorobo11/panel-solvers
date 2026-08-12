@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from fmfsolver.runtime import GUI_ADAPTERS as FMF_GUI_ADAPTERS
@@ -27,12 +29,12 @@ class Phase7RuntimeTests(unittest.TestCase):
     def test_product_scheduler_policies_remain_independent(self) -> None:
         self.assertIs(WorkerLogPolicy.FORWARD, FMF_POLICY.worker_log_policy)
         self.assertIs(
-            PartialResultPolicy.YIELD_COMPLETED,
+            PartialResultPolicy.DISCARD_CHUNK,
             FMF_POLICY.partial_result_policy,
         )
         self.assertIs(WorkerLogPolicy.DROP, NEWT_POLICY.worker_log_policy)
         self.assertIs(
-            PartialResultPolicy.DISCARD_CHUNK,
+            PartialResultPolicy.YIELD_COMPLETED,
             NEWT_POLICY.partial_result_policy,
         )
 
@@ -103,22 +105,112 @@ class Phase7RuntimeTests(unittest.TestCase):
                 run_fmf_cases((row,), cancel_cb=lambda: True)
             self.assertFalse(out_dir.exists())
 
-    def test_parallel_worker_failure_propagates_without_final_snapshot(self) -> None:
-        frame = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0, 1]].copy()
-        frame.loc[frame.index[1], "stl_path"] = str(INPUTS / "missing.stl")
-        snapshots = []
+    def test_failed_chunk_policy_controls_checkpoint_logs_and_partial_result(
+        self,
+    ) -> None:
+        products = (
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                FMF_POLICY,
+                False,
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                NEWT_POLICY,
+                True,
+            ),
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
-            frame["out_dir"] = temp_dir
-            with self.assertRaises(WorkerExecutionError):
-                run_fmf_cases(
-                    tuple(frame.to_dict(orient="records")),
-                    workers=2,
-                    flush_every_cases=1,
-                    snapshot_cb=lambda projection, done, total, final: snapshots.append(
-                        (projection, done, total, final)
-                    ),
-                )
-        self.assertFalse(any(final for _, _, _, final in snapshots))
+            root = Path(temp_dir)
+            for product_id, reader, filename, policy, yields_completed in products:
+                with self.subTest(product=product_id):
+                    product_root = root / product_id
+                    product_root.mkdir()
+                    blocker = product_root / "not-a-directory"
+                    blocker.write_text("worker failure fixture\n", encoding="utf-8")
+                    case_output = product_root / "case-output"
+                    summary = product_root / "summary.csv"
+                    sentinel = b"pre-existing summary must remain unchanged\n"
+                    summary.write_bytes(sentinel)
+
+                    base = reader(INPUTS / filename).iloc[0].to_dict()
+                    good = dict(base)
+                    bad = dict(base)
+                    good_id = f"{product_id}_good"
+                    bad_id = f"{product_id}_bad"
+                    good.update(
+                        case_id=good_id,
+                        shielding_on=1,
+                        ray_backend="rtree",
+                        out_dir=str(case_output),
+                        save_vtp_on=1,
+                        save_npz_on=1,
+                    )
+                    bad.update(
+                        case_id=bad_id,
+                        shielding_on=1,
+                        ray_backend="rtree",
+                        out_dir=str(blocker),
+                        save_vtp_on=1,
+                        save_npz_on=1,
+                    )
+                    logs: list[str] = []
+                    progress: list[tuple[int, int]] = []
+
+                    with mock.patch.dict(
+                        os.environ,
+                        {"PANELSOLVER_PARALLEL_CHUNK_CASES": "2"},
+                    ):
+                        with self.assertRaises(WorkerExecutionError) as caught:
+                            run_and_write_product_cases(
+                                (good, bad),
+                                policy,
+                                summary,
+                                workers=2,
+                                logfn=logs.append,
+                                progress_cb=lambda done, total, sink=progress: sink.append(
+                                    (done, total)
+                                ),
+                                flush_every_cases=1,
+                                log_snapshots=True,
+                            )
+
+                    self.assertIn("FileExistsError", caught.exception.remote_traceback)
+                    self.assertTrue((case_output / f"{good_id}.vtp").is_file())
+                    self.assertTrue((case_output / f"{good_id}.npz").is_file())
+                    self.assertTrue(blocker.is_file())
+                    self.assertFalse(any("[SAVE] final" in message for message in logs))
+
+                    if yields_completed:
+                        self.assertEqual([(1, 2)], progress)
+                        with summary.open(encoding="utf-8", newline="") as stream:
+                            rows = tuple(csv.DictReader(stream))
+                        self.assertEqual(
+                            [good_id],
+                            [row["case_id"] for row in rows if row["scope"] == "total"],
+                        )
+                        self.assertFalse(any(row["case_id"] == bad_id for row in rows))
+                        self.assertTrue(
+                            any("[SAVE] checkpoint 1/2" in message for message in logs)
+                        )
+                        self.assertTrue(
+                            any("[OK] (1/2)" in message for message in logs)
+                        )
+                        self.assertFalse(
+                            any(message.startswith("[WARN]") for message in logs)
+                        )
+                    else:
+                        self.assertEqual([], progress)
+                        self.assertEqual(sentinel, summary.read_bytes())
+                        self.assertFalse(any("[SAVE]" in message for message in logs))
+                        self.assertFalse(any("[OK]" in message for message in logs))
+                        self.assertTrue(
+                            any(message.startswith("[WARN]") for message in logs)
+                        )
 
     def test_parallel_success_is_input_ordered_and_retains_worker_log_split(self) -> None:
         products = (
