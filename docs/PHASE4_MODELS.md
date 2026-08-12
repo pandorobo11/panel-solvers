@@ -39,5 +39,37 @@ tolerances are unchanged.
 
 ## Phase 4b: hypersonic
 
-Pending. It remains a separate Issue/PR and must not reuse a Sentman case,
-scalar, metadata, or equation superset.
+`panelsolver.models.HypersonicModel` uses the stable model ID `hypersonic` and
+algorithm version `hypersonic-dc1357d0`. Its numerical oracle is pinned
+`newtsolver` commit `dc1357d0d50bbedfdc8b3429cab37e6b98b56c70`.
+
+The model payload requires positive `Mach`, `gamma > 1`, and independent
+`windward_eq` / `leeward_eq` selectors. Newtonian with leeward `shield` remains
+valid below Mach 1, while modified Newtonian, tangent wedge, tangent cone, and
+Prandtl–Meyer retain their Mach-greater-than-one checks. A single selector is
+broadcast; a semicolon list maps in ascending component-ID order. The two
+selector vocabularies remain separate.
+
+The model returns pressure-only traction `-Cp * normal_out_stl`. As with
+Sentman, legacy `/Aref` is removed only at the adapter boundary because the
+common integrator owns `area_m2 / Aref_m2`. `leeward_eq=shield` is still a
+zero-pressure equation choice and is not conflated with the independent ray
+shield mask.
+
+The modified-Newtonian normal-shock relation, tangent-wedge closed form and
+detached bridge, tangent-cone Taylor–Maccoll table/PCHIP path, and safeguarded
+Prandtl–Meyer inverse are copied from the pinned source without changing their
+constants, branches, caches, solver settings, or termination tests. In
+particular, tangent cone retains 220 shock-angle samples and LSODA
+`rtol=1e-8`, `atol=1e-10`, `max_step=2e-3`; inverse Prandtl–Meyer retains the
+40-step bracket, 60-step solve, and `1e-12` convergence thresholds.
+
+`LocalLoads.cell_scalars` contains the hypersonic `Cp_n` and `theta_deg`.
+Metadata and `signature_payload()` contain only `Mach`, `gamma`, and canonical
+windward/leeward selectors. They do not reuse the Sentman Mode A/B or thermal
+schema, and they do not construct the Phase 5 signature envelope.
+
+Verification recomputes all nine newtsolver Phase 1 cases, including each
+equation family, mixed per-component selectors, bank, boundary, and both
+shielding backends. Existing golden files and the separate algebraic,
+root-solve, and tangent-cone tolerance profiles are unchanged.

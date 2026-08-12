@@ -111,6 +111,8 @@ tolerance profile.
 
 ## Phase 4 — Adapt physical models
 
+**Status:** Complete.
+
 ### 4a Sentman
 
 **Status:** Complete.
@@ -127,9 +129,18 @@ tolerances.
 
 ### 4b Hypersonic
 
+**Status:** Complete.
+
 Wrap Newtonian, modified Newtonian, tangent-wedge, tangent-cone, and
 Prandtl–Meyer behavior, including windward/leeward canonicalization and component
 overrides, behind the same contract.
+
+**Evidence:** `PHASE4_MODELS.md` records the independent hypersonic boundary.
+Unit coverage preserves all five equation families, detached branches, the
+Taylor–Maccoll solver settings, safeguarded Prandtl–Meyer iteration, selector
+canonicalization, and component overrides. The nine newtsolver Phase 1 cases are
+recomputed by the model and compared with their algebraic, root-solve, or
+tangent-cone tolerance profiles.
 
 **Acceptance for each:** model-specific validation and scientific reference tests
 pass; Phase 1 panel-level and integrated goldens match; no filesystem, GUI,

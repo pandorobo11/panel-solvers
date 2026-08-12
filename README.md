@@ -5,15 +5,15 @@
 It will provide one geometry/execution/integration platform while keeping the
 Sentman and hypersonic physical models independent.
 
-The repository has completed **migration Phase 4a (Sentman)**. Phase 4b remains.
+The repository has completed **migration Phase 4**.
 Phase 1 freezes both legacy implementations as regression oracles, Phase 2
 defines the immutable central contracts and model registry, and Phase 3 extracts
 resolved-attitude/frame transforms, topology-preserving
 mesh representation, common force/moment integration, component/result assembly,
 semantic VTP/NPZ projection, and compatibility-preserving CSV projection/writing.
 Thin product adapters verify already-computed legacy data through that full path.
-Phase 4a adds the pinned Sentman equations and atmosphere resolution behind the
-common model contract. The hypersonic model and runnable solver pipeline are not
+Phase 4 adds the pinned Sentman and hypersonic equations behind independent
+implementations of the common model contract. A runnable solver pipeline is not
 yet migrated.
 
 ## Target structure
