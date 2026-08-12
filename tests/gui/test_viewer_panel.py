@@ -258,7 +258,7 @@ class ViewerPanelTests(unittest.TestCase):
         with patch.object(QtWidgets.QFileDialog, "getSaveFileName", side_effect=cancel):
             viewer.save_view_image()
         self.assertEqual("Save View Image", captured["title"])
-        self.assertEqual("/artifacts", captured["default"])
+        self.assertEqual(Path("/artifacts"), Path(captured["default"]))
         self.assertEqual(
             "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)",
             captured["filters"],
