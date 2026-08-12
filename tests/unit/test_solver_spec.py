@@ -1,0 +1,119 @@
+import unittest
+from pathlib import Path
+
+from fmfsolver.gui_spec import format_case as format_fmf_case
+from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
+from newtsolver.gui_spec import format_case as format_newt_case
+from newtsolver.gui_spec import solver_spec as newt_solver_spec
+from panelsolver.app import ClosePolicy, SolverGuiAdapters, SolverSpec
+
+
+def _format(row):
+    return str(row.get("case_id", ""))
+
+
+def _valid_spec(**changes) -> SolverSpec:
+    values = {
+        "product_id": "synthetic",
+        "model_id": "model",
+        "window_title": "Synthetic GUI",
+        "case_columns": ("case_id", "value"),
+        "preferred_scalars": ("Cp_n", "area_m2"),
+        "format_case": _format,
+        "close_policy": ClosePolicy.IMMEDIATE,
+    }
+    values.update(changes)
+    return SolverSpec(**values)
+
+
+class SolverSpecTests(unittest.TestCase):
+    def test_validates_identity_names_callbacks_and_policy(self) -> None:
+        for field in ("product_id", "model_id", "window_title"):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                _valid_spec(**{field: " "})
+        with self.assertRaises(ValueError):
+            _valid_spec(case_columns=("value", "case_id"))
+        with self.assertRaises(ValueError):
+            _valid_spec(case_columns=("case_id", "case_id"))
+        with self.assertRaises(ValueError):
+            _valid_spec(preferred_scalars=("Cp_n", "Cp_n"))
+        with self.assertRaises(TypeError):
+            _valid_spec(format_case=None)
+        with self.assertRaises(TypeError):
+            _valid_spec(close_policy="immediate")
+        with self.assertRaises(TypeError):
+            _valid_spec(adapters=object())
+
+    def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
+        adapters = SolverGuiAdapters(
+            read_cases=lambda _path: (),
+            build_case_signatures=lambda _row: (),
+            run_cases=lambda _request: None,
+            validate_output_path=lambda out, _input, _rows: Path(out),
+            resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
+        )
+        self.assertIs(adapters, _valid_spec(adapters=adapters).adapters)
+        with self.assertRaises(TypeError):
+            SolverGuiAdapters(
+                read_cases=None,
+                build_case_signatures=lambda _row: (),
+                run_cases=lambda _request: None,
+                validate_output_path=lambda out, _input, _rows: Path(out),
+                resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
+            )
+
+    def test_product_specs_retain_titles_models_schemas_and_close_policies(self) -> None:
+        fmf = fmf_solver_spec()
+        newt = newt_solver_spec()
+        self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
+        self.assertEqual("sentman", fmf.model_id)
+        self.assertEqual(ClosePolicy.DEFER_UNTIL_IDLE, fmf.close_policy)
+        self.assertIn("S", fmf.case_columns)
+        self.assertNotIn("gamma", fmf.case_columns)
+        self.assertEqual("newtsolver (GUI)", newt.window_title)
+        self.assertEqual("hypersonic", newt.model_id)
+        self.assertEqual(ClosePolicy.IMMEDIATE, newt.close_policy)
+        self.assertIn("gamma", newt.case_columns)
+        self.assertNotIn("S", newt.case_columns)
+        self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)
+
+    def test_product_case_formatting_remains_independent(self) -> None:
+        self.assertEqual(
+            "case_id=f | mode=A | S=5.0 | Ti=300.0 | Tw=400.0 | "
+            "alpha_t=1.0 | beta_s=2.0 | shield=1 | ray=rtree",
+            format_fmf_case(
+                {
+                    "case_id": "f",
+                    "S": 5.0,
+                    "Ti_K": 300.0,
+                    "Tw_K": 400.0,
+                    "alpha_deg": 1.0,
+                    "beta_or_bank_deg": 2.0,
+                    "attitude_input": "beta_sin",
+                    "shielding_on": 1,
+                    "ray_backend": "rtree",
+                }
+            ),
+        )
+        self.assertEqual(
+            "case_id=n | Mach=6.0 | gamma=1.4 | w_eq=tangent_cone | "
+            "l_eq=shield | alpha_i=3.0 | phi=4.0 | shield=0 | ray=auto",
+            format_newt_case(
+                {
+                    "case_id": "n",
+                    "Mach": 6.0,
+                    "gamma": 1.4,
+                    "windward_eq": "tangent_cone",
+                    "leeward_eq": "shield",
+                    "alpha_deg": 3.0,
+                    "beta_or_bank_deg": 4.0,
+                    "attitude_input": "bank",
+                    "shielding_on": 0,
+                    "ray_backend": "auto",
+                }
+            ),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
