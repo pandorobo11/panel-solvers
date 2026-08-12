@@ -81,6 +81,40 @@ class ResolvedShieldingConfig:
     cache_max: int
     algorithm_version: str = SHIELDING_ALGORITHM_VERSION
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, (bool, np.bool_)):
+            raise ShieldingError("enabled must be a boolean.")
+        requested = _normalize_backend(self.requested_backend).value
+        if self.effective_backend not in {"not_used", "rtree", "embree"}:
+            raise ShieldingError(
+                "effective_backend must be one of: not_used, rtree, embree."
+            )
+        if not isinstance(self.algorithm_version, str) or (
+            not self.algorithm_version
+            or self.algorithm_version.strip() != self.algorithm_version
+        ):
+            raise ShieldingError(
+                "algorithm_version must be non-empty text without surrounding whitespace."
+            )
+        cache_max = _nonnegative_integer(self.cache_max, field="cache_max")
+        if self.enabled:
+            if self.effective_backend == "not_used":
+                raise ShieldingError(
+                    "enabled shielding requires an rtree or embree effective backend."
+                )
+            batch_size = _positive_integer(self.batch_size, field="batch_size")
+        else:
+            if self.effective_backend != "not_used" or self.batch_size != 0:
+                raise ShieldingError(
+                    "disabled shielding requires effective_backend='not_used' "
+                    "and batch_size=0."
+                )
+            batch_size = 0
+        object.__setattr__(self, "enabled", bool(self.enabled))
+        object.__setattr__(self, "requested_backend", requested)
+        object.__setattr__(self, "batch_size", batch_size)
+        object.__setattr__(self, "cache_max", cache_max)
+
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ShieldingResult:
