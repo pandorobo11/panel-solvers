@@ -87,7 +87,9 @@ evaluate a model. A failed read or invalid cell-data envelope clears the prior
 view. Image export is added in the later Phase 6f slice.
 
 CI exercises real Qt widgets with an injected non-OpenGL plotter on all three
-platforms. On macOS, constructing VTK's native `QtInteractor` under
-`QT_QPA_PLATFORM=offscreen` exits in the platform rendering layer, so this is
-not used as a headless gate. A normal-display `QtInteractor` smoke remains part
-of the Phase 6g launcher acceptance; pixel output is not a golden.
+platforms. The Ubuntu job installs the minimal `libegl1` runtime required to
+import PySide6; it does not render through OpenGL. On macOS, constructing VTK's
+native `QtInteractor` under `QT_QPA_PLATFORM=offscreen` exits in the platform
+rendering layer, so this is not used as a headless gate. A normal-display
+`QtInteractor` smoke remains part of the Phase 6g launcher acceptance; pixel
+output is not a golden.
