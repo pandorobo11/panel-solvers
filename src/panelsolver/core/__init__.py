@@ -21,6 +21,12 @@ from .contracts import (
     PayloadScalar,
     PayloadValue,
 )
+from .csv_projection import (
+    CsvCell,
+    CsvProjection,
+    CsvProjectionPolicy,
+    project_summary_csv,
+)
 from .errors import (
     ContractError,
     ContractValueError,
@@ -43,6 +49,9 @@ __all__ = (
     "ComponentResult",
     "ContractError",
     "ContractValueError",
+    "CsvCell",
+    "CsvProjection",
+    "CsvProjectionPolicy",
     "IntegratedCoefficients",
     "LocalLoads",
     "MeshComponent",
@@ -64,6 +73,7 @@ __all__ = (
     "body_to_stability",
     "integrate_panel_loads",
     "project_npz_artifact",
+    "project_summary_csv",
     "project_vtp_artifact",
     "stl_to_body",
     "velocity_hat_stl_from_tangent_angles",

@@ -10,8 +10,8 @@ Phase 1 freezes both legacy implementations as regression oracles, Phase 2
 defines the immutable central contracts and model registry, and the initial
 Phase 3 slices extract resolved-attitude/frame transforms, topology-preserving
 mesh representation, common force/moment integration, component/result assembly,
-and semantic VTP/NPZ projection. It does not contain a physical-model equation or
-a runnable solver pipeline.
+semantic VTP/NPZ projection, and compatibility-preserving CSV projection/writing.
+It does not contain a physical-model equation or a runnable solver pipeline.
 
 ## Target structure
 
