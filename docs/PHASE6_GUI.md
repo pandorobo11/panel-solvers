@@ -93,3 +93,24 @@ native `QtInteractor` under `QT_QPA_PLATFORM=offscreen` exits in the platform
 rendering layer, so this is not used as a headless gate. A normal-display
 `QtInteractor` smoke remains part of the Phase 6g launcher acceptance; pixel
 output is not a golden.
+
+## Shared cases and selection
+
+`panelsolver.app.cases_panel.CasesPanel` receives a fully adapted `SolverSpec`.
+It does not import a product case reader, signature builder, or collision policy.
+The selected adapter returns mapping rows; the table shows the product's ordered
+schema followed by unknown columns in stable input order and remains read-only.
+Selected rows are returned in table/input order, and an empty selection means all
+loaded rows.
+
+Selecting the first row auto-loads `<out_dir>/<case_id>.vtp` only when the shared
+Phase 6b matcher accepts its exact case ID and signature. Missing, unreadable, or
+stale artifacts clear the previous view. Input read/validation failure likewise
+clears all old input, table, and viewer state; structured issues use one shared
+dialog without depending on either product exception type.
+
+The result chooser keeps the pinned `<input_dir>/outputs/<stem>_result.csv`
+default and creates `outputs` before the dialog, including when the user cancels.
+Product-specific D009 collision rules are invoked only through the spec adapter.
+The panel emits a run request containing selected-or-all rows, worker count, and
+validated output path; Phase 6e owns execution and lifecycle.
