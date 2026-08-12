@@ -34,6 +34,14 @@ from .errors import (
     PanelSolverError,
     ShapeError,
 )
+from .execution import (
+    CaseExecutionRequest,
+    CaseExecutionResult,
+    ExecutablePanelLoadModel,
+    ExecutionError,
+    ExecutionModelError,
+    execute_case,
+)
 from .frames import (
     body_to_stability,
     stl_to_body,
@@ -86,6 +94,8 @@ __all__ = (
     "MESH_LOADER_ALGORITHM_VERSION",
     "SHIELDING_ALGORITHM_VERSION",
     "ArtifactProjectionPolicy",
+    "CaseExecutionRequest",
+    "CaseExecutionResult",
     "CaseSignature",
     "CommonCasePayload",
     "CommonResults",
@@ -95,6 +105,9 @@ __all__ = (
     "CsvCell",
     "CsvProjection",
     "CsvProjectionPolicy",
+    "ExecutablePanelLoadModel",
+    "ExecutionError",
+    "ExecutionModelError",
     "IntegratedCoefficients",
     "LoadedPanelMesh",
     "LocalLoads",
@@ -136,6 +149,7 @@ __all__ = (
     "clear_mesh_cache",
     "clear_shielding_cache",
     "compute_shielding",
+    "execute_case",
     "geometry_fingerprint",
     "integrate_panel_loads",
     "load_panel_mesh",
