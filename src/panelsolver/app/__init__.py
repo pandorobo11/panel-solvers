@@ -6,6 +6,7 @@ from .csv_writer import (
     validate_csv_output_path,
     write_csv_atomic,
 )
+from .execution import default_model_registry, request_from_registry
 from .legacy_adapter import (
     AdaptedLegacyPanels,
     LegacyPanelSnapshot,
@@ -23,7 +24,9 @@ __all__ = (
     "LegacyRunContext",
     "TempNameStyle",
     "adapt_legacy_panels",
+    "default_model_registry",
     "project_legacy_phase3_case",
+    "request_from_registry",
     "validate_csv_output_path",
     "write_csv_atomic",
 )

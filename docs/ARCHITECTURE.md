@@ -147,6 +147,13 @@ The shared result cache accepts only that signature as its key. Primary Phase 5
 matching precedes ordered, opaque legacy fallbacks supplied by product adapters;
 core does not contain either legacy signature schema.
 
+Phase 5d composes mesh loading, shielding, model evaluation, integration,
+aggregation, signatures, and numerical-result caching into one one-case core
+engine. The model supplies its normalized signature payload and local load
+vector through protocols; core contains no Sentman/hypersonic branch. Application
+assembly selects the registered model. Artifact writing, worker scheduling, and
+GUI lifecycle remain outside the one-case engine.
+
 ## Ownership constraints
 
 | Concern | Owner |
