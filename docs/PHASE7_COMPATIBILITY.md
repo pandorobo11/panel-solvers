@@ -77,6 +77,19 @@ No existing command, field, module, or callable is deprecated in Phase 7. A
 future removal needs its own accepted transition. The legacy repositories remain
 read-only numerical references through Phase 8.
 
+## Case input and artifact identity
+
+The compatibility readers keep separate FMF and newtsolver schemas, defaults,
+validation callbacks, and error wording over one table-reading mechanism. Rows
+are adapted to `CaseExecutionRequest` through product policies that select the
+model, mesh validation rule, legacy environment prefix, and attitude domain.
+
+The ADR 0005 execution signature is prepared through the same mesh and
+shielding-resolution path used by execution, without evaluating physical panel
+loads. Ordered pinned legacy hashes remain product-owned fallback identities.
+They use the frozen `1.3.8` and `1.0.3` compatibility versions and are neither
+interpreted by core nor treated as interchangeable with the primary signature.
+
 ## Final acceptance evidence
 
 Phase 7 can be marked complete only when:
