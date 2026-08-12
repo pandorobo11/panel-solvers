@@ -5,6 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 
 from fmfsolver.case_adapter import (
@@ -27,7 +28,7 @@ from newtsolver.case_adapter import (
     build_signatures as build_newt_signatures,
 )
 from newtsolver.io.io_cases import read_cases as read_newt_cases
-from panelsolver.core import MeshValidationPolicy, execute_case
+from panelsolver.core import MeshValidationPolicy, ResultCache, execute_case
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 _GOLDEN = Path(__file__).parents[1] / "fixtures" / "phase1" / "golden"
@@ -178,6 +179,60 @@ class ProductCaseAdapterTests(unittest.TestCase):
                 candidates = builder(row)
                 self.assertEqual(2, len(candidates.legacy_signatures))
                 self.assertNotEqual(*candidates.legacy_signatures)
+
+    def test_equivalent_attitude_modes_keep_exact_cache_entries_separate(self) -> None:
+        frame = read_newt_cases(_INPUTS / "newtsolver_cases.csv")
+        beta_sin = frame.loc[
+            frame["case_id"] == "newt_beta_sin_boundary"
+        ].iloc[0].to_dict()
+        beta_tan = dict(beta_sin)
+        beta_tan["attitude_input"] = "beta_tan"
+
+        adapted_sin = adapt_newt_row(beta_sin)
+        adapted_tan = adapt_newt_row(beta_tan)
+        self.assertEqual(
+            (
+                adapted_sin.attitude.alpha_t_deg,
+                adapted_sin.attitude.beta_t_deg,
+            ),
+            (
+                adapted_tan.attitude.alpha_t_deg,
+                adapted_tan.attitude.beta_t_deg,
+            ),
+        )
+        self.assertFalse(
+            np.array_equal(
+                adapted_sin.attitude.velocity_hat_stl,
+                adapted_tan.attitude.velocity_hat_stl,
+            )
+        )
+
+        cache = ResultCache(max_entries=2)
+        first_sin = execute_case(adapted_sin.request, result_cache=cache)
+        first_tan = execute_case(adapted_tan.request, result_cache=cache)
+        cached_sin = execute_case(adapted_sin.request, result_cache=cache)
+        cached_tan = execute_case(adapted_tan.request, result_cache=cache)
+
+        self.assertEqual(first_sin.signature.digest, first_tan.signature.digest)
+        self.assertEqual(
+            [False, False, True, True],
+            [
+                first_sin.cache_hit,
+                first_tan.cache_hit,
+                cached_sin.cache_hit,
+                cached_tan.cache_hit,
+            ],
+        )
+        self.assertFalse(
+            np.array_equal(
+                first_sin.results.local_loads.traction_coeff_stl,
+                first_tan.results.local_loads.traction_coeff_stl,
+            )
+        )
+        self.assertEqual(
+            (2, 2, 2),
+            (cache.stats().entries, cache.stats().hits, cache.stats().misses),
+        )
 
 
 if __name__ == "__main__":

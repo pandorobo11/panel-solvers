@@ -77,6 +77,26 @@ not by file bytes. The precise inventory is in
 `phase1/BEHAVIORAL_INVENTORY.md` and the tolerances are in
 `phase1/TOLERANCES.md`.
 
+### Direct common-core flow direction
+
+The compatibility CLI and GUI adapters deterministically resolve
+`velocity_hat_stl` and tangent angles together from each legacy attitude mode.
+Equivalent attitudes expressed through different modes can therefore retain
+last-bit-distinct vectors while sharing the frozen resolved-angle public
+signature. Custom callers of `panelsolver.core.execute_case` should use the
+shared frame helper when constructing an angle-defined request. The direct
+request validator accepts a supplied unit vector within `1e-12` of the
+angle-derived vector and evaluates the supplied values.
+
+Phase 8 isolates every exact accepted vector in the private result cache, but the
+frozen public signature remains angle-based. Consequently, equivalent legacy
+modes or custom tolerance-distinct vectors can have last-bit numerical
+differences and the same public artifact signature; do not rely on signature
+alone to distinguish those artifacts. Treat a `ResultCache` passed to
+`execute_case` as engine-owned: its generic `get` and `put` API is unchanged, but
+the returned public signature does not address or pre-seed the engine's private
+entry.
+
 ## Environment precedence
 
 For every setting, an explicit API/configuration argument wins. The neutral

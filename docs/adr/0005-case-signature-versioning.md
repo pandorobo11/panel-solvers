@@ -42,6 +42,21 @@ an ordered collection of opaque legacy hashes for fallback. Core tests the
 primary first and never reconstructs, normalizes, or equates the path/version-
 dependent D017 envelopes or the direct/file D018 default variants.
 
+### Phase 8 result-cache clarification
+
+The schema above remains the exact public and artifact signature. The common
+execution API also accepts a supplied float64 flow-direction vector within its
+documented angle-consistency tolerance and evaluates that accepted vector
+without rounding. Because the exact vector is not a field in the frozen schema,
+the execution engine derives a private, domain-separated result-cache signature
+from the public digest plus the exact three float64 values used by the model.
+
+That private identity is process-local cache state. It is not returned from
+`execute_case`, serialized into CSV/VTP/NPZ, or considered during artifact
+matching. This prevents a tolerance-distinct direct request from reusing another
+request's numerical result while preserving every existing public digest and
+fallback rule.
+
 ## Consequences
 
 UI and documentation changes need not invalidate calculations, while geometry,

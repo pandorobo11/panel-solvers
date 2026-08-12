@@ -160,9 +160,12 @@ prefix, so core never guesses between FMF and newtsolver environment state.
 Phase 5c adopts the exact ADR 0005 canonical signature. It binds normalized
 common inputs, model-owned payload and algorithm version, numerical geometry,
 and resolved shielding/backend identity without using the application version.
-The shared result cache accepts only that signature as its key. Primary Phase 5
-matching precedes ordered, opaque legacy fallbacks supplied by product adapters;
-core does not contain either legacy signature schema.
+Primary Phase 5 matching precedes ordered, opaque legacy fallbacks supplied by
+product adapters; core does not contain either legacy signature schema. The
+shared result cache still accepts `CaseSignature` keys, but execution uses a
+private, domain-separated signature that combines the public digest with the
+exact accepted float64 flow direction. The private cache identity is never an
+artifact or matching identity.
 
 Phase 5d composes mesh loading, shielding, model evaluation, integration,
 aggregation, signatures, and numerical-result caching into one one-case core

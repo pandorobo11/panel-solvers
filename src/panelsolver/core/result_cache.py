@@ -1,4 +1,8 @@
-"""Bounded defensive cache keyed only by canonical case signatures."""
+"""Bounded defensive cache keyed by validated ``CaseSignature`` digests.
+
+Execution-owned entries use the private identity documented by ``execute_case``;
+the generic cache API also accepts caller-owned signatures unchanged.
+"""
 
 from __future__ import annotations
 
