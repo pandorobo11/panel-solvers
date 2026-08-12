@@ -20,7 +20,24 @@ def legacy_result_frame(
     renames: Mapping[str, str] | None = None,
 ) -> pd.DataFrame:
     """Strip merged input columns and restore direct-result legacy names."""
-    frame = pd.DataFrame(projection.rows, columns=projection.columns)
+    rows: list[dict[str, object]] = []
+    for row in projection.rows:
+        normalized = dict(row)
+        if row.get("scope") == "total":
+            for name in ("component_id", "component_stl_path"):
+                if name in normalized:
+                    normalized[name] = ""
+            for name in ("vtp_path", "npz_path"):
+                if name in normalized and normalized[name] is None:
+                    normalized[name] = ""
+        elif row.get("scope") == "component":
+            if "component_id" in normalized:
+                normalized["component_id"] = int(normalized["component_id"])
+            for name in ("vtp_path", "npz_path"):
+                if name in normalized:
+                    normalized[name] = ""
+        rows.append(normalized)
+    frame = pd.DataFrame(rows, columns=projection.columns)
     retained = [
         name
         for name in projection.columns
