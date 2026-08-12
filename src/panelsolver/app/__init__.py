@@ -15,13 +15,17 @@ from .legacy_adapter import (
     adapt_legacy_panels,
     project_legacy_phase3_case,
 )
+from .solver_spec import ClosePolicy, SolverGuiAdapters, SolverSpec
 
 __all__ = (
     "AdaptedLegacyPanels",
     "AtomicCsvWritePolicy",
+    "ClosePolicy",
     "LegacyPanelSnapshot",
     "LegacyPhase3Projection",
     "LegacyRunContext",
+    "SolverGuiAdapters",
+    "SolverSpec",
     "TempNameStyle",
     "adapt_legacy_panels",
     "default_model_registry",
