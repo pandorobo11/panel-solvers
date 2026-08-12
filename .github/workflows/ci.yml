@@ -72,6 +72,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Linux GUI runtime
+        run: sudo apt-get update && sudo apt-get install --yes libegl1
+
       - name: Install dependencies
         run: uv sync --locked
 
@@ -86,7 +89,33 @@ jobs:
       - name: Smoke test installed wheel
         run: |
           cd "${RUNNER_TEMP}"
-          "${GITHUB_WORKSPACE}/.venv/bin/python" -c "import panelsolver, fmfsolver, newtsolver"
+          "${GITHUB_WORKSPACE}/.venv/bin/python" - <<'PY'
+          import importlib.metadata
+
+          import fmfsolver
+          import newtsolver
+          import panelsolver
+          from fmfsolver.app.gui_app import main as fmf_gui_main
+          from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
+          from newtsolver.app.gui_app import main as newt_gui_main
+          from newtsolver.gui_spec import solver_spec as newt_solver_spec
+          from panelsolver.app.gui_bootstrap import prepare_gui_spec
+
+          assert callable(fmf_gui_main)
+          assert callable(newt_gui_main)
+          assert prepare_gui_spec(fmf_solver_spec()).model_id == "sentman"
+          assert prepare_gui_spec(newt_solver_spec()).model_id == "hypersonic"
+          legacy = {
+              "fmfsolver", "fmfsolver-gui", "fmfsolver-cli",
+              "newtsolver", "newtsolver-gui", "newtsolver-cli",
+          }
+          scripts = {
+              entry.name
+              for entry in importlib.metadata.distribution("panel-solvers").entry_points
+              if entry.group == "console_scripts"
+          }
+          assert legacy.isdisjoint(scripts)
+          PY
 
   release:
     needs: [test, artifact]

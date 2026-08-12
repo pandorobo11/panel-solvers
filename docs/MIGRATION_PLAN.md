@@ -179,6 +179,15 @@ case-signature matching.
 model/schema/title; GUI and viewer compatibility tests pass; neither GUI nor
 frontend contains physics; headless numerical use remains testable.
 
+**Status:** Complete. Phase 6a–6g introduced the immutable product-selected
+`SolverSpec`, shared exact artifact matching and dynamic scalar discovery, one
+viewer, one cases panel, QThread progress/cancellation lifecycle, independently
+selected D023 close behavior, image export, one shared bootstrap, and two thin
+GUI selector modules. Both launchers preserve their exact titles, schemas,
+overlays, model identities, and close policies. All Phase 1 numerical goldens
+remain unchanged. The modules are included in the built wheel, but none of the
+six legacy commands is registered.
+
 ## Phase 7 — Finish packaging, CLI, and public compatibility
 
 **Scope:** Register all legacy command names, forward supported public imports,
@@ -190,6 +199,10 @@ Do not archive legacy repositories yet.
 `--help` contracts work from an installed wheel; result schemas and artifacts
 match; Windows/macOS/Linux CI covers both models; no common implementation remains
 duplicated in the compatibility packages.
+
+**Status:** Not started. Phase 6 deliberately leaves case readers, execution and
+serialization adapters, command registration, public import forwarding, and
+distribution/release mechanics to this phase.
 
 ## Phase 8 — Independent final audit
 

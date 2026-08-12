@@ -51,10 +51,16 @@ new application behavior.
 ## Current implementation non-compatibilities
 
 - Legacy console commands are not registered.
-- Legacy Python modules beyond the Phase 3 CSV/computed-data adapters do not exist.
-- No CSV/Excel input reader, VTP/NPZ serializer, CLI, or GUI is implemented. The
-  shared STL loader, shielding engine, and spawn scheduler are internal Phase 5
-  migration surfaces, not legacy Python-import or command compatibility. The
+- Legacy Python modules beyond the Phase 3 CSV/computed-data adapters and the
+  Phase 6 `fmfsolver.app.gui_app`/`newtsolver.app.gui_app` selectors do not exist.
+- The Phase 6 shared GUI shell, cases panel, viewer, lifecycle, and image export
+  are implemented. The thin compatibility GUI modules select the exact product
+  spec, but Phase 7 case I/O/execution adapters and console command registration
+  are absent. A directly invoked module opens a visibly non-calculating shell and
+  directs calculations to the pinned legacy product.
+- No compatible CSV/Excel input reader, VTP/NPZ serializer, or CLI is implemented.
+  The shared STL loader, shielding engine, and spawn scheduler are internal Phase
+  5 migration surfaces, not legacy Python-import or command compatibility. The
   scheduler preserves worker logging and failure-partial differences as explicit
   policies for later compatibility adapters.
 - The shared Sentman and hypersonic models are internal Phase 4 migration
