@@ -306,7 +306,11 @@ def _mask_cache_key(
     upstream_direction: np.ndarray,
     resolved: ResolvedShieldingConfig,
 ) -> tuple[object, ...]:
-    direction_key = tuple(np.round(upstream_direction, decimals=12).tolist())
+    # Grazing masks can change discontinuously below decimal rounding scales.
+    direction_key = np.ascontiguousarray(
+        upstream_direction,
+        dtype=np.dtype("<f8"),
+    ).tobytes()
     return (
         resolved.algorithm_version,
         fingerprint,

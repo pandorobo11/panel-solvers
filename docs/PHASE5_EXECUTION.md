@@ -18,6 +18,15 @@ includes geometry, direction, effective backend, batch size, and shielding
 algorithm version. `PANELSOLVER_SHIELD_*` takes precedence over one adapter-
 selected legacy prefix; core never chooses between both legacy prefixes.
 
+Phase 8 makes the mask-cache direction identity the exact normalized float64
+direction supplied to the ray backend. Both pinned legacy implementations and
+the original shared implementation rounded direction components to 12 decimal
+places. Distinct grazing directions can cross a panel boundary below that scale,
+so a warm cache could return a mask that disagreed with the same cold ray query.
+The correction changes only a private process-local cache key: the ray algorithm,
+backend selection, public case signatures, artifact metadata, and shielding
+algorithm version remain unchanged.
+
 ## Signature and result cache
 
 ADR 0005 defines the exact schema. The signature binds common resolved inputs,

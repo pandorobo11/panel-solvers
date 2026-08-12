@@ -8,6 +8,9 @@ import numpy as np
 from trimesh.ray import has_embree
 
 from panelsolver.core import (
+    MeshComponent,
+    PanelGeometry,
+    PanelMesh,
     RayBackend,
     ShieldingConfig,
     ShieldingError,
@@ -16,6 +19,7 @@ from panelsolver.core import (
     compute_shielding,
     load_panel_mesh,
     shielding_cache_stats,
+    velocity_hat_stl_from_tangent_angles,
 )
 
 from .test_mesh_loading import FIXTURE_STL
@@ -28,6 +32,41 @@ class _CountingIntersector:
     def intersects_id(self, **_kwargs):
         self.call_count += 1
         return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+
+def _grazing_two_face_mesh() -> PanelMesh:
+    # Amplify the 4e-13 direction delta into a robust 4e-7 m lateral shift.
+    far_x_m = 1_000_000.0
+    grazing_edge_y_m = -2.0e-7
+    vertices = np.array(
+        [
+            [far_x_m, -1.0, -1.0],
+            [far_x_m, 1.0, -1.0],
+            [far_x_m, 0.0, 2.0],
+            [0.0, grazing_edge_y_m, -1.0],
+            [0.0, grazing_edge_y_m, 1.0],
+            [0.0, -1.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
+    faces = np.array([[0, 1, 2], [3, 4, 5]], dtype=np.int64)
+    triangles = vertices[faces]
+    cross = np.cross(
+        triangles[:, 1] - triangles[:, 0],
+        triangles[:, 2] - triangles[:, 0],
+    )
+    cross_norm = np.linalg.norm(cross, axis=1)
+    return PanelMesh(
+        vertices_stl_m=vertices,
+        faces=faces,
+        geometry=PanelGeometry(
+            centers_stl_m=triangles.mean(axis=1),
+            normals_out_stl=cross / cross_norm[:, None],
+            areas_m2=0.5 * cross_norm,
+            component_ids=np.zeros(2, dtype=np.int64),
+        ),
+        components=(MeshComponent(0, "synthetic-grazing-two-face"),),
+    )
 
 
 class ShieldingTests(unittest.TestCase):
@@ -48,38 +87,107 @@ class ShieldingTests(unittest.TestCase):
         self.assertEqual("not_used", result.config.effective_backend)
         self.assertEqual(0, shielding_cache_stats().intersector_entries)
 
-    def test_cache_key_includes_direction_batch_backend_and_geometry(self) -> None:
+    def test_cache_key_includes_exact_direction_batch_backend_and_geometry(
+        self,
+    ) -> None:
         intersector = _CountingIntersector()
+        other_mesh = load_panel_mesh([FIXTURE_STL / "plate.stl"], 1.0).mesh
+
+        def resolve_intersector(_mesh, requested_backend, _fingerprint):
+            return intersector, requested_backend.value
+
         with patch(
             "panelsolver.core.shielding._resolve_intersector",
-            return_value=(intersector, "rtree"),
+            side_effect=resolve_intersector,
         ):
             first = compute_shielding(
                 self.mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(batch_size=8, cache_max=4),
+                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
             )
-            second = compute_shielding(
+            exact_repeat = compute_shielding(
                 self.mesh,
-                np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(batch_size=8, cache_max=4),
+                np.array([2.0, 0.0, 0.0]),
+                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
             )
-            compute_shielding(
+            different_direction = compute_shielding(
                 self.mesh,
                 np.array([0.0, 1.0, 0.0]),
-                ShieldingConfig(batch_size=8, cache_max=4),
+                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
             )
-            compute_shielding(
+            different_batch = compute_shielding(
                 self.mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(batch_size=3, cache_max=4),
+                ShieldingConfig(ray_backend="rtree", batch_size=3, cache_max=8),
+            )
+            different_geometry = compute_shielding(
+                other_mesh,
+                np.array([1.0, 0.0, 0.0]),
+                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
+            )
+            different_backend = compute_shielding(
+                self.mesh,
+                np.array([1.0, 0.0, 0.0]),
+                ShieldingConfig(ray_backend="embree", batch_size=8, cache_max=8),
             )
 
         self.assertFalse(first.cache_hit)
-        self.assertTrue(second.cache_hit)
-        expected_calls = 2 + 2 + 4
-        self.assertEqual(expected_calls, intersector.call_count)
-        self.assertEqual(1, shielding_cache_stats().mask_hits)
+        self.assertTrue(exact_repeat.cache_hit)
+        for result in (
+            different_direction,
+            different_batch,
+            different_geometry,
+            different_backend,
+        ):
+            self.assertFalse(result.cache_hit)
+        stats = shielding_cache_stats()
+        self.assertEqual(
+            (5, 1, 5),
+            (stats.mask_entries, stats.mask_hits, stats.mask_misses),
+        )
+
+    def test_grazing_directions_have_distinct_real_rtree_masks_and_cache_keys(
+        self,
+    ) -> None:
+        mesh = _grazing_two_face_mesh()
+        direction_a = velocity_hat_stl_from_tangent_angles(0.0, 0.0)
+        direction_b = velocity_hat_stl_from_tangent_angles(
+            0.0,
+            -2.291831180523293e-11,
+        )
+        uncached = ShieldingConfig(
+            ray_backend="rtree",
+            batch_size=2,
+            cache_max=0,
+        )
+        cold_a = compute_shielding(mesh, direction_a, uncached)
+        cold_b = compute_shielding(mesh, direction_b, uncached)
+        np.testing.assert_array_equal(cold_a.shielded, [False, False])
+        np.testing.assert_array_equal(cold_b.shielded, [True, False])
+        self.assertEqual("rtree", cold_a.config.effective_backend)
+        self.assertEqual("rtree", cold_b.config.effective_backend)
+
+        clear_shielding_cache()
+        cached = ShieldingConfig(
+            ray_backend="rtree",
+            batch_size=2,
+            cache_max=2,
+        )
+        first_a = compute_shielding(mesh, direction_a, cached)
+        first_b = compute_shielding(mesh, direction_b, cached)
+        repeated_b = compute_shielding(mesh, direction_b, cached)
+
+        np.testing.assert_array_equal(first_a.shielded, cold_a.shielded)
+        np.testing.assert_array_equal(first_b.shielded, cold_b.shielded)
+        np.testing.assert_array_equal(repeated_b.shielded, cold_b.shielded)
+        self.assertFalse(first_a.cache_hit)
+        self.assertFalse(first_b.cache_hit)
+        self.assertTrue(repeated_b.cache_hit)
+        stats = shielding_cache_stats()
+        self.assertEqual(
+            (2, 1, 2),
+            (stats.mask_entries, stats.mask_hits, stats.mask_misses),
+        )
 
     def test_cached_mask_cannot_be_mutated(self) -> None:
         first = compute_shielding(
