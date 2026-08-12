@@ -131,7 +131,7 @@ def _scheduler_frame(case_ids: tuple[str, str]) -> pd.DataFrame:
 
 def _missing_error(path: Path) -> FileNotFoundError:
     try:
-        path.resolve().stat()
+        path.resolve().open("rb")
     except FileNotFoundError as exc:
         return exc
     raise AssertionError("missing-path fixture unexpectedly exists")

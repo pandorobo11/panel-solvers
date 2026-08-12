@@ -249,7 +249,7 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
 
         missing = staging / "direct-errors" / product / "missing.stl"
         try:
-            missing.resolve().stat()
+            missing.resolve().open("rb")
         except FileNotFoundError as exc:
             expected_missing_message = str(exc)
         else:
