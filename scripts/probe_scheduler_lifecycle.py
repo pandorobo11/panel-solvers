@@ -18,6 +18,7 @@ from panelsolver.core import (
     PartialResultPolicy,
     WorkerExecutionError,
     WorkerLogPolicy,
+    WorkerStartupError,
     WorkerUnexpectedExitError,
     iter_case_results_parallel,
 )
@@ -124,6 +125,26 @@ def _run_child(iterations: int) -> int:
             )
         _assert_resources_released(baseline, f"serialization iteration {iteration}")
 
+        try:
+            list(
+                iter_case_results_parallel(
+                    (0, 1),
+                    2,
+                    lambda case, _logfn: case,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                    chunk_cases=1,
+                )
+            )
+        except WorkerStartupError as exc:
+            if "serialize spawn worker callable" not in str(exc):
+                raise
+        else:
+            raise RuntimeError(
+                f"iteration {iteration} accepted an unpickleable worker callable"
+            )
+        _assert_resources_released(baseline, f"startup iteration {iteration}")
+
     for iteration in range(min(iterations, 2)):
         with tempfile.TemporaryDirectory() as temp_dir:
             marker = str(Path(temp_dir) / "blocking-worker-ready")
@@ -146,6 +167,7 @@ def _run_child(iterations: int) -> int:
             {
                 "early_close_iterations": min(iterations, 2),
                 "serialization_iterations": iterations,
+                "startup_failure_iterations": iterations,
                 "unexpected_exit_iterations": iterations,
                 "resources": "clean",
             },

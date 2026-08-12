@@ -531,14 +531,38 @@ class SchedulerTests(unittest.TestCase):
         self.assertTrue(failed)
         self.assert_no_new_worker_resources(before)
 
-    def test_spawn_start_failure_is_wrapped(self) -> None:
+    def test_unpickleable_spawn_callable_is_rejected_before_child_start(self) -> None:
+        before = _worker_resource_state()
+        local_worker = lambda case, _logfn: case
+        with self.assertRaisesRegex(
+            WorkerStartupError,
+            "serialize spawn worker callable",
+        ):
+            list(
+                iter_case_results_parallel(
+                    (0, 1),
+                    2,
+                    local_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+                )
+            )
+        self.assert_no_new_worker_resources(before)
+
+    def test_os_spawn_start_failure_is_wrapped_without_child_leak(self) -> None:
         before = _worker_resource_state()
         process_type = scheduler_module.mp.get_context("spawn").Process
-        with mock.patch.object(
-            process_type,
-            "start",
-            side_effect=OSError("synthetic spawn failure"),
-        ):
+        original_start = process_type.start
+        calls = 0
+
+        def fail_first_start(process):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise OSError("synthetic spawn failure")
+            return original_start(process)
+
+        with mock.patch.object(process_type, "start", new=fail_first_start):
             with self.assertRaisesRegex(WorkerStartupError, "synthetic spawn failure"):
                 list(
                     iter_case_results_parallel(
@@ -549,6 +573,7 @@ class SchedulerTests(unittest.TestCase):
                         partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
                     )
                 )
+        self.assertEqual(1, calls)
         self.assert_no_new_worker_resources(before)
 
     def test_requires_explicit_policies_and_valid_complete_order(self) -> None:

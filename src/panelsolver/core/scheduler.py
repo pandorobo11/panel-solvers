@@ -292,6 +292,17 @@ def _encode_parent_message(message: Mapping[str, object]) -> memoryview:
         ) from exc
 
 
+def _validate_spawn_callable(run_case_fn: object) -> None:
+    """Reject an unpickleable worker callable before any child is created."""
+    try:
+        mp.reduction.ForkingPickler.dumps(run_case_fn)
+    except Exception as exc:
+        raise WorkerStartupError(
+            "Could not serialize spawn worker callable: "
+            f"{_safe_exception_text(exc)}"
+        ) from exc
+
+
 def _encode_worker_message(message: Mapping[str, object]) -> memoryview:
     """Serialize before Pipe.send_bytes so failures are observable."""
     try:
@@ -718,6 +729,10 @@ def iter_case_results_parallel[CaseT, ResultT](
     }
     worker_last_bucket: list[Hashable | None] = [None] * worker_count
 
+    # On Windows, multiprocessing creates the child before it pickles the
+    # process object.  Preflight the user callable so serialization failure
+    # cannot leave a half-started child emitting a delayed bootstrap traceback.
+    _validate_spawn_callable(run_case_fn)
     context = mp.get_context("spawn")
     cancel_event = context.Event()
     task_pairs = [context.Pipe(duplex=False) for _ in range(worker_count)]
