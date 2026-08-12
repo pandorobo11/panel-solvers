@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -43,6 +44,8 @@ class FakePlotter:
         self.render_count = 0
         self.reset_count = 0
         self.parallel_enabled = False
+        self.screenshot_calls: list[str] = []
+        self.screenshot_error: Exception | None = None
 
     def enable_parallel_projection(self) -> None:
         self.parallel_enabled = True
@@ -73,6 +76,11 @@ class FakePlotter:
 
     def view_vector(self, vector) -> None:
         self.view_vectors.append(tuple(vector))
+
+    def screenshot(self, path: str) -> None:
+        if self.screenshot_error is not None:
+            raise self.screenshot_error
+        self.screenshot_calls.append(path)
 
 
 class FakePoly:
@@ -111,12 +119,13 @@ class ViewerPanelTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    def make_viewer(self, *, spec=None, reader=lambda _path: None):
+    def make_viewer(self, *, spec=None, reader=lambda _path: None, **kwargs):
         plotter = FakePlotter()
         viewer = ViewerPanel(
             fmf_solver_spec() if spec is None else spec,
             artifact_reader=reader,
             plotter_factory=lambda _parent: plotter,
+            **kwargs,
         )
         return viewer, plotter
 
@@ -234,6 +243,144 @@ class ViewerPanelTests(unittest.TestCase):
         viewer.clear_range()
         self.assertEqual("", viewer.edit_vmin.text())
         self.assertEqual("", viewer.edit_vmax.text())
+
+    def test_single_image_export_cancel_filters_default_and_failure(self) -> None:
+        viewer, plotter = self.make_viewer()
+        viewer._loaded_vtp_path = Path("/artifacts/case.vtp")
+        messages = []
+        viewer.log_message.connect(messages.append)
+        captured = {}
+
+        def cancel(_parent, title, default, filters):
+            captured.update(title=title, default=default, filters=filters)
+            return ("", "")
+
+        with patch.object(QtWidgets.QFileDialog, "getSaveFileName", side_effect=cancel):
+            viewer.save_view_image()
+        self.assertEqual("Save View Image", captured["title"])
+        self.assertEqual(Path("/artifacts"), Path(captured["default"]))
+        self.assertEqual(
+            "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)",
+            captured["filters"],
+        )
+        self.assertEqual([], plotter.screenshot_calls)
+
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            return_value=("/tmp/view.tiff", "TIFF"),
+        ):
+            viewer.save_view_image()
+        self.assertEqual(["/tmp/view.tiff"], plotter.screenshot_calls)
+        self.assertIn("[OK] Saved image: /tmp/view.tiff", messages)
+
+        plotter.screenshot_error = RuntimeError("capture failed")
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            return_value=("/tmp/fail.png", "PNG"),
+        ):
+            viewer.save_view_image()
+        self.assertIn("Failed to save image: capture failed", messages[-1])
+
+    def test_batch_export_orders_current_rows_and_skips_invalid_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="phase6_images_") as directory:
+            source_dir = Path(directory) / "artifacts"
+            output_dir = Path(directory) / "captures"
+            rows = (
+                {"case_id": "current_a", "out_dir": str(source_dir)},
+                {"case_id": "missing", "out_dir": str(source_dir)},
+                {"case_id": "stale", "out_dir": str(source_dir)},
+                {"case_id": "broken", "out_dir": str(source_dir)},
+                {"case_id": "current_b", "out_dir": str(source_dir)},
+            )
+            current = _signature("current")
+            stale = _signature("stale")
+            spec = fmf_solver_spec(adapters=_adapters(current))
+            existing = {
+                source_dir / f"{row['case_id']}.vtp"
+                for row in rows
+                if row["case_id"] != "missing"
+            }
+
+            def artifact_reader(path):
+                case_id = Path(path).stem
+                if case_id == "broken":
+                    raise ValueError("unreadable")
+                digest = stale.digest if case_id == "stale" else current.digest
+                return FakePoly(
+                    {"Cp_n": [1.0]},
+                    {"case_id": [case_id], "case_signature": [digest]},
+                )
+
+            made = []
+            events = []
+            viewer, plotter = self.make_viewer(
+                spec=spec,
+                reader=artifact_reader,
+                path_exists=lambda path: path in existing,
+                make_directory=lambda path: made.append(path),
+                process_events=lambda: events.append("event"),
+            )
+            messages = []
+            viewer.log_message.connect(messages.append)
+            contexts = []
+            original_load = viewer.load_vtp
+
+            def load_with_context(path, poly=None, case_row=None):
+                contexts.append((Path(path).stem, case_row))
+                return original_load(path, poly=poly, case_row=case_row)
+
+            with (
+                patch.object(
+                    QtWidgets.QFileDialog,
+                    "getExistingDirectory",
+                    return_value=str(output_dir),
+                ) as dialog,
+                patch.object(viewer, "load_vtp", side_effect=load_with_context),
+            ):
+                viewer.save_images_for_case_rows(rows)
+
+            self.assertEqual(str(source_dir / "images"), dialog.call_args.args[2])
+            self.assertEqual([output_dir], made)
+            self.assertEqual(5, len(events))
+            self.assertEqual(
+                [str(output_dir / "current_a.png"), str(output_dir / "current_b.png")],
+                plotter.screenshot_calls,
+            )
+            self.assertEqual(
+                [("current_a", rows[0]), ("current_b", rows[4])],
+                contexts,
+            )
+            log_text = "\n".join(messages)
+            self.assertIn("VTP not found", log_text)
+            self.assertIn("signature mismatch for 'stale'", log_text)
+            self.assertIn("Failed to read VTP for 'broken'", log_text)
+            self.assertIn("saved=2, skipped=3", messages[-1])
+
+    def test_batch_cancel_and_directory_failure_do_not_capture(self) -> None:
+        row = {"case_id": "one", "out_dir": "/artifacts"}
+        viewer, plotter = self.make_viewer()
+        messages = []
+        viewer.log_message.connect(messages.append)
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getExistingDirectory",
+            return_value="",
+        ):
+            viewer.save_images_for_case_rows((row,))
+        self.assertEqual([], plotter.screenshot_calls)
+
+        viewer._make_directory = lambda _path: (_ for _ in ()).throw(
+            OSError("read only")
+        )
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getExistingDirectory",
+            return_value="/captures",
+        ):
+            viewer.save_images_for_case_rows((row,))
+        self.assertIn("Failed to create image directory: read only", messages[-1])
 
 
 if __name__ == "__main__":
