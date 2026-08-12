@@ -69,3 +69,25 @@ misaligned arrays are not offered for scalar coloring. Boolean arrays and the
 legacy byte-valued `shielded` field use a categorical `[0, 1]` range. This keeps
 D019 model-specific additions visible without defining a universal VTP scalar
 schema.
+
+## Shared viewer
+
+`panelsolver.app.viewer.ViewerPanel` is the single Qt/PyVista rendering widget.
+It receives `SolverSpec`, an artifact reader, and a plotter factory; tests inject
+a non-OpenGL plotter while production uses `QtInteractor`. Loading refreshes the
+scalar selector from the Phase 6b discovery service and chooses the first
+available preferred scalar. A manually opened signature-mismatched VTP remains
+visible but receives no mismatched case context.
+
+The viewer retains the pinned jet default, edges, shield transparency, overlay,
+automatic/explicit ranges, parallel projection, axes, Cartesian/ISO cameras,
+and camera state across redraws. Wind cameras use only the spec adapter's
+resolved `velocity_hat_stl`; the viewer does not parse product attitudes or
+evaluate a model. A failed read or invalid cell-data envelope clears the prior
+view. Image export is added in the later Phase 6f slice.
+
+CI exercises real Qt widgets with an injected non-OpenGL plotter on all three
+platforms. On macOS, constructing VTK's native `QtInteractor` under
+`QT_QPA_PLATFORM=offscreen` exits in the platform rendering layer, so this is
+not used as a headless gate. A normal-display `QtInteractor` smoke remains part
+of the Phase 6g launcher acceptance; pixel output is not a golden.
