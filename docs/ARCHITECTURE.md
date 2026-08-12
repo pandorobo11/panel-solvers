@@ -140,6 +140,13 @@ backend, flow direction, batch size, and shielding algorithm version. Neutral
 `PANELSOLVER_*` settings take precedence over one explicitly selected legacy
 prefix, so core never guesses between FMF and newtsolver environment state.
 
+Phase 5c adopts the exact ADR 0005 canonical signature. It binds normalized
+common inputs, model-owned payload and algorithm version, numerical geometry,
+and resolved shielding/backend identity without using the application version.
+The shared result cache accepts only that signature as its key. Primary Phase 5
+matching precedes ordered, opaque legacy fallbacks supplied by product adapters;
+core does not contain either legacy signature schema.
+
 ## Ownership constraints
 
 | Concern | Owner |
