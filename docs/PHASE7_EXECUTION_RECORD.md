@@ -49,10 +49,15 @@ expected result was changed to obtain a green job.
   direct solver shapes/signatures, serializers, and atmosphere helpers passed.
   Obsolete tests that patch replaced private implementation points were not
   treated as public failures.
-- A pre-existing Phase 5 documentation sentence had the two partial-result
-  policies reversed. Issue #52 corrects documentation only to the pinned and
-  tested pairing: FMF `FORWARD`/`YIELD_COMPLETED`, newtsolver
-  `DROP`/`DISCARD_CHUNK`.
+- This Phase 7 record originally and incorrectly stated that Issue #52 had fixed
+  the failed-chunk pairing to FMF `FORWARD`/`YIELD_COMPLETED` and newtsolver
+  `DROP`/`DISCARD_CHUNK`. Phase 8's independent audit re-read the pinned worker
+  envelopes and forced two cases into one good-then-failing chunk. Issue #75
+  corrects both code and documentation to the actual legacy contracts: FMF
+  `FORWARD`/`DISCARD_CHUNK`, newtsolver `DROP`/`YIELD_COMPLETED`. Successful
+  case numerical values and all-success runs are unchanged; failed-run result,
+  progress, and checkpoint visibility now match the pinned policies. Ordering
+  rules, cancellation, signatures, and cache identity are unchanged.
 
 ## Manual macOS GUI smoke
 
