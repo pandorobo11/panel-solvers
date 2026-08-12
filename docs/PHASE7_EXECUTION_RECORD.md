@@ -58,6 +58,27 @@ expected result was changed to obtain a green job.
   case numerical values and all-success runs are unchanged; failed-run result,
   progress, and checkpoint visibility now match the pinned policies. Ordering
   rules, cancellation, signatures, and cache identity are unchanged.
+- Phase 8 also found that Phase 7's computational helper aliases changed five
+  accepted keyword spellings and moved 25 function pickle globals to shared
+  modules. Issue #77 restores product-owned thin wrappers and the exact pinned
+  callable signatures/identities, including both cached D025 detach helpers.
+  Independent semantic probes compared the new wrappers with their Phase 7
+  shared delegates exactly; wrapper values, array shapes, return dtypes, and
+  exception behavior had zero delta and no tolerance was needed. That statement
+  is deliberately not a blanket pinned-legacy numerical certification. The
+  independent pinned comparison also retained separate Phase 8 findings for a
+  scalar Sentman tangential component (one ULP), FMF atmosphere `Z`
+  (`int64` pinned versus `float64` shared), and invalid-shape/zero-reference
+  direct-helper boundaries. Issue #77 neither changes nor accepts those findings.
+  This correction adds no equation or numerical import to either compatibility
+  frontend. Incidental `common` and GUI formatting behavior remains a distinct
+  Phase 8 audit boundary rather than being changed by this correction. Direct
+  product detach-cache APIs are restored, while shared pressure execution does
+  not mutate product-facing cache counters; the compatibility guide records
+  that deliberate architecture boundary and its user path. Exact annotation
+  text is restored without adding NumPy/pandas imports to the frontend;
+  `typing.get_type_hints()` therefore requires caller-supplied globals for those
+  names, an introspection-only exception documented in the same guide.
 
 ## Manual macOS GUI smoke
 

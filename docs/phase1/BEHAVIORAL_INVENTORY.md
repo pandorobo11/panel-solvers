@@ -78,11 +78,22 @@ FMF-specific callable imports include:
 - `physics.us1976.load_us1976_tables`, `altitude_range_km`,
   `sample_at_altitude_km`, `mean_to_most_probable_speed`.
 
+Their pinned keyword spellings are part of the callable contract. In particular,
+`stl_to_body` takes `v_stl`, `sample_at_altitude_km` takes `alt_km`, and
+`mean_to_most_probable_speed` takes `v_mean`. The callables are owned by the
+listed FMF modules for introspection and function pickling even when their
+implementation is shared internally.
+
 newtsolver explicitly re-exports a compatibility surface from
 `core.panel_core`, including `panel_force_density`, attitude/frame helpers,
 modified-Newtonian, tangent-wedge, tangent-cone, and Prandtl-Meyer functions.
 `core.pressure_models` also has an explicit `__all__`.  Some underscore helpers
 are intentionally present in `panel_core.__all__` and are used by legacy tests.
+The D025 attitude helper takes `attitude_input`, and `stl_to_body` takes
+`v_stl`. Each callable's defining product module, exact name/signature, pickle
+global, and package/panel-core re-export identity are observable parts of this
+surface. The wedge and cone detach-limit helpers are public
+`functools.lru_cache` wrappers with maximum sizes 256 and 128 respectively.
 
 Direct `run_case` calls bypass `read_cases`.  They can therefore observe different
 validation/default behavior from CLI and GUI calls.  Neither contract may be

@@ -98,6 +98,47 @@ the path in caller state if it is needed later; the shared application's
 internal serializers return `Path`, but that is not the compatibility contract.
 The internal `path=` spelling is not a public synonym for `out_path=`.
 
+The listed FMF numerical helpers and newtsolver D025 helpers also retain their
+pinned product-module identity and keyword spellings. Representative direct use
+is:
+
+```python
+from fmfsolver.core.sentman_core import stl_to_body as fmf_stl_to_body
+from fmfsolver.physics.us1976 import (
+    mean_to_most_probable_speed,
+    sample_at_altitude_km,
+)
+from newtsolver.core.panel_core import _resolve_attitude_mode, stl_to_body
+
+atmosphere = sample_at_altitude_km(alt_km=100.0)
+most_probable = mean_to_most_probable_speed(v_mean=atmosphere["Vmean_ms"])
+fmf_body_vector = fmf_stl_to_body(v_stl=[1.0, 2.0, 3.0])
+newt_body_vector = stl_to_body(v_stl=[1.0, 2.0, 3.0])
+mode = _resolve_attitude_mode(attitude_input="bank")
+```
+
+Function pickles refer to their `fmfsolver` or `newtsolver` owner module, so the
+corresponding compatibility package must be importable when unpickling. The
+shared `panelsolver` parameter names are internal and are not alternative public
+keywords. newtsolver's cached wedge/cone detach helpers retain their public
+`cache_info`, `cache_clear`, and `cache_parameters` methods. Those counters
+describe direct calls to that compatibility helper only: shared pressure/model
+execution uses the engine-owned numerically equivalent cache, so do not use the
+product helper's `cache_info()` as a solver execution counter.
+
+`load_us1976_tables()` retains its values, columns, and DataFrame return shape,
+but the current shared table uses floating-point altitude (`Z`) where the pinned
+direct FMF helper used integer `Z`. Code that requires an integer altitude label
+should convert `table["Z"]` explicitly after checking that its values are
+integral. This pre-existing direct-table compatibility exception is tracked
+separately from the callable-identity correction.
+
+`inspect.signature()` exposes the pinned annotation text. Because the thin
+frontends deliberately do not import NumPy or pandas, callers using
+`typing.get_type_hints()` on these helpers should pass a `globalns` containing
+`np` and/or `pd` as needed; ordinary calls, inspection, and function pickling do
+not require this.
+
 Direct `fmfsolver.core.solver` and `newtsolver.core.solver` calls retain the
 pinned blank/type contract. In `run_case()` dictionaries and `run_cases()`
 DataFrames, total-row `component_id` and `component_stl_path` values are empty

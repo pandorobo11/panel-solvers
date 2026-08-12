@@ -161,6 +161,44 @@ solver calls return the pinned legacy signature while normal Phase 7 runtime
 artifacts continue to carry the primary ADR 0005 identity and accept ordered
 legacy identities as fallbacks.
 
+Phase 8 found that Phase 7's direct function aliases preserved positional
+numerical calls but exposed shared parameter names and shared-module pickle
+globals. Product-owned thin wrappers now restore the exact pinned signature,
+`__name__`, `__qualname__`, `__module__`, and function-pickle identity for all
+25 Phase 1 computational helpers and D025 exports. This includes FMF `alt_km`,
+`v_mean`, and `v_stl` keywords and newtsolver `attitude_input` and `v_stl`.
+`panel_core` and `pressure_models` re-export the same owner objects rather than
+creating additional wrappers. The two cached detach-limit helpers retain their
+pinned LRU wrapper types, methods, and maximum sizes while delegating the
+calculation to the shared implementation's uncached body. No physical equation,
+validation branch, array conversion, or numerical dependency moved into a
+compatibility frontend; independent probes found exact computational values and
+array shapes with no tolerance, and the wrappers introduce no delta from their
+pre-fix shared delegates. The pre-existing FMF atmosphere-table `Z` dtype drift
+(pinned `int64`, shared `float64`) is not corrected or hidden by this identity
+change and remains a separate Phase 8 direct-table compatibility audit item.
+Incidental `common` and GUI-formatting
+callables are outside this computational/D025 correction and remain separate
+Phase 8 compatibility audit items rather than being silently normalized here.
+
+The pinned wedge pressure and panel-force implementation called the product's
+public detach-limit LRU object internally. The shared engine instead owns its
+own numerically identical cache. Direct calls to the product detach helper still
+have the pinned cache type, size, key behavior, and methods, but calls through a
+different shared helper do not increment that product-facing cache's statistics.
+This avoids coupling shared model execution back to a compatibility frontend;
+callers must not use `cache_info()` as an execution counter for pressure or
+solver calls. Numerical results and cache keys for direct detach calls are
+unchanged.
+
+The wrappers retain the pinned annotation text visible through
+`inspect.signature` without importing NumPy or pandas into computational
+frontends. Consequently `typing.get_type_hints()` on an annotation containing
+`np` or `pd` needs the caller to supply an appropriate `globalns`; the pinned
+modules could resolve those names from their former numerical imports. This is
+an accepted introspection-only exception and prevents a compatibility layer from
+reacquiring production numerical dependencies solely for annotation lookup.
+
 Phase 8 restored the pinned direct-solver failure boundary while retaining the
 typed shared exception surface used by the CLI and GUI. For both products, a true
 `run_cases()` cancellation callback is observed even for an empty table and

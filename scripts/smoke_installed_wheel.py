@@ -8,6 +8,7 @@ import importlib
 import importlib.metadata
 import inspect
 import json
+import pickle
 import shutil
 import subprocess
 import sys
@@ -66,6 +67,70 @@ EXPECTED_EXPORTER_SIGNATURES = {
     ),
     "export_npz": "(out_path: 'str', **arrays)",
 }
+EXPECTED_PUBLIC_CALLABLES = {
+    "fmfsolver.core.sentman_core": (
+        "sentman_dC_dA_vector",
+        "sentman_dC_dA_vectors",
+        "stl_to_body",
+        "resolve_attitude_to_vhat",
+        "rot_y",
+    ),
+    "fmfsolver.physics.us1976": (
+        "load_us1976_tables",
+        "altitude_range_km",
+        "sample_at_altitude_km",
+        "mean_to_most_probable_speed",
+    ),
+    "newtsolver.core.attitude": (
+        "_resolve_attitude_mode",
+        "stl_to_body",
+        "resolve_attitude_to_vhat",
+        "rot_y",
+    ),
+    "newtsolver.core.panel_forces": ("panel_force_density",),
+    "newtsolver.surface_equations": (
+        "normalize_windward_equation",
+        "normalize_leeward_equation",
+        "split_semicolon_tokens",
+        "count_semicolon_entries",
+        "expand_equations_for_components",
+    ),
+    "newtsolver.core.pressure_models.modified_newtonian": (
+        "modified_newtonian_cp_max",
+    ),
+    "newtsolver.core.pressure_models.prandtl_meyer": (
+        "_prandtl_meyer_nu",
+        "_inverse_prandtl_meyer",
+        "prandtl_meyer_pressure_coefficient",
+    ),
+    "newtsolver.core.pressure_models.tangent_wedge": (
+        "_oblique_theta_from_beta",
+        "_tangent_wedge_detach_limit",
+        "_weak_oblique_shock_beta",
+        "tangent_wedge_pressure_coefficient",
+    ),
+    "newtsolver.core.pressure_models.tangent_cone": (
+        "_tangent_cone_detach_limit",
+        "tangent_cone_pressure_coefficient",
+    ),
+}
+EXPECTED_RESTORED_KEYWORD_SIGNATURES = {
+    "fmfsolver.core.sentman_core.stl_to_body": (
+        "(v_stl: 'np.ndarray') -> 'np.ndarray'"
+    ),
+    "fmfsolver.physics.us1976.sample_at_altitude_km": (
+        "(alt_km: 'float') -> 'dict'"
+    ),
+    "fmfsolver.physics.us1976.mean_to_most_probable_speed": (
+        "(v_mean: 'float') -> 'float'"
+    ),
+    "newtsolver.core.attitude._resolve_attitude_mode": (
+        "(attitude_input: 'str | None') -> 'str'"
+    ),
+    "newtsolver.core.attitude.stl_to_body": (
+        "(v_stl: 'np.ndarray') -> 'np.ndarray'"
+    ),
+}
 EXPECTED_DIRECT_COMPONENT_KEYS = [
     "scope",
     "component_id",
@@ -100,6 +165,112 @@ def _command_path(name: str) -> Path:
     scripts = Path(sys.executable).parent
     suffix = ".exe" if sys.platform == "win32" else ""
     return scripts / f"{name}{suffix}"
+
+
+def _smoke_public_callable_identity() -> None:
+    functions: dict[str, object] = {}
+    for module_name, names in EXPECTED_PUBLIC_CALLABLES.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            qualified = f"{module_name}.{name}"
+            function = getattr(module, name)
+            functions[qualified] = function
+            if (
+                function.__name__ != name
+                or function.__qualname__ != name
+                or function.__module__ != module_name
+            ):
+                raise RuntimeError(f"{qualified} owner identity changed")
+            if pickle.loads(pickle.dumps(function)) is not function:
+                raise RuntimeError(f"{qualified} pickle identity changed")
+
+    for qualified, expected in EXPECTED_RESTORED_KEYWORD_SIGNATURES.items():
+        if str(inspect.signature(functions[qualified])) != expected:
+            raise RuntimeError(f"{qualified} signature changed")
+
+    fmf_frames = importlib.import_module("fmfsolver.core.sentman_core")
+    atmosphere = importlib.import_module("fmfsolver.physics.us1976")
+    newt_attitude = importlib.import_module("newtsolver.core.attitude")
+    source = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    expected_body = np.array([-1.0, 2.0, -3.0], dtype=np.float64)
+    if not np.array_equal(fmf_frames.stl_to_body(v_stl=source), expected_body):
+        raise RuntimeError("FMF stl_to_body keyword result changed")
+    if not np.array_equal(newt_attitude.stl_to_body(v_stl=source), expected_body):
+        raise RuntimeError("newtsolver stl_to_body keyword result changed")
+    if atmosphere.sample_at_altitude_km(alt_km=0.0) != {
+        "T_K": 288.15,
+        "c_ms": 340.29,
+        "Vmean_ms": 458.94,
+    }:
+        raise RuntimeError("FMF altitude keyword result changed")
+    if atmosphere.mean_to_most_probable_speed(v_mean=100.0) != 88.6226925452758:
+        raise RuntimeError("FMF mean-speed keyword result changed")
+    if newt_attitude._resolve_attitude_mode(attitude_input="BANK") != "bank":
+        raise RuntimeError("newtsolver attitude keyword result changed")
+
+    panel_core = importlib.import_module("newtsolver.core.panel_core")
+    pressure_package = importlib.import_module("newtsolver.core.pressure_models")
+    for name in EXPECTED_PANEL_CORE_ALL:
+        owner = next(
+            (
+                function
+                for qualified, function in functions.items()
+                if qualified.startswith("newtsolver.")
+                and qualified.endswith(f".{name}")
+            ),
+            None,
+        )
+        if owner is not None and getattr(panel_core, name, None) is not owner:
+            raise RuntimeError(f"newtsolver.core.panel_core.{name} identity changed")
+    for name in EXPECTED_PRESSURE_MODELS_ALL:
+        owner = next(
+            function
+            for qualified, function in functions.items()
+            if qualified.endswith(f".{name}")
+        )
+        if getattr(pressure_package, name) is not owner:
+            raise RuntimeError(f"newtsolver.core.pressure_models.{name} changed")
+
+    for qualified, maxsize in (
+        (
+            (
+                "newtsolver.core.pressure_models.tangent_wedge."
+                "_tangent_wedge_detach_limit"
+            ),
+            256,
+        ),
+        (
+            (
+                "newtsolver.core.pressure_models.tangent_cone."
+                "_tangent_cone_detach_limit"
+            ),
+            128,
+        ),
+    ):
+        function = functions[qualified]
+        if function.cache_parameters() != {"maxsize": maxsize, "typed": False}:
+            raise RuntimeError(f"{qualified} cache contract changed")
+        function.cache_clear()
+        first = function(Mach=5.0, gamma=1.4)
+        second = function(Mach=5.0, gamma=1.4)
+        if first != second:
+            raise RuntimeError(f"{qualified} cached value changed")
+        info = function.cache_info()
+        if info.hits != 1 or info.misses != 1 or info.currsize != 1:
+            raise RuntimeError(f"{qualified} direct cache behavior changed")
+
+    wedge_detach = functions[
+        "newtsolver.core.pressure_models.tangent_wedge."
+        "_tangent_wedge_detach_limit"
+    ]
+    wedge_pressure = functions[
+        "newtsolver.core.pressure_models.tangent_wedge."
+        "tangent_wedge_pressure_coefficient"
+    ]
+    wedge_detach.cache_clear()
+    wedge_pressure(Mach=5.0, gamma=1.4, deltar=np.array([0.05]))
+    if wedge_detach.cache_info().currsize != 0:
+        raise RuntimeError("product detach cache must remain direct-call only")
 
 
 def _smoke_direct_exporters(staging: Path) -> None:
@@ -387,6 +558,7 @@ def main() -> int:
         raise RuntimeError("newtsolver.core.panel_core.__all__ changed")
     if pressure_models.__all__ != EXPECTED_PRESSURE_MODELS_ALL:
         raise RuntimeError("newtsolver.core.pressure_models.__all__ changed")
+    _smoke_public_callable_identity()
 
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)
