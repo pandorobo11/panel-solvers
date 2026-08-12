@@ -26,6 +26,13 @@ configuration. Application version and cache capacity are excluded. The result
 cache stores only immutable `CommonResults`, so equivalent numerical geometry at
 a different source path cannot reuse stale component-source metadata.
 
+Phase 8 retains every public ADR 0005 digest and adds an internal execution-cache
+identity. It combines that public digest with the exact accepted float64
+`velocity_hat_stl` evaluated by the model. This closes a wrong-hit path for
+last-bit-distinct accepted flow states, including equivalent legacy attitude
+modes and tolerance-distinct direct-core requests, without changing the
+angle-consistency tolerance, model equations, artifacts, or signature matching.
+
 Phase 5 signatures match first. Product adapters may supply opaque ordered
 legacy fallbacks; core does not normalize D017/D018 differences.
 
@@ -34,9 +41,9 @@ legacy fallbacks; core does not normalize D017/D018 differences.
 `execute_case` accepts `CaseExecutionRequest`, whose model must implement the
 Phase 2 `PanelLoadModel` and provide its normalized signature payload. The engine
 validates model identity, loads geometry, computes shielding, constructs
-`PanelFlowState`, builds the signature, checks the result cache, evaluates the
-model, and routes the local vector through common integration and component
-aggregation.
+`PanelFlowState`, builds the public and private cache signatures, checks the
+result cache, evaluates the model, and routes the local vector through common
+integration and component aggregation.
 
 The engine has no concrete-model branch. `panelsolver.app` assembles the registry
 containing `SentmanModel` and `HypersonicModel` and selects by stable model ID.

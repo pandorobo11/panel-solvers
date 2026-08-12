@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,7 +36,10 @@ from .mesh_loading import (
 )
 from .result_cache import ResultCache
 from .shielding import ShieldingConfig, ShieldingResult, compute_shielding
-from .signatures import CaseSignature, build_case_signature
+from .signatures import CaseSignature, build_case_signature, canonical_json
+
+_RESULT_CACHE_SIGNATURE_SCHEMA_NAME = "panelsolver.execution-cache"
+_RESULT_CACHE_SIGNATURE_SCHEMA_VERSION = 1
 
 
 class ExecutionError(PanelSolverError, ValueError):
@@ -231,6 +235,30 @@ def _rebind_cached_results(
     )
 
 
+def _result_cache_signature(
+    signature: CaseSignature,
+    velocity_hat_stl: np.ndarray,
+) -> CaseSignature:
+    """Bind the public signature to every exact flow value used by the model."""
+    velocity_bytes = np.ascontiguousarray(
+        velocity_hat_stl,
+        dtype=np.dtype("<f8"),
+    ).tobytes()
+    envelope = {
+        "schema": {
+            "name": _RESULT_CACHE_SIGNATURE_SCHEMA_NAME,
+            "version": _RESULT_CACHE_SIGNATURE_SCHEMA_VERSION,
+        },
+        "case_signature_sha256": signature.digest,
+        "flow_state": {
+            "velocity_hat_stl_float64_le_hex": velocity_bytes.hex(),
+        },
+    }
+    payload = canonical_json(envelope)
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return CaseSignature(digest, payload, envelope)
+
+
 def _prepare_case_execution(
     request: CaseExecutionRequest,
     warning_callback: Callable[[str], None] | None,
@@ -280,6 +308,8 @@ def prepare_case_signature(
     Mesh loading and shielding identity use the same path as :func:`execute_case`.
     Shielding itself is resolved because the effective backend and batch size are
     part of ADR 0005 and cannot be inferred safely from the requested selector.
+    The returned value is the public artifact identity, not the engine-owned
+    private identity used for result-cache entries.
     """
     if not isinstance(request, CaseExecutionRequest):
         raise TypeError("request must be a CaseExecutionRequest instance")
@@ -292,7 +322,11 @@ def execute_case(
     result_cache: ResultCache[CommonResults] | None = None,
     warning_callback: Callable[[str], None] | None = None,
 ) -> CaseExecutionResult:
-    """Execute one case without concrete-model branches or artifact writes."""
+    """Execute one case without concrete-model branches or artifact writes.
+
+    A supplied result cache contains engine-owned entries addressed by a private
+    identity. The returned public case signature does not address those entries.
+    """
     if not isinstance(request, CaseExecutionRequest):
         raise TypeError("request must be a CaseExecutionRequest instance")
     if result_cache is not None and not isinstance(result_cache, ResultCache):
@@ -302,9 +336,12 @@ def execute_case(
         request,
         warning_callback,
     )
-
     if result_cache is not None:
-        cached = result_cache.get(signature)
+        cache_signature = _result_cache_signature(
+            signature,
+            flow_state.velocity_hat_stl,
+        )
+        cached = result_cache.get(cache_signature)
         if cached is not None:
             rebound = _rebind_cached_results(
                 cached,
@@ -344,7 +381,7 @@ def execute_case(
         metadata=metadata,
     )
     if result_cache is not None:
-        result_cache.put(signature, results)
+        result_cache.put(cache_signature, results)
     return CaseExecutionResult(
         mesh=loaded.mesh,
         shielding=shielding,

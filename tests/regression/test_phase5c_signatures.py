@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -18,6 +19,53 @@ from panelsolver.models import HypersonicModel, SentmanModel
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
+EXPECTED_SIGNATURES = {
+    "fmfsolver/fmf_bank_multicomponent": (
+        "7efb199123f26e31f1ea99d605945a82a49432490527635eab2b511b50832af0"
+    ),
+    "fmfsolver/fmf_beta_sin_boundary": (
+        "821f9c91bf72718200fc2ff47eee88f53a9f6e1d7b8ba42a3d0aed0c27caea0d"
+    ),
+    "fmfsolver/fmf_mode_b_offset": (
+        "e1576a0ebfe1a530a09ba505850cb231e7f5d98b3bc29b1e01f54e597f05d848"
+    ),
+    "fmfsolver/fmf_shield_embree": (
+        "5c131170d35fdb77af89eeab86336b6124c44683e125e7c18643aa2381ddc635"
+    ),
+    "fmfsolver/fmf_shield_rtree": (
+        "9095648a49635e0b35097efaa48c5ff314c407f40ca6dff9af520914fda509f8"
+    ),
+    "fmfsolver/fmf_zero_plate": (
+        "73eb1938a618dd3e588b00105be58c5c529990d3acb5018eb34c607fc9b641d5"
+    ),
+    "newtsolver/newt_bank_multicomponent": (
+        "fc537d06b280e9f16c7ecf180268f4c4c1197f80964b968055b596f144a2f16a"
+    ),
+    "newtsolver/newt_beta_sin_boundary": (
+        "117df0b8cf8db4b6c05dd94cb441aaf5f81e25d37ce1935cee9397c862b78855"
+    ),
+    "newtsolver/newt_modified_offset": (
+        "a317db85d9468c94b8c541761fe6c7ce08ab9c36a20647f5b47dbf398ce78c67"
+    ),
+    "newtsolver/newt_prandtl_meyer": (
+        "b2725ebd3ac8bf57164298cee6b310727d07ad355149ca73e86449f2709473af"
+    ),
+    "newtsolver/newt_shield_embree": (
+        "cbdf8d8c951d3497caf254beb4d795abe39a875515337ac705ec649eab612f07"
+    ),
+    "newtsolver/newt_shield_rtree": (
+        "020ca5999e65f0f60f1b0156ccd757b74a8f1a8e3baf4515ac4deff39d3579a0"
+    ),
+    "newtsolver/newt_tangent_cone": (
+        "6cc06fc732e2a8f61eb9ed57952fcafa790ab9a1be44724cdc411586969f672d"
+    ),
+    "newtsolver/newt_tangent_wedge": (
+        "c890d4dc834009dcdf55f5426304599a5f9428ad12814605cb320def5ade757b"
+    ),
+    "newtsolver/newt_zero_newtonian": (
+        "8f40bb70e844d5cb1e9205a80c35fa586492fe68cb3ad67d2f14c8306d7f7461"
+    ),
+}
 
 
 def _array(case: dict, name: str) -> np.ndarray:
@@ -28,6 +76,7 @@ def _array(case: dict, name: str) -> np.ndarray:
 class Phase5cSignatureGoldenTests(unittest.TestCase):
     def test_all_phase1_cases_have_isolated_deterministic_signatures(self) -> None:
         signatures: set[str] = set()
+        signature_records: list[str] = []
         paths = sorted(GOLDEN_ROOT.glob("*/*.json"))
         paths = [path for path in paths if path.name != "contracts.json"]
         self.assertEqual(15, len(paths))
@@ -94,10 +143,22 @@ class Phase5cSignatureGoldenTests(unittest.TestCase):
 
                 self.assertRegex(signature.digest, r"^[0-9a-f]{64}$")
                 self.assertEqual(signature.digest, repeated.digest)
+                signature_key = f"{path.parent.name}/{path.stem}"
+                self.assertEqual(
+                    EXPECTED_SIGNATURES[signature_key],
+                    signature.digest,
+                )
                 self.assertNotIn(signature.digest, signatures)
                 signatures.add(signature.digest)
+                signature_records.append(f"{signature_key} {signature.digest}\n")
 
         self.assertEqual(15, len(signatures))
+        signature_inventory = "".join(signature_records).encode("utf-8")
+        self.assertEqual(1430, len(signature_inventory))
+        self.assertEqual(
+            "3cb974fc694aa04affe5610223d232ef65a38acdd7474892b8f9d590197da351",
+            hashlib.sha256(signature_inventory).hexdigest(),
+        )
 
 
 if __name__ == "__main__":

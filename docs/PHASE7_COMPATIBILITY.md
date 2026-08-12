@@ -92,6 +92,18 @@ loads. Ordered pinned legacy hashes remain product-owned fallback identities.
 They use the frozen `1.3.8` and `1.0.3` compatibility versions and are neither
 interpreted by core nor treated as interchangeable with the primary signature.
 
+Phase 8 preserves that public signature while separating internal result-cache
+entries by the exact accepted flow vector. FMF/newtsolver adapters
+deterministically resolve the vector and tangent angles together from each
+product-specific public attitude mode. Equivalent attitudes expressed through
+different modes can retain last-bit-distinct vectors while sharing the frozen
+resolved-angle public signature. A custom direct-core caller may likewise supply
+a tolerance-distinct vector that is evaluated under the same public signature.
+The `ResultCache` API remains public and unchanged, but an instance passed to
+`execute_case` contains engine-owned entries addressed by the private identity,
+not by the returned public signature. User paths and limitations are recorded in
+`PHASE7_USER_GUIDE.md`.
+
 ## Execution, serialization, and GUI adapters
 
 The shared runtime executes adapted requests serially or through the Phase 5
