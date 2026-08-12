@@ -28,9 +28,9 @@ physical model is selected.
 model parses its own case fields, evaluates local panel loads, provides display
 scalars/metadata, and provides a canonical signature payload.
 
-`panelsolver.app` will own shared CLI/GUI orchestration through a solver
-specification. `fmfsolver` and `newtsolver` will remain thin compatibility
-frontends for existing entry points and imports.
+`panelsolver.app` owns shared GUI orchestration through a solver specification;
+shared CLI orchestration remains Phase 7 work. `fmfsolver` and `newtsolver`
+remain thin compatibility frontends for existing entry points and imports.
 
 ## Central contracts
 
@@ -164,6 +164,17 @@ the differing legacy failure-partial behavior remain explicit adapter-selected
 policies. Worker startup failures, remote tracebacks, and unexpected exits cross
 the process boundary as distinct errors.
 
+Phase 6 adds one `SolverSpec`-driven Qt shell, cases panel, and PyVista viewer.
+The spec carries product identity, exact title, ordered case columns, preferred
+scalars, overlay formatting, adapter callbacks, and the product-selected close
+policy. Widgets import neither compatibility frontend nor concrete model. VTP
+scalar discovery and exact case/signature matching are shared services; product
+case schemas and overlays remain independent. QThread execution delegates case
+I/O, scheduling policy, checkpoint/final serialization, and wind resolution to
+adapters. The shared bootstrap supplies an explicitly non-calculating placeholder
+when Phase 7 adapters are absent, allowing the shell to open without presenting
+it as a migrated solver.
+
 ## Ownership constraints
 
 | Concern | Owner |
@@ -186,9 +197,11 @@ not write files, drive GUI state, or run the scheduler.
 ## GUI target
 
 One shared GUI shell receives a solver specification containing identity, window
-title, case schema, load model, and preferred display scalars. The viewer discovers
-available VTP cell arrays dynamically. Existing `fmfsolver` and `newtsolver`
-launchers select the appropriate specification.
+title, case schema, adapter callbacks, close behavior, overlay formatting, and
+preferred display scalars. The viewer discovers available VTP cell arrays
+dynamically. The thin `fmfsolver.app.gui_app` and
+`newtsolver.app.gui_app` modules select the appropriate specification; legacy
+console command registration remains Phase 7 work.
 
 ## Signature target
 

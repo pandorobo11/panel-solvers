@@ -2,8 +2,8 @@
 
 Phase 6 migrates the duplicated Qt/PyVista shell behind one model-neutral
 `SolverSpec`. It does not complete case-file compatibility, artifact
-serialization, command registration, packaging, or public import forwarding;
-those remain Phase 7 work.
+serialization, command registration, distribution mechanics, or public import
+forwarding; those remain Phase 7 work.
 
 ## Dependency sequence
 
@@ -84,7 +84,8 @@ automatic/explicit ranges, parallel projection, axes, Cartesian/ISO cameras,
 and camera state across redraws. Wind cameras use only the spec adapter's
 resolved `velocity_hat_stl`; the viewer does not parse product attitudes or
 evaluate a model. A failed read or invalid cell-data envelope clears the prior
-view. Image export is added in the later Phase 6f slice.
+view. Phase 6f adds single and selected-case image export without defining image
+pixels as golden data.
 
 CI exercises real Qt widgets with an injected non-OpenGL plotter on all three
 platforms. The Ubuntu job installs the minimal `libegl1` runtime required to
@@ -153,3 +154,49 @@ as skipped. Current artifacts are loaded with explicit row context before
 capture, preserving each product's independent overlay formatter. Filesystem
 existence/directory creation, artifact reading, screenshots, and GUI event
 processing are injectable test boundaries. Image pixels are not golden data.
+
+## Bootstrap and compatibility selectors
+
+`panelsolver.app.gui_bootstrap` is the only QApplication/window bootstrap. The
+thin `fmfsolver.app.gui_app` and `newtsolver.app.gui_app` modules select their own
+spec and call that bootstrap; they contain no widget, matcher, scheduler, or
+physics implementation. When a Phase 7 adapter bundle is absent, the bootstrap
+adds one common placeholder whose every operation raises a clear
+`GuiAdaptersUnavailable` error and logs that calculations must continue in the
+pinned legacy product. This permits launcher/shell acceptance without implying
+that Phase 7 compatibility is complete.
+
+The wheel includes both GUI modules and the shared bootstrap. Installed-wheel
+smoke runs outside the repository working directory and checks both model IDs.
+It also asserts that `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`, `newtsolver`,
+`newtsolver-gui`, and `newtsolver-cli` are not registered in Phase 6.
+
+## Phase 6 acceptance record
+
+- All 15 Phase 1 cases pass through the unchanged semantic golden matrix. No
+  expected coefficient, panel load, shielding mask, CSV field, VTP/NPZ array,
+  case signature, sign, axis, normalization, or tolerance changed in Phase 6.
+- Headless GUI tests construct real Qt widgets with injected non-OpenGL plotters
+  and deterministic adapters. Ubuntu, Windows, and macOS run the same suite.
+- On 2026-08-12, a macOS normal-display smoke with `QT_QPA_PLATFORM` unset
+  constructed the real `QtInteractor`, displayed the shared FMF shell, verified
+  the exact `Sentman FMF Solver (GUI)` title, and captured the visible cases,
+  viewer, camera, and export controls. The requested pre-show size remains
+  1480 x 900; macOS constrained the captured on-screen window to 1470 x 815.
+- Native `QtInteractor` with macOS `QT_QPA_PLATFORM=offscreen` exits in the VTK
+  platform rendering layer and is not treated as a supported headless render.
+  This does not affect the cross-platform injected-plotter GUI gate.
+
+The retained differences are intentional: exact D022 titles, independent case
+schemas and overlay formatters, adapter-selected worker/failure policies,
+FMF-only deferred close versus newtsolver immediate close, primary-first ordered
+legacy artifact signatures, and D024 manual stale-artifact inspection/export.
+No GUI difference was selected as a universal product behavior.
+
+Phase 7 must supply and test the real product case readers, signature fallbacks,
+execution/checkpoint/final serializers, collision policies, and wind adapters;
+register all six legacy commands; forward the frozen public Python imports;
+and decide distribution mechanics. It must not silently replace the independent
+GUI policies above, alter numerical formulas while wiring adapters, or infer
+compatibility merely because the Phase 6 shell is importable. Phase 7 remains
+not started.
