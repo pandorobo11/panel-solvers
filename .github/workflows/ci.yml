@@ -44,6 +44,15 @@ jobs:
       - name: Static checks
         run: uv run ruff check src tests scripts
 
+      - name: Build and reinstall wheel
+        run: |
+          uv build
+          uv pip uninstall panel-solvers
+          uv pip install --no-deps dist/panel_solvers-0.1.0-py3-none-any.whl
+
+      - name: Smoke installed commands outside repository
+        run: uv run --no-sync python scripts/smoke_installed_wheel.py .
+
       - name: Verify tag matches version
         if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
         shell: bash
@@ -76,7 +85,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes libegl1
 
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync --locked --extra rayaccel
 
       - name: Build distributions
         run: uv build
@@ -106,16 +115,23 @@ jobs:
           assert prepare_gui_spec(fmf_solver_spec()).model_id == "sentman"
           assert prepare_gui_spec(newt_solver_spec()).model_id == "hypersonic"
           legacy = {
-              "fmfsolver", "fmfsolver-gui", "fmfsolver-cli",
-              "newtsolver", "newtsolver-gui", "newtsolver-cli",
+              "fmfsolver": "fmfsolver.app.gui_app:main",
+              "fmfsolver-gui": "fmfsolver.app.gui_app:main",
+              "fmfsolver-cli": "fmfsolver.app.cli_app:main",
+              "newtsolver": "newtsolver.app.gui_app:main",
+              "newtsolver-gui": "newtsolver.app.gui_app:main",
+              "newtsolver-cli": "newtsolver.app.cli_app:main",
           }
           scripts = {
-              entry.name
+              entry.name: entry.value
               for entry in importlib.metadata.distribution("panel-solvers").entry_points
               if entry.group == "console_scripts"
           }
-          assert legacy.isdisjoint(scripts)
+          assert legacy == scripts
           PY
+
+      - name: Smoke installed commands outside repository
+        run: uv run --no-sync python scripts/smoke_installed_wheel.py .
 
   release:
     needs: [test, artifact]

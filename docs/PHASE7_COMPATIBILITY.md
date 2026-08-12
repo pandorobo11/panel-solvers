@@ -110,6 +110,21 @@ execution, collision validation, and wind-direction adapters. The non-calculatin
 fallback remains only for an explicitly adapter-free specification and is not
 used by either normal product launcher.
 
+## Commands and CLI behavior
+
+The distribution registers both GUI aliases and the batch command for each
+product. The two batch entry modules select one shared CLI flow while retaining
+their exact frozen program name, description, help wrapping, D008 `--cases`
+cardinality, and D009 collision behavior. Case selection remains comma/space
+aware and input ordered; invalid parser values exit 2, while reader, solver, and
+worker exceptions remain uncaught command failures. Checkpoints rewrite the
+complete successful snapshot and final output uses the same product-selected
+atomic CSV policy.
+
+CI builds and reinstalls the wheel on Ubuntu, Windows, and macOS, verifies all
+six entry-point targets, compares both CLI help texts exactly, and runs both
+unchanged Phase 1 input tables from a temporary directory outside the checkout.
+
 ## Final acceptance evidence
 
 Phase 7 can be marked complete only when:
