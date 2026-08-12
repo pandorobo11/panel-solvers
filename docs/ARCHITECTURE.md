@@ -132,6 +132,14 @@ versioned geometry fingerprint covers the ordered numerical mesh contract for
 shielding, signatures, and later execution caches. Paths and file timestamps do
 not define numerical geometry identity.
 
+Phase 5b applies the pinned face-center, upstream, first-hit ray algorithm to a
+`PanelMesh`. Explicit rtree and Embree adapters and `auto` selection stay in
+core; requesting unavailable Embree is still an error. Shield-mask and
+intersector identities include the Phase 5a geometry fingerprint, effective
+backend, flow direction, batch size, and shielding algorithm version. Neutral
+`PANELSOLVER_*` settings take precedence over one explicitly selected legacy
+prefix, so core never guesses between FMF and newtsolver environment state.
+
 ## Ownership constraints
 
 | Concern | Owner |
