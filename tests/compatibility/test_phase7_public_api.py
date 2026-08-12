@@ -43,6 +43,23 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "phase1"
 CONTRACTS = FIXTURES / "golden"
 EXPORTER_MODULES = (fmf_exporters, newt_exporters)
+DIRECT_COMPONENT_KEYS = [
+    "scope",
+    "component_id",
+    "component_stl_path",
+    "CA",
+    "CY",
+    "CN",
+    "Cl",
+    "Cm",
+    "Cn",
+    "CD",
+    "CL",
+    "faces",
+    "shielded_faces",
+    "vtp_path",
+    "npz_path",
+]
 
 PANEL_CORE_ALL = [
     "ATTITUDE_INPUT_VALUES",
@@ -263,11 +280,46 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                             if api == "run_case":
                                 total = runner(row, lambda _message: None)
                                 rows = [total, *total["component_rows"]]
+                                self.assertTrue(
+                                    all(
+                                        list(item) == DIRECT_COMPONENT_KEYS
+                                        for item in total["component_rows"]
+                                    )
+                                )
+                                for item in total["component_rows"]:
+                                    self.assertEqual(
+                                        {
+                                            "scope": str,
+                                            "component_id": int,
+                                            "component_stl_path": str,
+                                            "CA": float,
+                                            "CY": float,
+                                            "CN": float,
+                                            "Cl": float,
+                                            "Cm": float,
+                                            "Cn": float,
+                                            "CD": float,
+                                            "CL": float,
+                                            "faces": int,
+                                            "shielded_faces": int,
+                                            "vtp_path": str,
+                                            "npz_path": str,
+                                        },
+                                        {
+                                            name: type(value)
+                                            for name, value in item.items()
+                                        },
+                                    )
                             else:
                                 result_frame = runner(
                                     pd.DataFrame([row]),
                                     lambda _message: None,
                                 )
+                                self.assertIn("case_id", result_frame.columns)
+                                self.assertIn("solver_version", result_frame.columns)
+                                self.assertIn("case_signature", result_frame.columns)
+                                self.assertIn("run_started_at_utc", result_frame.columns)
+                                self.assertIn("run_finished_at_utc", result_frame.columns)
                                 rows = result_frame.to_dict(orient="records")
 
                             component_paths = (

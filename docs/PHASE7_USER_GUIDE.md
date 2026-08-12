@@ -107,6 +107,15 @@ belong only to the total row. Disabled total artifact paths are also empty
 strings. These are compatibility values rather than missing-value sentinels;
 callers should not expect `None`, `NaN`, or floating-point component IDs.
 
+For multi-STL `run_case()` results, each dictionary in `component_rows` has
+exactly these keys in this order: `scope`, `component_id`,
+`component_stl_path`, `CA`, `CY`, `CN`, `Cl`, `Cm`, `Cn`, `CD`, `CL`, `faces`,
+`shielded_faces`, `vtp_path`, `npz_path`. Case identity, version, signature,
+timing, and backend fields belong to the total result. `run_cases()` DataFrames
+and written summary CSVs retain their full schemas; this nested-record contract
+does not remove columns from those surfaces. Single-STL `run_case()` results
+retain an exact empty `component_rows` list.
+
 ### Direct common-core flow direction
 
 The compatibility CLI and GUI adapters deterministically resolve

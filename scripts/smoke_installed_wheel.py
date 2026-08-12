@@ -66,6 +66,23 @@ EXPECTED_EXPORTER_SIGNATURES = {
     ),
     "export_npz": "(out_path: 'str', **arrays)",
 }
+EXPECTED_DIRECT_COMPONENT_KEYS = [
+    "scope",
+    "component_id",
+    "component_stl_path",
+    "CA",
+    "CY",
+    "CN",
+    "Cl",
+    "Cm",
+    "Cn",
+    "CD",
+    "CL",
+    "faces",
+    "shielded_faces",
+    "vtp_path",
+    "npz_path",
+]
 
 
 def _command_path(name: str) -> Path:
@@ -150,6 +167,30 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         result = run_case(row, lambda _message: None)
         components = result["component_rows"]
         expected_sources = row["stl_path"].split(";")
+        if any(list(item) != EXPECTED_DIRECT_COMPONENT_KEYS for item in components):
+            raise RuntimeError(f"{product} component row schema changed")
+        expected_types = (
+            str,
+            int,
+            str,
+            float,
+            float,
+            float,
+            float,
+            float,
+            float,
+            float,
+            float,
+            int,
+            int,
+            str,
+            str,
+        )
+        if any(
+            tuple(type(value) for value in item.values()) != expected_types
+            for item in components
+        ):
+            raise RuntimeError(f"{product} component row value types changed")
         if result["component_id"] != "" or type(result["component_id"]) is not str:
             raise RuntimeError(f"{product} total component_id type/blank changed")
         if (
