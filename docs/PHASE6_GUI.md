@@ -51,3 +51,21 @@ adapters and headless fixtures.
 
 The close-policy choice records both observable contracts; it does not declare
 either one a universal behavior.
+
+## Artifact matching and scalar discovery
+
+Automatic case selection and selected-case image export require both exact case
+ID and a matching signature. The Phase 5 canonical signature is tried first;
+only ordered opaque legacy hashes supplied by the selected product adapter are
+valid fallbacks. Duplicate case IDs are checked in input order and case ID alone
+is never sufficient. Manual VTP inspection remains allowed without a match, as
+recorded by D024.
+
+Viewer scalar discovery is headless and artifact-driven. It accepts finite
+numeric or boolean cell arrays with exact `(n_cells,)` alignment, prioritizes the
+available names from `SolverSpec.preferred_scalars`, and then retains additional
+eligible arrays in artifact order. Vector, string, nonfinite, empty, and
+misaligned arrays are not offered for scalar coloring. Boolean arrays and the
+legacy byte-valued `shielded` field use a categorical `[0, 1]` range. This keeps
+D019 model-specific additions visible without defining a universal VTP scalar
+schema.

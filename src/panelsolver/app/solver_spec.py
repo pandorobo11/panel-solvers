@@ -7,9 +7,10 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from panelsolver.core import CaseSignature, match_case_signature
+
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
-type BuildCaseSignaturesCallback = Callable[[CaseRow], object]
 type RunCasesCallback = Callable[[object], object]
 type ValidateOutputPathCallback = Callable[
     [str | Path, str | Path, Sequence[CaseRow]], Path
@@ -23,6 +24,33 @@ class ClosePolicy(str, Enum):
 
     DEFER_UNTIL_IDLE = "defer_until_idle"
     IMMEDIATE = "immediate"
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactSignatureCandidates:
+    """Primary Phase 5 signature plus opaque product legacy fallbacks."""
+
+    primary: CaseSignature
+    legacy_signatures: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.primary, CaseSignature):
+            raise TypeError("ArtifactSignatureCandidates.primary must be a CaseSignature")
+        try:
+            legacy = tuple(self.legacy_signatures)
+        except TypeError as exc:
+            raise TypeError(
+                "ArtifactSignatureCandidates.legacy_signatures must be iterable"
+            ) from exc
+        match_case_signature(
+            None,
+            self.primary,
+            legacy_signatures=legacy,
+        )
+        object.__setattr__(self, "legacy_signatures", legacy)
+
+
+type BuildCaseSignaturesCallback = Callable[[CaseRow], ArtifactSignatureCandidates]
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +160,7 @@ class SolverSpec:
 
 
 __all__ = (
+    "ArtifactSignatureCandidates",
     "BuildCaseSignaturesCallback",
     "CaseRow",
     "ClosePolicy",
