@@ -11,12 +11,63 @@ from panelsolver.core import CaseSignature, match_case_signature
 
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
-type RunCasesCallback = Callable[[object], object]
+type LogCallback = Callable[[str], None]
+type ProgressCallback = Callable[[int, int], None]
+type CancelRequestedCallback = Callable[[], bool]
 type ValidateOutputPathCallback = Callable[
     [str | Path, str | Path, Sequence[CaseRow]], Path
 ]
 type ResolveVelocityCallback = Callable[[CaseRow], object]
 type FormatCaseCallback = Callable[[CaseRow], str]
+
+
+@dataclass(frozen=True, slots=True)
+class GuiRunRequest:
+    """Product-neutral execution request passed to one GUI adapter."""
+
+    rows: tuple[CaseRow, ...]
+    workers: int
+    output_path: Path
+    log: LogCallback
+    progress: ProgressCallback
+    cancel_requested: CancelRequestedCallback
+
+    def __post_init__(self) -> None:
+        rows = tuple(self.rows)
+        if not rows:
+            raise ValueError("GuiRunRequest.rows must not be empty")
+        if any(not isinstance(row, Mapping) for row in rows):
+            raise TypeError("GuiRunRequest.rows must contain mappings")
+        if isinstance(self.workers, bool) or not isinstance(self.workers, int):
+            raise TypeError("GuiRunRequest.workers must be an integer")
+        if self.workers < 1:
+            raise ValueError("GuiRunRequest.workers must be at least one")
+        output_path = Path(self.output_path)
+        for field_name in ("log", "progress", "cancel_requested"):
+            if not callable(getattr(self, field_name)):
+                raise TypeError(f"GuiRunRequest.{field_name} must be callable")
+        object.__setattr__(self, "rows", rows)
+        object.__setattr__(self, "output_path", output_path)
+
+
+@dataclass(frozen=True, slots=True)
+class GuiRunResult:
+    """Minimal completion data needed by the shared GUI."""
+
+    first_vtp_path: Path | None = None
+    first_case_row: CaseRow | None = None
+
+    def __post_init__(self) -> None:
+        if self.first_vtp_path is not None:
+            object.__setattr__(self, "first_vtp_path", Path(self.first_vtp_path))
+        if self.first_case_row is not None and not isinstance(
+            self.first_case_row,
+            Mapping,
+        ):
+            raise TypeError("GuiRunResult.first_case_row must be a mapping or None")
+
+
+type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
 
 
 class ClosePolicy(str, Enum):
@@ -162,9 +213,14 @@ class SolverSpec:
 __all__ = (
     "ArtifactSignatureCandidates",
     "BuildCaseSignaturesCallback",
+    "CancelRequestedCallback",
     "CaseRow",
     "ClosePolicy",
     "FormatCaseCallback",
+    "GuiRunRequest",
+    "GuiRunResult",
+    "LogCallback",
+    "ProgressCallback",
     "ReadCasesCallback",
     "ResolveVelocityCallback",
     "RunCasesCallback",

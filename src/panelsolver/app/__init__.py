@@ -18,6 +18,8 @@ from .legacy_adapter import (
 from .solver_spec import (
     ArtifactSignatureCandidates,
     ClosePolicy,
+    GuiRunRequest,
+    GuiRunResult,
     SolverGuiAdapters,
     SolverSpec,
 )
@@ -40,6 +42,8 @@ __all__ = (
     "ArtifactSignatureCandidates",
     "AtomicCsvWritePolicy",
     "ClosePolicy",
+    "GuiRunRequest",
+    "GuiRunResult",
     "LegacyPanelSnapshot",
     "LegacyPhase3Projection",
     "LegacyRunContext",

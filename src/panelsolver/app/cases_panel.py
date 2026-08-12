@@ -9,7 +9,8 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
-from .solver_spec import CaseRow, SolverSpec
+from .run_lifecycle import CaseRunWorker
+from .solver_spec import CaseRow, GuiRunResult, SolverSpec
 from .viewer_data import match_artifact_case
 
 
@@ -86,6 +87,7 @@ class CasesPanel(QtWidgets.QWidget):
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
     run_requested = QtCore.Signal(object, int, object)
+    run_finished = QtCore.Signal()
 
     def __init__(
         self,
@@ -112,6 +114,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.input_value.setPlaceholderText("CSV / Excel input file")
         self.btn_pick_input = QtWidgets.QPushButton("Select Input File")
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases")
+        self.btn_cancel = QtWidgets.QPushButton("Cancel")
+        self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
         self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
         self.lbl_selection_summary = QtWidgets.QLabel("Selected: 0")
@@ -135,11 +139,21 @@ class CasesPanel(QtWidgets.QWidget):
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(8000)
         self.log.setMinimumHeight(180)
+        self.progress = QtWidgets.QProgressBar()
+        self.progress.setRange(0, 1)
+        self.progress.setValue(0)
+        self.progress.setFormat("Idle")
+        self._run_thread: QtCore.QThread | None = None
+        self._run_worker: CaseRunWorker | None = None
+        self._run_rows: tuple[CaseRow, ...] = ()
+        self._run_output_path: Path | None = None
         self._build_layout()
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
         self.btn_run.clicked.connect(self.request_run)
+        self.btn_cancel.clicked.connect(self.cancel_run)
         self.case_table.itemSelectionChanged.connect(self.on_case_selection_changed)
+        self.run_requested.connect(self.start_run)
 
     def _build_layout(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
@@ -158,7 +172,9 @@ class CasesPanel(QtWidgets.QWidget):
         run_row.addWidget(self.spin_workers)
         run_row.addStretch(1)
         run_row.addWidget(self.btn_run)
+        run_row.addWidget(self.btn_cancel)
         layout.addLayout(run_row)
+        layout.addWidget(self.progress)
         layout.addWidget(self.log, 2)
 
     def logln(self, message: str) -> None:
@@ -327,6 +343,137 @@ class CasesPanel(QtWidgets.QWidget):
             return
         self.run_requested.emit(rows, int(self.spin_workers.value()), output_path)
 
+    @QtCore.Slot(object, int, object)
+    def start_run(
+        self,
+        rows: Sequence[CaseRow],
+        workers: int,
+        output_path: str | Path,
+    ) -> bool:
+        """Start exactly one background adapter run."""
+        if self._run_thread is not None:
+            self.logln("[WARN] A case run is already active.")
+            return False
+        selected = tuple(dict(row) for row in rows)
+        if not selected:
+            self.logln("[WARN] No cases are available to run.")
+            return False
+        self._run_rows = selected
+        self._run_output_path = Path(output_path)
+        total = len(selected)
+        self.progress.setRange(0, total)
+        self.progress.setValue(0)
+        self.progress.setFormat(f"0/{total}")
+        self._set_running_state(True)
+        self.logln(f"[RUN] Running {total} case(s)...")
+
+        thread = QtCore.QThread(self)
+        worker = CaseRunWorker(
+            self.spec.adapters.run_cases,
+            selected,
+            workers,
+            self._run_output_path,
+        )
+        self._run_thread = thread
+        self._run_worker = worker
+        worker.moveToThread(thread)
+
+        thread.started.connect(worker.run)
+        worker.log.connect(self.logln)
+        worker.progress.connect(self._on_run_progress)
+        worker.completed.connect(self._on_run_completed)
+        worker.failed.connect(self._on_run_failed)
+        worker.canceled.connect(self._on_run_canceled)
+        worker.completed.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.canceled.connect(thread.quit)
+        worker.completed.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.canceled.connect(worker.deleteLater)
+        thread.finished.connect(self._cleanup_run_worker)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+        return True
+
+    def cancel_run(self) -> None:
+        """Request cooperative cancellation at the next scheduler boundary."""
+        if self._run_worker is None:
+            return
+        self._run_worker.cancel()
+        self.btn_cancel.setEnabled(False)
+        self.logln("[CANCEL] Cancellation requested...")
+
+    def is_running(self) -> bool:
+        return self._run_thread is not None
+
+    @QtCore.Slot(int, int)
+    def _on_run_progress(self, done: int, total: int) -> None:
+        safe_total = max(int(total), 1)
+        safe_done = min(max(int(done), 0), safe_total)
+        self.progress.setRange(0, safe_total)
+        self.progress.setValue(safe_done)
+        self.progress.setFormat(f"{done}/{total}")
+
+    @QtCore.Slot(object)
+    def _on_run_completed(self, result: GuiRunResult) -> None:
+        total = len(self._run_rows)
+        self.progress.setRange(0, max(total, 1))
+        self.progress.setValue(total)
+        self.progress.setFormat(f"{total}/{total}")
+        if self._run_output_path is not None:
+            self.logln(f"[OK] Wrote results: {self._run_output_path}")
+        self._refresh_first_result(result)
+
+    def _refresh_first_result(self, result: GuiRunResult) -> None:
+        if result.first_vtp_path is None:
+            return
+        row = (
+            result.first_case_row
+            if result.first_case_row is not None
+            else (self._run_rows[0] if self._run_rows else None)
+        )
+        if row is None:
+            self.viewer_clear_requested.emit()
+            return
+        path = result.first_vtp_path
+        try:
+            artifact = self._artifact_reader(str(path))
+        except Exception as exc:
+            self.viewer_clear_requested.emit()
+            self.logln(f"[ERROR] Failed to read VTP: {exc}")
+            return
+        candidates = self.spec.adapters.build_case_signatures(row)
+        if match_artifact_case(artifact, row, candidates).matched:
+            self.vtp_loaded.emit(str(path), artifact, row)
+        else:
+            self.viewer_clear_requested.emit()
+
+    @QtCore.Slot(str)
+    def _on_run_failed(self, message: str) -> None:
+        self.logln(f"[ERROR] {message}")
+        self.progress.setFormat("Failed")
+
+    @QtCore.Slot()
+    def _on_run_canceled(self) -> None:
+        self.logln("[CANCEL] Run canceled.")
+        self.progress.setFormat("Canceled")
+
+    @QtCore.Slot()
+    def _cleanup_run_worker(self) -> None:
+        self._run_worker = None
+        self._run_thread = None
+        self._run_rows = ()
+        self._run_output_path = None
+        self._set_running_state(False)
+        self.run_finished.emit()
+
+    def _set_running_state(self, running: bool) -> None:
+        self.btn_pick_input.setEnabled(not running)
+        self.spin_workers.setEnabled(not running)
+        self.case_table.setEnabled(not running)
+        self.btn_cancel.setEnabled(running)
+        self.btn_run.setEnabled((not running) and bool(self.case_rows))
+
     def clear_loaded_cases(self) -> None:
         self.case_rows = ()
         self.input_path = None
@@ -336,6 +483,9 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.setRowCount(0)
         self.case_table.setColumnCount(0)
         self.btn_run.setEnabled(False)
+        self.progress.setRange(0, 1)
+        self.progress.setValue(0)
+        self.progress.setFormat("Idle")
         self.viewer_clear_requested.emit()
         self.cases_updated.emit(self.case_rows)
         self._refresh_summary()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,7 +15,11 @@ from PySide6 import QtCore, QtWidgets
 
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
-from panelsolver.app import ArtifactSignatureCandidates, SolverGuiAdapters
+from panelsolver.app import (
+    ArtifactSignatureCandidates,
+    GuiRunResult,
+    SolverGuiAdapters,
+)
 from panelsolver.app.cases_panel import CasesPanel, ValidationIssuesDialog
 from panelsolver.core import CaseSignature, canonical_json
 
@@ -35,7 +40,7 @@ def _adapters(rows, signatures, *, validator=None, reader_error=None):
     return SolverGuiAdapters(
         read_cases=read_cases,
         build_case_signatures=lambda row: signatures[str(row["case_id"])],
-        run_cases=lambda _request: None,
+        run_cases=lambda _request: GuiRunResult(),
         validate_output_path=(
             validator
             if validator is not None
@@ -92,6 +97,15 @@ class CasesPanelTests(unittest.TestCase):
         }
         spec = spec_factory(adapters=_adapters(rows, signatures, **kwargs))
         return CasesPanel(spec), signatures
+
+    def wait_until(self, predicate, timeout: float = 3.0) -> None:
+        deadline = time.monotonic() + timeout
+        while not predicate():
+            self.app.processEvents()
+            if time.monotonic() >= deadline:
+                self.fail("timed out waiting for Qt lifecycle")
+            time.sleep(0.002)
+        self.app.processEvents()
 
     def test_load_renders_product_schema_extras_and_stl_names(self) -> None:
         panel, _signatures = self.make_panel()
@@ -211,6 +225,7 @@ class CasesPanelTests(unittest.TestCase):
 
             with patch.object(QtWidgets.QFileDialog, "getSaveFileName", side_effect=choose):
                 panel.request_run()
+            self.wait_until(lambda: not panel.is_running())
             self.assertEqual(
                 Path(directory) / "outputs" / "cases_result.csv",
                 captured["default"],

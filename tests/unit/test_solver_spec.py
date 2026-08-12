@@ -5,7 +5,13 @@ from fmfsolver.gui_spec import format_case as format_fmf_case
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.gui_spec import format_case as format_newt_case
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
-from panelsolver.app import ClosePolicy, SolverGuiAdapters, SolverSpec
+from panelsolver.app import (
+    ClosePolicy,
+    GuiRunRequest,
+    GuiRunResult,
+    SolverGuiAdapters,
+    SolverSpec,
+)
 
 
 def _format(row):
@@ -27,6 +33,28 @@ def _valid_spec(**changes) -> SolverSpec:
 
 
 class SolverSpecTests(unittest.TestCase):
+    def test_gui_run_contract_validates_rows_workers_paths_and_callbacks(self) -> None:
+        request = GuiRunRequest(
+            rows=({"case_id": "one"},),
+            workers=2,
+            output_path="results.csv",
+            log=lambda _message: None,
+            progress=lambda _done, _total: None,
+            cancel_requested=lambda: False,
+        )
+        self.assertEqual(Path("results.csv"), request.output_path)
+        self.assertEqual("one", request.rows[0]["case_id"])
+        with self.assertRaises(ValueError):
+            GuiRunRequest((), 1, Path("out.csv"), print, print, lambda: False)
+        with self.assertRaises(ValueError):
+            GuiRunRequest(request.rows, 0, Path("out.csv"), print, print, lambda: False)
+        with self.assertRaises(TypeError):
+            GuiRunRequest(request.rows, True, Path("out.csv"), print, print, lambda: False)
+        result = GuiRunResult("one.vtp", request.rows[0])
+        self.assertEqual(Path("one.vtp"), result.first_vtp_path)
+        with self.assertRaises(TypeError):
+            GuiRunResult(first_case_row=object())
+
     def test_validates_identity_names_callbacks_and_policy(self) -> None:
         for field in ("product_id", "model_id", "window_title"):
             with self.subTest(field=field), self.assertRaises(ValueError):
