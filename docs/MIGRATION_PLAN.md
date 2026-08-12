@@ -92,6 +92,8 @@ change legacy numerical output.
 
 ## Phase 3 — Extract low-risk shared core
 
+**Status:** Complete. Phase 4 has not started.
+
 **Scope:** Migrate exporters, attitude/frame transforms, mesh data representation,
 force/moment integration, component aggregation, and common result types. Initially
 call the extracted functions from adapters around legacy pipelines. Choose a
@@ -100,6 +102,12 @@ legacy difference only through a dedicated compatibility decision or ADR.
 **Acceptance:** affected golden arrays and coefficients match within Phase 1
 tolerances; frame/sign edge cases pass; exporter semantic fields and CSV order are
 unchanged; no model equation has moved into core.
+
+**Evidence:** `PHASE3_ADAPTERS.md` records the final adapter boundary and retained
+dual policies. The complete 15-case semantic matrix runs through the product
+adapters in `tests/regression/test_phase3_legacy_adapters.py`, comparing every CSV
+cell/order, VTP named array/field, and NPZ array with the selected Phase 1
+tolerance profile.
 
 ## Phase 4 — Adapt physical models
 

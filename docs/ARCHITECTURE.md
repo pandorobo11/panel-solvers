@@ -98,6 +98,14 @@ same-directory named temporary file plus flush/`fsync`, while newtsolver uses a
 same-directory UUID name without explicit `fsync`. These policies preserve D009,
 D010, and D029 without choosing a universal behavior.
 
+The final Phase 3 adapter boundary accepts topology, geometry, shielding state,
+and local traction that a legacy model has already computed. It derives the
+resolved flow direction with the shared frame primitive, constructs the Phase 2
+contracts, and routes one case through shared integration, aggregation, and all
+three semantic projections. Product wrappers add only the explicit CSV/artifact
+policy fields documented in `PHASE3_ADAPTERS.md`; they do not call or contain a
+physical equation.
+
 ## Ownership constraints
 
 | Concern | Owner |
