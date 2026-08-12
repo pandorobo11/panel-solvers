@@ -248,6 +248,49 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([], logs)
         self.assert_no_new_worker_resources(before)
 
+    def test_drop_logs_and_discard_failed_chunk_results_remain_orthogonal(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        logs: list[str] = []
+        yielded: list[tuple[int, int]] = []
+        iterator = iter_case_results_parallel(
+            (0, 1, 2),
+            2,
+            _failure_worker,
+            log_policy=WorkerLogPolicy.DROP,
+            partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
+            bucket_keys=("same", "same", "same"),
+            chunk_cases=3,
+            logfn=logs.append,
+        )
+        with self.assertRaises(WorkerExecutionError):
+            yielded.extend(iterator)
+        self.assertEqual([], yielded)
+        self.assertEqual([], logs)
+        self.assert_no_new_worker_resources(before)
+
+    def test_forward_logs_and_yield_completed_failed_chunk_results_remain_orthogonal(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        logs: list[str] = []
+        iterator = iter_case_results_parallel(
+            (0, 1, 2),
+            2,
+            _failure_worker,
+            log_policy=WorkerLogPolicy.FORWARD,
+            partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+            bucket_keys=("same", "same", "same"),
+            chunk_cases=3,
+            logfn=logs.append,
+        )
+        self.assertEqual((0, 0), next(iterator))
+        with self.assertRaises(WorkerExecutionError):
+            next(iterator)
+        self.assertEqual(["case=0", "case=1"], logs)
+        self.assert_no_new_worker_resources(before)
+
     def test_cancellation_waits_for_case_boundary_and_stops_dispatch(self) -> None:
         before = _worker_resource_state()
         progress = []

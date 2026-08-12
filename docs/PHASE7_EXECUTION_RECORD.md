@@ -55,8 +55,9 @@ expected result was changed to obtain a green job.
   envelopes and forced two cases into one good-then-failing chunk. Issue #75
   corrects both code and documentation to the actual legacy contracts: FMF
   `FORWARD`/`DISCARD_CHUNK`, newtsolver `DROP`/`YIELD_COMPLETED`. Successful
-  numerical outputs, ordering, cancellation, signatures, and cache identity are
-  unchanged.
+  case numerical values and all-success runs are unchanged; failed-run result,
+  progress, and checkpoint visibility now match the pinned policies. Ordering
+  rules, cancellation, signatures, and cache identity are unchanged.
 
 ## Manual macOS GUI smoke
 

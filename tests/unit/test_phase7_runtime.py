@@ -7,6 +7,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
+import pyvista as pv
+
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from fmfsolver.runtime import GUI_ADAPTERS as FMF_GUI_ADAPTERS
 from fmfsolver.runtime import RUNTIME_POLICY as FMF_POLICY
@@ -23,6 +26,37 @@ from panelsolver.core import (
 )
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+
+
+def _assert_artifact_semantics_equal(
+    test_case: unittest.TestCase,
+    actual_vtp: Path,
+    actual_npz: Path,
+    expected_vtp: Path,
+    expected_npz: Path,
+) -> None:
+    actual_poly = pv.read(actual_vtp)
+    expected_poly = pv.read(expected_vtp)
+    test_case.assertEqual(expected_poly.points.dtype, actual_poly.points.dtype)
+    np.testing.assert_array_equal(actual_poly.points, expected_poly.points)
+    test_case.assertEqual(expected_poly.faces.dtype, actual_poly.faces.dtype)
+    np.testing.assert_array_equal(actual_poly.faces, expected_poly.faces)
+    for association in ("point_data", "cell_data", "field_data"):
+        actual_data = getattr(actual_poly, association)
+        expected_data = getattr(expected_poly, association)
+        test_case.assertEqual(set(expected_data.keys()), set(actual_data.keys()))
+        for name in expected_data:
+            test_case.assertEqual(expected_data[name].dtype, actual_data[name].dtype)
+            np.testing.assert_array_equal(actual_data[name], expected_data[name])
+
+    with (
+        np.load(actual_npz, allow_pickle=True) as actual_archive,
+        np.load(expected_npz, allow_pickle=True) as expected_archive,
+    ):
+        test_case.assertEqual(set(expected_archive.files), set(actual_archive.files))
+        for name in expected_archive.files:
+            test_case.assertEqual(expected_archive[name].dtype, actual_archive[name].dtype)
+            np.testing.assert_array_equal(actual_archive[name], expected_archive[name])
 
 
 class Phase7RuntimeTests(unittest.TestCase):
@@ -183,7 +217,24 @@ class Phase7RuntimeTests(unittest.TestCase):
                     self.assertTrue((case_output / f"{good_id}.vtp").is_file())
                     self.assertTrue((case_output / f"{good_id}.npz").is_file())
                     self.assertTrue(blocker.is_file())
+                    self.assertFalse((blocker / f"{bad_id}.vtp").exists())
+                    self.assertFalse((blocker / f"{bad_id}.npz").exists())
                     self.assertFalse(any("[SAVE] final" in message for message in logs))
+
+                    reference_output = product_root / "reference-output"
+                    reference_good = dict(good, out_dir=str(reference_output))
+                    run_and_write_product_cases(
+                        (reference_good,),
+                        policy,
+                        product_root / "reference-summary.csv",
+                    )
+                    _assert_artifact_semantics_equal(
+                        self,
+                        case_output / f"{good_id}.vtp",
+                        case_output / f"{good_id}.npz",
+                        reference_output / f"{good_id}.vtp",
+                        reference_output / f"{good_id}.npz",
+                    )
 
                     if yields_completed:
                         self.assertEqual([(1, 2)], progress)

@@ -98,8 +98,10 @@ The shared runtime executes adapted requests serially or through the Phase 5
 spawn scheduler. FMF selects `FORWARD`/`DISCARD_CHUNK`; newtsolver selects
 `DROP`/`YIELD_COMPLETED`. Phase 8 independently found that the original Phase 7
 policy wiring and documentation had the partial-result choices reversed, then
-restored the pinned same-chunk failure behavior without changing successful
-results. Shielding reuse may change execution order, but every
+restored the pinned same-chunk failure behavior. Per-case numerical values and
+all-success runs are unchanged; failed-run progress and checkpoint visibility
+now follow the pinned product contracts. Shielding reuse may change execution
+order, but every
 checkpoint and final summary is reconstructed in input order. Cancellation is
 observed at case boundaries and worker failures retain their remote traceback.
 

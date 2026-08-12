@@ -74,7 +74,9 @@ newtsolver selects `DROP`/`YIELD_COMPLETED`.
 Phase 8's independent audit corrected the pairing in this paragraph. A Phase 7
 edit had reversed the two partial-result policies; same-bucket
 good-then-failing probes and the pinned worker envelopes establish the pairing
-above. No scheduler algorithm or numerical result changed with this correction.
+above. No scheduler algorithm or per-case numerical value changed with this
+correction. All-success runs remain unchanged; only whether an earlier completed
+case from a later-failing chunk becomes parent-visible is corrected.
 
 `PANELSOLVER_PARALLEL_CHUNK_CASES` has precedence over exactly one explicitly
 selected `FMFSOLVER_PARALLEL_CHUNK_CASES` or
