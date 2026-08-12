@@ -55,12 +55,14 @@ def _adapters(rows, run_cases):
 
 class _FakeViewer(QtWidgets.QWidget):
     log_message = QtCore.Signal(str)
+    save_selected_images_requested = QtCore.Signal()
 
     def __init__(self) -> None:
         super().__init__()
         self.loaded = []
         self.cleared = 0
         self.rows = ()
+        self.saved_rows = []
 
     def load_vtp(self, *args) -> None:
         self.loaded.append(args)
@@ -70,6 +72,9 @@ class _FakeViewer(QtWidgets.QWidget):
 
     def set_case_rows(self, rows) -> None:
         self.rows = tuple(rows)
+
+    def save_images_for_case_rows(self, rows) -> None:
+        self.saved_rows.append(list(rows))
 
 
 class RunLifecycleTests(unittest.TestCase):
@@ -249,6 +254,16 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertTrue(panel.is_running())
         panel.cancel_run()
         self.wait_until(lambda: not panel.is_running())
+
+    def test_main_window_routes_selected_rows_to_batch_export(self) -> None:
+        panel, rows, _ = self.make_panel(lambda _request: GuiRunResult())
+        panel._populate_case_table()
+        panel.case_table.selectRow(1)
+        viewer = _FakeViewer()
+        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
+        viewer.save_selected_images_requested.emit()
+        self.assertEqual([[rows[1]]], viewer.saved_rows)
+        window.close()
 
 
 if __name__ == "__main__":

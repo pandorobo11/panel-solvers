@@ -15,15 +15,32 @@ from .viewer_data import (
     ScalarField,
     discover_scalar_fields,
     field_data_scalar,
+    match_artifact_case,
     resolve_matching_case_row,
     scalar_color_limits,
 )
+
+
+def _path_exists(path: Path) -> bool:
+    return path.exists()
+
+
+def _make_directory(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def _process_gui_events() -> None:
+    QtWidgets.QApplication.processEvents(
+        QtCore.QEventLoop.ProcessEventsFlag.AllEvents,
+        10,
+    )
 
 
 class ViewerPanel(QtWidgets.QWidget):
     """Render VTP cell data without owning product or numerical behavior."""
 
     log_message = QtCore.Signal(str)
+    save_selected_images_requested = QtCore.Signal()
 
     def __init__(
         self,
@@ -32,6 +49,9 @@ class ViewerPanel(QtWidgets.QWidget):
         *,
         artifact_reader: Callable[[str], object] = pv.read,
         plotter_factory: Callable[[QtWidgets.QWidget], object] = QtInteractor,
+        path_exists: Callable[[Path], bool] = _path_exists,
+        make_directory: Callable[[Path], None] = _make_directory,
+        process_events: Callable[[], None] = _process_gui_events,
     ) -> None:
         if not isinstance(spec, SolverSpec):
             raise TypeError("spec must be a SolverSpec")
@@ -39,9 +59,19 @@ class ViewerPanel(QtWidgets.QWidget):
             raise TypeError("artifact_reader must be callable")
         if not callable(plotter_factory):
             raise TypeError("plotter_factory must be callable")
+        for name, callback in (
+            ("path_exists", path_exists),
+            ("make_directory", make_directory),
+            ("process_events", process_events),
+        ):
+            if not callable(callback):
+                raise TypeError(f"{name} must be callable")
         super().__init__(parent)
         self.spec = spec
         self._artifact_reader = artifact_reader
+        self._path_exists = path_exists
+        self._make_directory = make_directory
+        self._process_events = process_events
         self._root_layout = QtWidgets.QVBoxLayout(self)
         self._root_layout.setSpacing(6)
         self._root_layout.setContentsMargins(0, 0, 0, 0)
@@ -105,6 +135,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_iso_2 = QtWidgets.QPushButton("+X -Y -Z")
         self.btn_view_wind = QtWidgets.QPushButton("Wind +")
         self.btn_view_wind_rev = QtWidgets.QPushButton("Wind -")
+        self.btn_save_image = QtWidgets.QPushButton("Save Image...")
+        self.btn_save_selected_images = QtWidgets.QPushButton("Save Selected...")
 
     def _build_controls_layout(self) -> None:
         controls = QtWidgets.QVBoxLayout()
@@ -151,10 +183,17 @@ class ViewerPanel(QtWidgets.QWidget):
             camera.addWidget(button)
         camera.addStretch(1)
 
+        export = QtWidgets.QHBoxLayout()
+        export.addWidget(QtWidgets.QLabel("Export"))
+        export.addWidget(self.btn_save_image)
+        export.addWidget(self.btn_save_selected_images)
+        export.addStretch(1)
+
         controls.addLayout(display)
         controls.addLayout(options)
         controls.addLayout(colorbar)
         controls.addLayout(camera)
+        controls.addLayout(export)
         self._root_layout.addLayout(controls)
 
     def _connect_controls(self) -> None:
@@ -177,6 +216,10 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_iso_2.clicked.connect(lambda: self.set_view_vector((1, -1, -1)))
         self.btn_view_wind.clicked.connect(self.set_view_wind)
         self.btn_view_wind_rev.clicked.connect(self.set_view_wind_reverse)
+        self.btn_save_image.clicked.connect(self.save_view_image)
+        self.btn_save_selected_images.clicked.connect(
+            self.save_selected_images_requested.emit
+        )
 
     def logln(self, message: str) -> None:
         self.log_message.emit(message)
@@ -276,6 +319,101 @@ class ViewerPanel(QtWidgets.QWidget):
             if value:
                 return Path(value).expanduser()
         return Path.cwd()
+
+    def save_view_image(self) -> None:
+        """Capture the displayed viewport without enforcing artifact freshness."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save View Image",
+            str(self.default_artifact_dir()),
+            "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)",
+        )
+        if not path:
+            return
+        try:
+            self.plotter.screenshot(path)
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to save image: {exc}")
+            return
+        self.logln(f"[OK] Saved image: {path}")
+
+    def save_images_for_case_rows(self, rows: Sequence[CaseRow]) -> None:
+        """Save current, exact-matching selected artifacts as ordered PNGs."""
+        selected = tuple(rows)
+        if not selected:
+            self.logln("[WARN] No selected cases.")
+            return
+        first_out_dir = str(selected[0].get("out_dir", "")).strip()
+        default_dir = (
+            Path(first_out_dir).expanduser() / "images"
+            if first_out_dir
+            else self.default_artifact_dir() / "images"
+        )
+        selected_dir = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select Folder to Save Selected Images",
+            str(default_dir),
+        )
+        if not selected_dir:
+            return
+        output_dir = Path(selected_dir).expanduser()
+        try:
+            self._make_directory(output_dir)
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to create image directory: {exc}")
+            return
+
+        saved = 0
+        skipped = 0
+        self.logln(f"[SAVE] Batch image export start: {len(selected)} case(s)")
+        for row in selected:
+            if self._save_case_image(row, output_dir):
+                saved += 1
+            else:
+                skipped += 1
+            try:
+                self._process_events()
+            except Exception as exc:
+                self.logln(f"[ERROR] Failed to process GUI events: {exc}")
+        self.logln(f"[SAVE] Batch image export done: saved={saved}, skipped={skipped}")
+
+    def _save_case_image(self, row: CaseRow, output_dir: Path) -> bool:
+        case_id = str(row.get("case_id", "")).strip()
+        if not case_id:
+            self.logln("[SKIP] Missing case_id in selected row.")
+            return False
+        raw_out_dir = str(row.get("out_dir", "")).strip() or "outputs"
+        vtp_path = Path(raw_out_dir).expanduser() / f"{case_id}.vtp"
+        if not self._path_exists(vtp_path):
+            self.logln(f"[SKIP] VTP not found: {vtp_path}")
+            return False
+        try:
+            artifact = self._artifact_reader(str(vtp_path))
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to read VTP for '{case_id}': {exc}")
+            return False
+        if self.spec.adapters is None:
+            self.logln(f"[ERROR] No artifact matcher adapter for '{case_id}'.")
+            return False
+        try:
+            candidates = self.spec.adapters.build_case_signatures(row)
+            matched = match_artifact_case(artifact, row, candidates).matched
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to match VTP for '{case_id}': {exc}")
+            return False
+        if not matched:
+            self.logln(f"[SKIP] VTP signature mismatch for '{case_id}': {vtp_path}")
+            return False
+        if not self.load_vtp(str(vtp_path), poly=artifact, case_row=row):
+            return False
+        image_path = output_dir / f"{case_id}.png"
+        try:
+            self.plotter.screenshot(str(image_path))
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to save image for '{case_id}': {exc}")
+            return False
+        self.logln(f"[OK] Saved image: {image_path}")
+        return True
 
     def set_view_vector(self, vector: tuple[float, float, float]) -> None:
         self.plotter.view_vector(vector)

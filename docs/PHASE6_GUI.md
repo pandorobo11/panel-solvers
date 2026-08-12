@@ -137,3 +137,19 @@ The shared `MainWindow` keeps the pinned 1480 x 900 horizontal splitter and uses
 `SolverSpec.close_policy` for D023. FMF requests cancellation, ignores the first
 close, and closes only after `run_finished`; newtsolver uses the normal immediate
 Qt close path and receives no equivalent deferral behavior.
+
+## Image export
+
+Single-view export preserves PNG, JPEG, and TIFF choices and starts in the
+current artifact directory. It captures the current viewport without repeating
+automatic artifact matching, so a manually opened stale VTP remains exportable
+under D024.
+
+Selected-case export preserves table order and writes `<case_id>.png`, defaulting
+the folder chooser to the first row's `out_dir/images`. Every automatic VTP is
+read and checked through the same exact case/signature matcher as selection;
+missing, unreadable, stale, and screenshot-failing rows are logged and counted
+as skipped. Current artifacts are loaded with explicit row context before
+capture, preserving each product's independent overlay formatter. Filesystem
+existence/directory creation, artifact reading, screenshots, and GUI event
+processing are injectable test boundaries. Image pixels are not golden data.
