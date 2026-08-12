@@ -116,6 +116,14 @@ constants, so model evaluation performs no filesystem access. The concrete
 model exposes only its normalized model-case signature payload; signature
 envelope construction remains Phase 5 work.
 
+Phase 4b independently places Newtonian, modified-Newtonian, tangent-wedge,
+tangent-cone, and Prandtl–Meyer behavior behind the same protocol. Its local
+traction is pressure-only `-Cp * normal_out_stl`; core does not reconstruct it
+from a shared scalar. Windward and leeward selector sets, one-or-per-component
+expansion, Mach/gamma validation, detached branches, Taylor–Maccoll integration,
+and inverse Prandtl–Meyer iteration remain owned by the hypersonic model. No
+Sentman case field, scalar, or metadata superset is introduced.
+
 ## Ownership constraints
 
 | Concern | Owner |
