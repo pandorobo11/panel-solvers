@@ -52,9 +52,11 @@ new application behavior.
 
 - Legacy console commands are not registered.
 - Legacy Python modules beyond the Phase 3 CSV/computed-data adapters do not exist.
-- No CSV/Excel input reader, VTP/NPZ serializer, scheduler, CLI, or GUI is
-  implemented. The shared STL loader and shielding engine are internal Phase 5
-  migration surfaces, not legacy Python-import or command compatibility.
+- No CSV/Excel input reader, VTP/NPZ serializer, CLI, or GUI is implemented. The
+  shared STL loader, shielding engine, and spawn scheduler are internal Phase 5
+  migration surfaces, not legacy Python-import or command compatibility. The
+  scheduler preserves worker logging and failure-partial differences as explicit
+  policies for later compatibility adapters.
 - The shared Sentman and hypersonic models are internal Phase 4 migration
   surfaces; legacy computational imports and commands are not forwarded yet.
 - The Phase 3 CSV writer and semantic VTP/NPZ projections are internal migration

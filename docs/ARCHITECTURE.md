@@ -154,6 +154,16 @@ vector through protocols; core contains no Sentman/hypersonic branch. Applicatio
 assembly selects the registered model. Artifact writing, worker scheduling, and
 GUI lifecycle remain outside the one-case engine.
 
+Phase 5e adds a model-neutral spawn scheduler around that one-case engine.
+Scheduling bucket keys are reuse hints only and never replace geometry,
+shielding, or result-cache identities. Completion-order delivery carries stable
+input indices; progress and checkpoint snapshots are rebuilt deterministically
+in caller-defined input order. Cancellation is cooperative between cases and
+does not interrupt an active ray query or model solve. D015 worker logging and
+the differing legacy failure-partial behavior remain explicit adapter-selected
+policies. Worker startup failures, remote tracebacks, and unexpected exits cross
+the process boundary as distinct errors.
+
 ## Ownership constraints
 
 | Concern | Owner |
