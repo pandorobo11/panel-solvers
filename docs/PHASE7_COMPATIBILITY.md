@@ -125,6 +125,31 @@ CI builds and reinstalls the wheel on Ubuntu, Windows, and macOS, verifies all
 six entry-point targets, compares both CLI help texts exactly, and runs both
 unchanged Phase 1 input tables from a temporary directory outside the checkout.
 
+## Python compatibility surface
+
+The complete Phase 1 module inventories now import from the unified
+distribution. Compatibility modules translate legacy DataFrame, dictionary,
+mutable-mesh, serializer, scheduler, and no-argument GUI constructor shapes to
+shared implementations. The roots retain exact empty-list `__all__` values and
+expose product-facing `__version__` values of `1.3.8` and `1.0.3` independently
+of the `panel-solvers` distribution version.
+
+FMF forwards its Sentman vector and US1976 helpers only. newtsolver retains the
+exact ordered `panel_core.__all__` and `pressure_models.__all__` lists, including
+the recorded underscore exports. It forwards the independent pressure-model,
+selector, attitude, and panel-force helpers without adding them to FMF. Direct
+solver calls return the pinned legacy signature while normal Phase 7 runtime
+artifacts continue to carry the primary ADR 0005 identity and accept ordered
+legacy identities as fallbacks.
+
+Shared compatibility adapters own call-shape translation, mutable views of the
+immutable mesh contract, DataFrame result reconstruction, and direct-array
+serialization. The compatibility packages do not import NumPy, SciPy, trimesh,
+or PyVista from their computational forwarding modules and contain no physical
+formula, geometry, cache, shielding, scheduler, or serializer implementation.
+Installed-wheel smoke testing imports every frozen module and checks the exact
+root/version/D025 export contracts before exercising both command families.
+
 ## Final acceptance evidence
 
 Phase 7 can be marked complete only when:

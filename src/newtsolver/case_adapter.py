@@ -20,9 +20,8 @@ from panelsolver.models.hypersonic.selectors import (
     normalize_windward_equation,
 )
 
+from ._version import NEWTSOLVER_COMPATIBILITY_VERSION
 from .io.io_cases import DEFAULTS
-
-NEWTSOLVER_COMPATIBILITY_VERSION = "1.0.3"
 
 _SIGNATURE_KEYS = (
     "case_id",

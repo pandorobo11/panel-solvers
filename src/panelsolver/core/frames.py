@@ -82,6 +82,21 @@ def body_to_stability(
     return np.ascontiguousarray(vectors @ rotation.T)
 
 
+def rotation_matrix_y_rad(alpha_rad: float) -> np.ndarray:
+    """Return the pinned right-handed rotation matrix about ``+Y``."""
+    alpha = real_scalar(alpha_rad, field="alpha_rad")
+    cosine = math.cos(alpha)
+    sine = math.sin(alpha)
+    return np.array(
+        [
+            [cosine, 0.0, sine],
+            [0.0, 1.0, 0.0],
+            [-sine, 0.0, cosine],
+        ],
+        dtype=np.float64,
+    )
+
+
 def _vector_array(value: object, *, field: str) -> np.ndarray:
     try:
         raw = np.asarray(value)
@@ -102,6 +117,7 @@ def _vector_array(value: object, *, field: str) -> np.ndarray:
 
 __all__ = (
     "body_to_stability",
+    "rotation_matrix_y_rad",
     "stl_to_body",
     "velocity_hat_stl_from_tangent_angles",
 )
