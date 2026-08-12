@@ -50,7 +50,8 @@ new application behavior.
 
 ## Current implementation non-compatibilities
 
-- Legacy console commands are not registered.
+- All six legacy console commands are registered; exact batch help and installed
+  execution are checked on Ubuntu, Windows, and macOS.
 - Case readers, internal runtime policies, Phase 3 adapters, and GUI selectors
   exist, but the remaining frozen legacy Python module inventory and call shapes
   are not forwarded yet.
@@ -62,8 +63,7 @@ new application behavior.
 - Compatible CSV/Excel readers and runtime VTP/NPZ/summary-CSV serialization are
   implemented. Product policies retain worker logging, failure-partial behavior,
   output collision scope, CSV durability, compatibility versions, and model-only
-  output fields independently. Legacy console commands are still absent until
-  the Phase 7 CLI slice.
+  output fields independently.
 - The shared Sentman and hypersonic models are internal Phase 4 migration
   surfaces; legacy computational imports and commands are not forwarded yet.
 - The Phase 3 CSV and semantic artifact projections are now composed with the

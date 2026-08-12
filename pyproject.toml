@@ -24,6 +24,14 @@ rayaccel = [
   "embreex; sys_platform != 'darwin' or platform_machine != 'arm64'",
 ]
 
+[project.scripts]
+fmfsolver = "fmfsolver.app.gui_app:main"
+fmfsolver-gui = "fmfsolver.app.gui_app:main"
+fmfsolver-cli = "fmfsolver.app.cli_app:main"
+newtsolver = "newtsolver.app.gui_app:main"
+newtsolver-gui = "newtsolver.app.gui_app:main"
+newtsolver-cli = "newtsolver.app.cli_app:main"
+
 [dependency-groups]
 dev = ["ruff"]
 
