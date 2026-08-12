@@ -24,7 +24,7 @@ push- and PR-event Ubuntu/Windows/macOS/artifact CI succeeded.
 | runtime, serializers, GUI adapters | #49 / [#55](https://github.com/pandorobo11/panel-solvers/pull/55) | `78c6c36` | 183 |
 | six commands and installed samples | #50 / [#56](https://github.com/pandorobo11/panel-solvers/pull/56) | `b474507` | 196 |
 | frozen Python surfaces | #51 / [#57](https://github.com/pandorobo11/panel-solvers/pull/57) | `57a4cfb` | 202 |
-| docs and final acceptance | #52 / final Phase 7 PR | pending this record | 202 source + 202 installed wheel |
+| docs and final acceptance | #52 / [#58](https://github.com/pandorobo11/panel-solvers/pull/58) | linked PR records final merge | 202 source + 202 installed wheel |
 
 All recorded Ubuntu, Windows, macOS, and artifact jobs for PRs #53–#57 ended in
 `SUCCESS`. PR #56's PR-event macOS job was rerun after an infrastructure stall
@@ -88,9 +88,9 @@ newtsolver:
 
 The Issue #52 candidate repeated `uv sync --locked --extra rayaccel`, all 202
 tests, Ruff, build, clean built-wheel reinstall/import/sample smoke outside the
-checkout, and all 202 tests again against the installed wheel. The final PR's
-Ubuntu, Windows, macOS, and artifact check rollup is the authoritative CI record;
-it must be completely successful before merge.
+checkout, and all 202 tests again against the installed wheel. PR #58's Ubuntu,
+Windows, macOS, and artifact check rollup is the authoritative CI record; it must
+be completely successful before merge.
 
 Remaining risks are the subjects of Phase 8: an independent numerical and
 architecture audit, performance/memory comparison, and broader lifecycle audit.
