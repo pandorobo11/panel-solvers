@@ -273,6 +273,65 @@ def _sentman_traction_coefficients(
     return out
 
 
+def sentman_dC_dA_vectors(
+    Vhat: np.ndarray,
+    n_out: np.ndarray,
+    S: float,
+    Ti: float,
+    Tw: float,
+    Aref: float,
+    shielded: np.ndarray | bool = False,
+) -> np.ndarray:
+    """Expose the pinned legacy Sentman density over the shared model formula."""
+    velocity = np.asarray(Vhat, dtype=np.float64)
+    normals = np.asarray(n_out, dtype=np.float64)
+    if velocity.shape != (3,):
+        raise ValueError("Vhat must have shape (3,).")
+    if normals.ndim != 2 or normals.shape[1] != 3:
+        raise ValueError("n_out must have shape (N, 3).")
+    speed_ratio = float(S)
+    if speed_ratio <= 0.0:
+        raise ValueError(f"S must be > 0, got {speed_ratio:g}")
+    if np.isscalar(shielded):
+        mask = np.full(normals.shape[0], bool(shielded), dtype=np.bool_)
+    else:
+        mask = np.asarray(shielded, dtype=np.bool_)
+        if mask.shape != (normals.shape[0],):
+            raise ValueError("shielded must be scalar or shape (N,).")
+    return _sentman_traction_coefficients(
+        velocity_hat_stl=velocity,
+        normals_out_stl=normals,
+        speed_ratio=speed_ratio,
+        translational_temperature_k=float(Ti),
+        wall_temperature_k=float(Tw),
+        shielded=mask,
+    ) / float(Aref)
+
+
+def sentman_dC_dA_vector(
+    Vhat: np.ndarray,
+    n_out: np.ndarray,
+    S: float,
+    Ti: float,
+    Tw: float,
+    Aref: float,
+    shielded: bool = False,
+) -> np.ndarray:
+    """Scalar-panel compatibility form of :func:`sentman_dC_dA_vectors`."""
+    normal = np.asarray(n_out, dtype=np.float64)
+    if normal.shape != (3,):
+        raise ValueError("n_out must have shape (3,).")
+    return sentman_dC_dA_vectors(
+        Vhat,
+        normal[None, :],
+        S,
+        Ti,
+        Tw,
+        Aref,
+        np.asarray([shielded], dtype=np.bool_),
+    )[0]
+
+
 __all__ = (
     "SENTMAN_ALGORITHM_VERSION",
     "SENTMAN_MODEL_ID",
@@ -280,4 +339,6 @@ __all__ = (
     "SentmanCaseError",
     "SentmanModel",
     "resolve_sentman_case",
+    "sentman_dC_dA_vector",
+    "sentman_dC_dA_vectors",
 )

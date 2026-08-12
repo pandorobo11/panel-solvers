@@ -31,10 +31,10 @@ class ResolvedAttitude:
         object.__setattr__(self, "velocity_hat_stl", immutable)
         object.__setattr__(self, "alpha_t_deg", float(self.alpha_t_deg))
         object.__setattr__(self, "beta_t_deg", float(self.beta_t_deg))
-        object.__setattr__(self, "input_mode", _attitude_mode(self.input_mode))
+        object.__setattr__(self, "input_mode", resolve_attitude_mode(self.input_mode))
 
 
-def _attitude_mode(value: object) -> str:
+def resolve_attitude_mode(value: object) -> str:
     mode = str(value or "").strip().lower() or "beta_tan"
     if mode not in ATTITUDE_INPUT_VALUES:
         raise ValueError(
@@ -60,7 +60,7 @@ def resolve_attitude(
     strict_beta_tan_domain: bool,
 ) -> ResolvedAttitude:
     """Resolve a pinned public attitude while retaining the D007 policy split."""
-    mode = _attitude_mode(attitude_input)
+    mode = resolve_attitude_mode(attitude_input)
     alpha_in = float(alpha_deg)
     beta_in = float(beta_or_bank_deg)
     if not math.isfinite(alpha_in) or not math.isfinite(beta_in):
@@ -126,4 +126,5 @@ __all__ = (
     "ATTITUDE_INPUT_VALUES",
     "ResolvedAttitude",
     "resolve_attitude",
+    "resolve_attitude_mode",
 )

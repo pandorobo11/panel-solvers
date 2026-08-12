@@ -48,13 +48,14 @@ select a solver specification, and forward calls. They may not own physical
 equations, geometry, integration, caching, scheduling, artifact generation, or
 new application behavior.
 
-## Current implementation non-compatibilities
+## Current implementation status
 
 - All six legacy console commands are registered; exact batch help and installed
   execution are checked on Ubuntu, Windows, and macOS.
-- Case readers, internal runtime policies, Phase 3 adapters, and GUI selectors
-  exist, but the remaining frozen legacy Python module inventory and call shapes
-  are not forwarded yet.
+- The complete frozen FMF and newtsolver module inventories and representative
+  call shapes are forwarded. Product roots retain `__all__ = []`, compatibility
+  versions remain distinct, and newtsolver's explicit D025 underscore exports
+  are preserved without adding them to FMF.
 - The Phase 6 shared GUI shell, cases panel, viewer, lifecycle, and image export
   now receive complete product adapters by default. Both compatibility GUI
   launchers read cases, execute, checkpoint, write results, and match primary or
@@ -64,12 +65,11 @@ new application behavior.
   implemented. Product policies retain worker logging, failure-partial behavior,
   output collision scope, CSV durability, compatibility versions, and model-only
   output fields independently.
-- The shared Sentman and hypersonic models are internal Phase 4 migration
-  surfaces; legacy computational imports and commands are not forwarded yet.
-- The Phase 3 CSV and semantic artifact projections are now composed with the
-  Phase 5 engine by the shared Phase 7 application runtime. They are not yet
-  exposed through the frozen legacy Python module inventory.
+- The shared Sentman and hypersonic models are forwarded through product-only
+  compatibility modules; the frontends contain no copied physical equations.
+- The Phase 3 CSV and semantic artifact projections are composed with the Phase
+  5 engine and are also reachable through the frozen legacy Python call shapes.
 
-These gaps are intentional and must not be mistaken for a usable preview release.
-Continue using the pinned legacy products for calculations until their later
-migration phases are accepted.
+Phase 7 is not complete until Issue #52 supplies final installed-sample/release
+documentation and records both manual macOS GUI smokes. Until that acceptance is
+merged, continue treating the pinned legacy products as the release baseline.

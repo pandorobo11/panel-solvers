@@ -16,9 +16,8 @@ from panelsolver.app.solver_spec import ArtifactSignatureCandidates
 from panelsolver.core import MeshValidationPolicy
 from panelsolver.models import ModelRegistry
 
+from ._version import FMFSOLVER_COMPATIBILITY_VERSION
 from .io.io_cases import DEFAULTS
-
-FMFSOLVER_COMPATIBILITY_VERSION = "1.3.8"
 
 _SIGNATURE_KEYS = (
     "case_id",

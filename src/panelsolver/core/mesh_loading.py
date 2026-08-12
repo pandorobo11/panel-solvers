@@ -217,11 +217,20 @@ def _load_uncached(
     if not combined.is_watertight:
         warning_messages.append("[WARN] Mesh is not watertight (trimesh). Continuing anyway.")
 
+    areas = np.asarray(combined.area_faces, dtype=np.float64)
+    invalid_areas = ~np.isfinite(areas) | (areas <= 0.0)
+    if np.any(invalid_areas):
+        count = int(np.count_nonzero(invalid_areas))
+        raise MeshLoadError(
+            "Mesh geometry violates the shared contract: "
+            f"contains {count} degenerate or non-finite triangle face(s)."
+        )
+
     try:
         geometry = PanelGeometry(
             centers_stl_m=np.asarray(combined.triangles_center, dtype=np.float64),
             normals_out_stl=np.asarray(combined.face_normals, dtype=np.float64),
-            areas_m2=np.asarray(combined.area_faces, dtype=np.float64),
+            areas_m2=areas,
             component_ids=component_ids,
         )
         panel_mesh = PanelMesh(

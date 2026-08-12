@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pandas as pd
 
 from ._sentman_atmosphere_data import (
     ALTITUDE_KM,
@@ -61,8 +62,19 @@ def mean_to_most_probable_speed(mean_speed_ms: float) -> float:
     return (math.sqrt(math.pi) / 2.0) * float(mean_speed_ms)
 
 
+def load_us1976_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return defensive DataFrame copies with the frozen legacy column names."""
+    return (
+        pd.DataFrame(
+            {"Z": _ALTITUDE_KM, "T": _TEMPERATURE_K, "c": _SPEED_OF_SOUND_MS}
+        ),
+        pd.DataFrame({"Z": _ALTITUDE_KM, "V": _MEAN_MOLECULAR_SPEED_MS}),
+    )
+
+
 __all__ = (
     "altitude_range_km",
+    "load_us1976_tables",
     "mean_to_most_probable_speed",
     "sample_at_altitude_km",
 )
