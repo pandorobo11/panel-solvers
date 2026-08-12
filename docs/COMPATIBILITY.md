@@ -51,9 +51,12 @@ new application behavior.
 ## Current implementation non-compatibilities
 
 - Legacy console commands are not registered.
-- Legacy Python modules beyond the package root do not exist.
-- No CSV, Excel, mesh, calculation, VTP, NPZ, CLI, or GUI operation is implemented.
+- Legacy Python modules beyond the Phase 3 CSV/computed-data adapters do not exist.
+- No CSV/Excel input reader, STL loader/repair, shielding engine, physical model,
+  VTP/NPZ serializer, scheduler, CLI, or GUI is implemented.
+- The Phase 3 CSV writer and semantic VTP/NPZ projections are internal migration
+  surfaces, not a runnable solver pipeline.
 
 These gaps are intentional and must not be mistaken for a usable preview release.
-Phase 1 adds executable evidence only; it does not implement these compatibility
-surfaces in the shared packages.
+Continue using the pinned legacy products for calculations until their later
+migration phases are accepted.
