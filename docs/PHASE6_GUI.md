@@ -114,3 +114,26 @@ default and creates `outputs` before the dialog, including when the user cancels
 Product-specific D009 collision rules are invoked only through the spec adapter.
 The panel emits a run request containing selected-or-all rows, worker count, and
 validated output path; Phase 6e owns execution and lifecycle.
+
+## Execution and window lifecycle
+
+`GuiRunRequest` is the product-neutral boundary passed to the injected execution
+adapter. It carries an ordered tuple of mapping rows, the validated output path,
+workers, and callbacks for log delivery, deterministic `done/total` progress,
+and cooperative cancellation. Product adapters retain ownership of checkpoint
+and final result serialization and therefore retain the Phase 5
+`WorkerLogPolicy`/`PartialResultPolicy` choices. `GuiRunResult` exposes only the
+first completed VTP needed to refresh the viewer.
+
+`CaseRunWorker` executes the adapter on a `QThread`. Only
+`SchedulerCancelled` is classified as cancellation; another exception remains
+the primary failure even when cancellation was also requested. The panel rejects
+double starts, disables mutable controls while active, restores them on every
+terminal path, and releases worker/thread references only after `QThread` exit.
+Cancellation remains case-boundary cooperative and does not promise interruption
+inside a ray query, root solve, or ODE.
+
+The shared `MainWindow` keeps the pinned 1480 x 900 horizontal splitter and uses
+`SolverSpec.close_policy` for D023. FMF requests cancellation, ignores the first
+close, and closes only after `run_finished`; newtsolver uses the normal immediate
+Qt close path and receives no equivalent deferral behavior.
