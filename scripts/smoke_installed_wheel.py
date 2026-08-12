@@ -135,6 +135,42 @@ def _smoke_direct_exporters(staging: Path) -> None:
                     raise RuntimeError(f"{module_name}.export_npz {name} dtype changed")
 
 
+def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
+    products = (
+        ("fmfsolver", "fmfsolver_cases.csv", 3),
+        ("newtsolver", "newtsolver_cases.csv", 6),
+    )
+    for product, filename, multi_index in products:
+        reader = importlib.import_module(f"{product}.io.io_cases").read_cases
+        run_case = importlib.import_module(f"{product}.core.solver").run_case
+        row = reader(inputs / filename).iloc[multi_index].to_dict()
+        output = staging / "direct-solvers" / product
+        row.update(out_dir=str(output), save_vtp_on=0, save_npz_on=0)
+
+        result = run_case(row, lambda _message: None)
+        components = result["component_rows"]
+        expected_sources = row["stl_path"].split(";")
+        if result["component_id"] != "" or type(result["component_id"]) is not str:
+            raise RuntimeError(f"{product} total component_id type/blank changed")
+        if (
+            result["component_stl_path"] != ""
+            or type(result["component_stl_path"]) is not str
+        ):
+            raise RuntimeError(f"{product} total component_stl_path changed")
+        if result["vtp_path"] != "" or result["npz_path"] != "":
+            raise RuntimeError(f"{product} disabled total artifact paths changed")
+        if [item["component_id"] for item in components] != [0, 1] or not all(
+            type(item["component_id"]) is int for item in components
+        ):
+            raise RuntimeError(f"{product} component IDs changed")
+        if [item["component_stl_path"] for item in components] != expected_sources:
+            raise RuntimeError(f"{product} component STL order changed")
+        if any(item["vtp_path"] != "" for item in components) or any(
+            item["npz_path"] != "" for item in components
+        ):
+            raise RuntimeError(f"{product} component artifact paths changed")
+
+
 def main() -> int:
     repository = Path(sys.argv[1]).resolve()
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
@@ -176,6 +212,7 @@ def main() -> int:
             repository / "tests" / "fixtures" / "phase1" / "inputs",
             inputs,
         )
+        _smoke_direct_solver_results(staging, inputs)
         for product in ("fmfsolver", "newtsolver"):
             command = _command_path(f"{product}-cli")
             help_result = subprocess.run(

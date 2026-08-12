@@ -161,6 +161,15 @@ solver calls return the pinned legacy signature while normal Phase 7 runtime
 artifacts continue to carry the primary ADR 0005 identity and accept ordered
 legacy identities as fallbacks.
 
+Phase 8 also restored the pinned direct-solver values before compatibility
+DataFrame construction. Total rows expose `component_id` and
+`component_stl_path` as exact empty strings; component rows expose Python `int`
+IDs in source-STL order and empty `vtp_path`/`npz_path` strings. Disabled total
+artifact paths are empty strings as well. This normalization is limited to the
+four compatibility fields: the immutable neutral `CsvProjection`, numerical
+values, result columns, summary CSV projection, and artifact contents are
+unchanged.
+
 Shared compatibility adapters own call-shape translation, mutable views of the
 immutable mesh contract, DataFrame result reconstruction, and direct-array
 serialization. The compatibility packages do not import NumPy, SciPy, trimesh,

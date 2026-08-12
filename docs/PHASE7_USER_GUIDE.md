@@ -98,6 +98,15 @@ the path in caller state if it is needed later; the shared application's
 internal serializers return `Path`, but that is not the compatibility contract.
 The internal `path=` spelling is not a public synonym for `out_path=`.
 
+Direct `fmfsolver.core.solver` and `newtsolver.core.solver` calls retain the
+pinned blank/type contract. In `run_case()` dictionaries and `run_cases()`
+DataFrames, total-row `component_id` and `component_stl_path` values are empty
+strings. Multi-STL component IDs are Python integers in input-STL order, and
+component `vtp_path`/`npz_path` values are empty strings because artifact paths
+belong only to the total row. Disabled total artifact paths are also empty
+strings. These are compatibility values rather than missing-value sentinels;
+callers should not expect `None`, `NaN`, or floating-point component IDs.
+
 ### Direct common-core flow direction
 
 The compatibility CLI and GUI adapters deterministically resolve

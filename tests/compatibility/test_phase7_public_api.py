@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import csv
 import importlib
 import inspect
 import json
@@ -22,6 +23,8 @@ from fmfsolver.core.parallel_scheduler import (
 )
 from fmfsolver.core.sentman_core import sentman_dC_dA_vector
 from fmfsolver.core.solver import run_case as run_fmf_case
+from fmfsolver.core.solver import run_cases as run_fmf_cases
+from fmfsolver.io.csv_out import write_results_csv as write_fmf_results_csv
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from fmfsolver.physics.us1976 import load_us1976_tables, sample_at_altitude_km
 from newtsolver.core.case_signature import build_case_signature as build_newt_signature
@@ -30,7 +33,11 @@ from newtsolver.core.parallel_scheduler import (
     iter_case_results_parallel as iter_newt_case_results_parallel,
 )
 from newtsolver.core.solver import run_case as run_newt_case
+from newtsolver.core.solver import run_cases as run_newt_cases
+from newtsolver.io.csv_out import write_results_csv as write_newt_results_csv
 from newtsolver.io.io_cases import read_cases as read_newt_cases
+from panelsolver.app.legacy_results import legacy_result_frame
+from panelsolver.core import CsvProjection
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "phase1"
@@ -215,6 +222,212 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                 self.assertEqual(result["scope"], "total")
                 self.assertEqual(result["component_rows"], [])
                 self.assertAlmostEqual(result["CA"], expected_ca, places=14)
+
+    def test_direct_solvers_restore_exact_legacy_blanks_types_and_paths(self) -> None:
+        products = (
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                run_fmf_case,
+                run_fmf_cases,
+                "fmfsolver_cases.csv",
+                0,
+                3,
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                run_newt_case,
+                run_newt_cases,
+                "newtsolver_cases.csv",
+                0,
+                6,
+            ),
+        )
+        for product, reader, run_one, run_many, filename, single_index, multi_index in products:
+            cases = reader(FIXTURES / "inputs" / filename)
+            for api, runner in (("run_case", run_one), ("run_cases", run_many)):
+                for kind, index, save_artifacts in (
+                    ("single", single_index, False),
+                    ("multi", multi_index, True),
+                ):
+                    with self.subTest(product=product, api=api, kind=kind):
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            output = Path(temp_dir) / product / api / kind
+                            row = cases.iloc[index].to_dict()
+                            row.update(
+                                out_dir=str(output),
+                                save_vtp_on=int(save_artifacts),
+                                save_npz_on=int(save_artifacts),
+                            )
+                            if api == "run_case":
+                                total = runner(row, lambda _message: None)
+                                rows = [total, *total["component_rows"]]
+                            else:
+                                result_frame = runner(
+                                    pd.DataFrame([row]),
+                                    lambda _message: None,
+                                )
+                                rows = result_frame.to_dict(orient="records")
+
+                            component_paths = (
+                                row["stl_path"].split(";") if kind == "multi" else []
+                            )
+                            component_rows = rows[1:]
+                            self.assertEqual(
+                                ["total", *(["component"] * len(component_paths))],
+                                [item["scope"] for item in rows],
+                            )
+                            self.assertEqual("", rows[0]["component_id"])
+                            self.assertIs(type(rows[0]["component_id"]), str)
+                            self.assertEqual("", rows[0]["component_stl_path"])
+                            self.assertIs(type(rows[0]["component_stl_path"]), str)
+                            self.assertEqual(
+                                list(range(len(component_paths))),
+                                [item["component_id"] for item in component_rows],
+                            )
+                            self.assertTrue(
+                                all(
+                                    type(item["component_id"]) is int
+                                    for item in component_rows
+                                )
+                            )
+                            self.assertEqual(
+                                component_paths,
+                                [item["component_stl_path"] for item in component_rows],
+                            )
+                            expected_vtp = (
+                                str(output / f"{row['case_id']}.vtp")
+                                if save_artifacts
+                                else ""
+                            )
+                            expected_npz = (
+                                str(output / f"{row['case_id']}.npz")
+                                if save_artifacts
+                                else ""
+                            )
+                            self.assertEqual(expected_vtp, rows[0]["vtp_path"])
+                            self.assertEqual(expected_npz, rows[0]["npz_path"])
+                            self.assertTrue(
+                                all(item["vtp_path"] == "" for item in component_rows)
+                            )
+                            self.assertTrue(
+                                all(item["npz_path"] == "" for item in component_rows)
+                            )
+                            self.assertEqual(
+                                save_artifacts,
+                                (output / f"{row['case_id']}.vtp").is_file(),
+                            )
+                            self.assertEqual(
+                                save_artifacts,
+                                (output / f"{row['case_id']}.npz").is_file(),
+                            )
+
+    def test_public_result_writers_keep_legacy_blank_and_integer_lexemes(self) -> None:
+        inputs = pd.DataFrame([{"case_id": "lexical"}])
+        results = pd.DataFrame(
+            (
+                {
+                    "case_id": "lexical",
+                    "scope": "total",
+                    "component_id": "",
+                    "component_stl_path": "",
+                    "vtp_path": "",
+                    "npz_path": "",
+                },
+                {
+                    "case_id": "lexical",
+                    "scope": "component",
+                    "component_id": 0,
+                    "component_stl_path": "left.stl",
+                    "vtp_path": "",
+                    "npz_path": "",
+                },
+                {
+                    "case_id": "lexical",
+                    "scope": "component",
+                    "component_id": 1,
+                    "component_stl_path": "right.stl",
+                    "vtp_path": "",
+                    "npz_path": "",
+                },
+            )
+        )
+        for product, writer in (
+            ("fmfsolver", write_fmf_results_csv),
+            ("newtsolver", write_newt_results_csv),
+        ):
+            with self.subTest(product=product), tempfile.TemporaryDirectory() as temp_dir:
+                output = Path(temp_dir) / "results.csv"
+                writer(str(output), inputs, results)
+                with output.open(encoding="utf-8", newline="") as stream:
+                    rows = list(csv.DictReader(stream))
+                self.assertEqual(["", "0", "1"], [r["component_id"] for r in rows])
+                self.assertEqual(
+                    ["", "left.stl", "right.stl"],
+                    [r["component_stl_path"] for r in rows],
+                )
+                self.assertEqual(["", "", ""], [r["vtp_path"] for r in rows])
+                self.assertEqual(["", "", ""], [r["npz_path"] for r in rows])
+
+    def test_direct_result_normalization_does_not_mutate_neutral_projection(self) -> None:
+        projection = CsvProjection(
+            (
+                "case_id",
+                "scope",
+                "component_id",
+                "component_stl_path",
+                "vtp_path",
+                "npz_path",
+                "CA",
+            ),
+            (
+                {
+                    "case_id": "neutral",
+                    "scope": "total",
+                    "component_id": None,
+                    "component_stl_path": None,
+                    "vtp_path": None,
+                    "npz_path": None,
+                    "CA": 1.25,
+                },
+                {
+                    "case_id": "neutral",
+                    "scope": "component",
+                    "component_id": 0,
+                    "component_stl_path": "component.stl",
+                    "vtp_path": None,
+                    "npz_path": None,
+                    "CA": 0.25,
+                },
+            ),
+        )
+        before = tuple(tuple(row.items()) for row in projection.rows)
+
+        frame = legacy_result_frame(projection, input_columns=())
+
+        self.assertEqual(before, tuple(tuple(row.items()) for row in projection.rows))
+        self.assertEqual(
+            [
+                {
+                    "component_id": "",
+                    "component_stl_path": "",
+                    "vtp_path": "",
+                    "npz_path": "",
+                },
+                {
+                    "component_id": 0,
+                    "component_stl_path": "component.stl",
+                    "vtp_path": "",
+                    "npz_path": "",
+                },
+            ],
+            frame[
+                ["component_id", "component_stl_path", "vtp_path", "npz_path"]
+            ].to_dict(orient="records"),
+        )
+        self.assertIs(type(frame.iloc[1]["component_id"]), int)
+        self.assertEqual([1.25, 0.25], frame["CA"].tolist())
 
     def test_atmosphere_tables_keep_legacy_return_shapes(self) -> None:
         table1, table2 = load_us1976_tables()
