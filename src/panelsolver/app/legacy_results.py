@@ -12,6 +12,24 @@ from panelsolver.core import CsvProjection
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from .runtime import ProductBatchRunResult
 
+_LEGACY_COMPONENT_RESULT_COLUMNS = (
+    "scope",
+    "component_id",
+    "component_stl_path",
+    "CA",
+    "CY",
+    "CN",
+    "Cl",
+    "Cm",
+    "Cn",
+    "CD",
+    "CL",
+    "faces",
+    "shielded_faces",
+    "vtp_path",
+    "npz_path",
+)
+
 
 def legacy_result_frame(
     projection: CsvProjection,
@@ -120,9 +138,10 @@ def run_legacy_cases(
 def direct_legacy_result(frame: pd.DataFrame) -> dict[str, object]:
     """Collapse one total/component result frame to the legacy dictionary."""
     total = frame.loc[frame["scope"] == "total"].iloc[0].to_dict()
-    component_rows = frame.loc[frame["scope"] == "component"].to_dict(
-        orient="records"
-    )
+    component_rows = frame.loc[
+        frame["scope"] == "component",
+        list(_LEGACY_COMPONENT_RESULT_COLUMNS),
+    ].to_dict(orient="records")
     total["component_rows"] = component_rows
     return total
 

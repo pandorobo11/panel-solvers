@@ -170,6 +170,15 @@ four compatibility fields: the immutable neutral `CsvProjection`, numerical
 values, result columns, summary CSV projection, and artifact contents are
 unchanged.
 
+The nested `component_rows` records returned by direct `run_case()` calls are
+also projected back to the pinned 15 fields and insertion order: `scope`,
+`component_id`, `component_stl_path`, `CA`, `CY`, `CN`, `Cl`, `Cm`, `Cn`, `CD`,
+`CL`, `faces`, `shielded_faces`, `vtp_path`, and `npz_path`. Shared case IDs,
+versions, signatures, timing fields, and backend metadata remain available on
+the full `run_cases()` DataFrame and summary CSV; they are excluded only from
+the nested compatibility records. Numerical values and artifact schemas are
+unchanged.
+
 Shared compatibility adapters own call-shape translation, mutable views of the
 immutable mesh contract, DataFrame result reconstruction, and direct-array
 serialization. The compatibility packages do not import NumPy, SciPy, trimesh,
