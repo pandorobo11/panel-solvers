@@ -236,6 +236,68 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
             ), self.assertRaises(expected_error):
                 PanelFlowState(velocity_hat_stl=velocity, shielded=shielded)
 
+    def test_array_coercion_errors_are_field_aware_contract_errors(self) -> None:
+        valid_geometry = {
+            "centers_stl_m": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            "normals_out_stl": [[-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]],
+            "areas_m2": [1.0, 1.0],
+            "component_ids": [0, 0],
+        }
+
+        class TypeErrorArray:
+            def __array__(self, *_args: object, **_kwargs: object) -> np.ndarray:
+                raise TypeError("synthetic array coercion failure")
+
+        cases = (
+            (
+                lambda: PanelGeometry(
+                    **{
+                        **valid_geometry,
+                        "centers_stl_m": [[0.0, 0.0, 0.0], [1.0]],
+                    }
+                ),
+                "PanelGeometry.centers_stl_m",
+            ),
+            (
+                lambda: PanelGeometry(
+                    **{**valid_geometry, "component_ids": [[0], [0, 1]]}
+                ),
+                "PanelGeometry.component_ids",
+            ),
+            (
+                lambda: PanelFlowState(
+                    velocity_hat_stl=[1.0, 0.0, 0.0],
+                    shielded=[[False], [True, False]],
+                ),
+                "PanelFlowState.shielded",
+            ),
+            (
+                lambda: LocalLoads(
+                    traction_coeff_stl=[[1.0, 0.0, 0.0], [1.0]],
+                ),
+                "LocalLoads.traction_coeff_stl",
+            ),
+            (
+                lambda: LocalLoads(
+                    traction_coeff_stl=np.zeros((2, 3)),
+                    cell_scalars={"Cp_n": [[1.0], [2.0, 3.0]]},
+                ),
+                "LocalLoads.cell_scalars.Cp_n",
+            ),
+            (
+                lambda: PanelGeometry(
+                    **{**valid_geometry, "areas_m2": TypeErrorArray()}
+                ),
+                "PanelGeometry.areas_m2",
+            ),
+        )
+        for construct, field in cases:
+            with self.subTest(field=field), self.assertRaises(
+                ContractValueError
+            ) as caught:
+                construct()
+            self.assertEqual(field, caught.exception.field)
+
 
 class LocalLoadsTests(unittest.TestCase):
     def test_vector_contract_retains_tangential_and_normal_loads(self) -> None:
