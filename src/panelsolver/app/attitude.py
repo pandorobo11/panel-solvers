@@ -24,13 +24,24 @@ class ResolvedAttitude:
         velocity = np.asarray(self.velocity_hat_stl, dtype=np.float64)
         if velocity.shape != (3,) or not np.isfinite(velocity).all():
             raise ValueError("velocity_hat_stl must be a finite vector with shape (3,)")
-        norm = float(np.linalg.norm(velocity))
+        norm = math.hypot(*(float(component) for component in velocity))
         if norm < _ZERO_DIRECTION_ATOL:
             raise ValueError("velocity_hat_stl must have nonzero norm")
         immutable = np.frombuffer((velocity / norm).tobytes(), dtype=np.float64)
         object.__setattr__(self, "velocity_hat_stl", immutable)
-        object.__setattr__(self, "alpha_t_deg", float(self.alpha_t_deg))
-        object.__setattr__(self, "beta_t_deg", float(self.beta_t_deg))
+        for field in ("alpha_t_deg", "beta_t_deg"):
+            value = getattr(self, field)
+            if isinstance(value, (bool, np.bool_)):
+                raise ValueError(  # noqa: TRY004 - one public validation boundary
+                    f"{field} must be a finite real angle"
+                )
+            try:
+                angle = float(value)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError(f"{field} must be a finite real angle") from exc
+            if not math.isfinite(angle):
+                raise ValueError(f"{field} must be a finite real angle")
+            object.__setattr__(self, field, angle)
         object.__setattr__(self, "input_mode", resolve_attitude_mode(self.input_mode))
 
 
