@@ -218,6 +218,16 @@ it as a migrated solver.
 The common engine must not contain branches on a concrete model name. Models must
 not write files, drive GUI state, or run the scheduler.
 
+The Phase 8 architecture gate builds the complete production-module import graph
+directly from Python ASTs. It rejects cycles, self-loops, every prohibited layer
+direction from ADR 0003, physical-model imports from shared GUI implementation,
+and third-party numerical implementation imports in legacy numerical frontend
+namespaces. The Phase 8 candidate contains 114 modules and 286 resolved internal
+import edges. The gate itself uses only the standard library. The direct
+`networkx` dependency remains required at runtime because Trimesh delegates
+normal/winding repair to `networkx.from_edgelist`; removing it makes the D011
+strict mesh-repair path fail before winding consistency can be evaluated.
+
 ## GUI target
 
 One shared GUI shell receives a solver specification containing identity, window
