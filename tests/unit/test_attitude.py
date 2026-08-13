@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from panelsolver.app.attitude import ResolvedAttitude
+from panelsolver.app.attitude import ResolvedAttitude, resolve_attitude
 
 
 class ResolvedAttitudeInvariantTests(unittest.TestCase):
@@ -18,29 +18,42 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
 
         np.testing.assert_array_equal(attitude.velocity_hat_stl, [0.6, 0.8, 0.0])
         self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
+        self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
         self.assertEqual(10.5, attitude.alpha_t_deg)
         self.assertEqual(-20.0, attitude.beta_t_deg)
         self.assertEqual("beta_tan", attitude.input_mode)
 
-    def test_direct_construction_normalizes_extreme_finite_vector(self) -> None:
-        attitude = ResolvedAttitude(
-            velocity_hat_stl=np.array([1.0e308, 1.0e308, 1.0e308]),
-            alpha_t_deg=0.0,
-            beta_t_deg=0.0,
-            input_mode="bank",
+    def test_direct_construction_normalizes_extreme_finite_vectors(self) -> None:
+        maximum = np.finfo(np.float64).max
+        vectors = (
+            [1.0e308, 1.0e308, 1.0e308],
+            [1.2e308, 1.2e308, 1.2e308],
+            [maximum, maximum, maximum],
+            [maximum, 1.0, -maximum / 2.0],
         )
+        for velocity in vectors:
+            with self.subTest(velocity=velocity):
+                attitude = ResolvedAttitude(
+                    velocity_hat_stl=velocity,
+                    alpha_t_deg=0.0,
+                    beta_t_deg=0.0,
+                    input_mode="bank",
+                )
+                self.assertTrue(np.isfinite(attitude.velocity_hat_stl).all())
+                self.assertAlmostEqual(
+                    1.0,
+                    float(np.linalg.norm(attitude.velocity_hat_stl)),
+                    places=15,
+                )
+                self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
+                self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
 
         expected = np.full(3, 1.0 / np.sqrt(3.0))
         np.testing.assert_allclose(
-            attitude.velocity_hat_stl,
+            ResolvedAttitude(vectors[0], 0.0, 0.0, "bank").velocity_hat_stl,
             expected,
             rtol=0.0,
             atol=1.0e-15,
-        )
-        self.assertAlmostEqual(
-            1.0,
-            float(np.linalg.norm(attitude.velocity_hat_stl)),
-            places=15,
         )
 
     def test_direct_construction_rejects_invalid_angles(self) -> None:
@@ -68,6 +81,20 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
         for velocity in invalid:
             with self.subTest(velocity=velocity), self.assertRaises(ValueError):
                 ResolvedAttitude(velocity, 0.0, 0.0, "beta_tan")
+
+    def test_resolve_attitude_rejects_boolean_angles_before_float_conversion(
+        self,
+    ) -> None:
+        for alpha, beta in ((True, 0.0), (np.bool_(False), 0.0), (0.0, True)):
+            with self.subTest(alpha=alpha, beta=beta), self.assertRaisesRegex(
+                ValueError, "finite real"
+            ):
+                resolve_attitude(
+                    alpha,
+                    beta,
+                    "beta_tan",
+                    strict_beta_tan_domain=True,
+                )
 
 
 if __name__ == "__main__":

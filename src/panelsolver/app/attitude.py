@@ -24,10 +24,23 @@ class ResolvedAttitude:
         velocity = np.asarray(self.velocity_hat_stl, dtype=np.float64)
         if velocity.shape != (3,) or not np.isfinite(velocity).all():
             raise ValueError("velocity_hat_stl must be a finite vector with shape (3,)")
-        norm = math.hypot(*(float(component) for component in velocity))
-        if norm < _ZERO_DIRECTION_ATOL:
+        scale = float(np.max(np.abs(velocity)))
+        if scale < _ZERO_DIRECTION_ATOL:
             raise ValueError("velocity_hat_stl must have nonzero norm")
-        immutable = np.frombuffer((velocity / norm).tobytes(), dtype=np.float64)
+        scaled = velocity / scale
+        scaled_norm = math.hypot(*(float(component) for component in scaled))
+        normalized = scaled / scaled_norm
+        normalized_norm = math.hypot(
+            *(float(component) for component in normalized)
+        )
+        if not np.isfinite(normalized).all() or not math.isclose(
+            normalized_norm,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            raise ValueError("velocity_hat_stl must normalize to a finite unit vector")
+        immutable = np.frombuffer(normalized.tobytes(), dtype=np.float64)
         object.__setattr__(self, "velocity_hat_stl", immutable)
         for field in ("alpha_t_deg", "beta_t_deg"):
             value = getattr(self, field)
@@ -72,6 +85,12 @@ def resolve_attitude(
 ) -> ResolvedAttitude:
     """Resolve a pinned public attitude while retaining the D007 policy split."""
     mode = resolve_attitude_mode(attitude_input)
+    if isinstance(alpha_deg, (bool, np.bool_)) or isinstance(
+        beta_or_bank_deg, (bool, np.bool_)
+    ):
+        raise ValueError(  # noqa: TRY004 - one public validation boundary
+            "attitude angles must be finite real numbers"
+        )
     alpha_in = float(alpha_deg)
     beta_in = float(beta_or_bank_deg)
     if not math.isfinite(alpha_in) or not math.isfinite(beta_in):
