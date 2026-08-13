@@ -6,7 +6,6 @@ from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.gui_spec import format_case as format_newt_case
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
 from panelsolver.app import (
-    ClosePolicy,
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
@@ -26,7 +25,6 @@ def _valid_spec(**changes) -> SolverSpec:
         "case_columns": ("case_id", "value"),
         "preferred_scalars": ("Cp_n", "area_m2"),
         "format_case": _format,
-        "close_policy": ClosePolicy.IMMEDIATE,
     }
     values.update(changes)
     return SolverSpec(**values)
@@ -55,7 +53,7 @@ class SolverSpecTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             GuiRunResult(first_case_row=object())
 
-    def test_validates_identity_names_callbacks_and_policy(self) -> None:
+    def test_validates_identity_names_and_callbacks(self) -> None:
         for field in ("product_id", "model_id", "window_title"):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 _valid_spec(**{field: " "})
@@ -67,8 +65,6 @@ class SolverSpecTests(unittest.TestCase):
             _valid_spec(preferred_scalars=("Cp_n", "Cp_n"))
         with self.assertRaises(TypeError):
             _valid_spec(format_case=None)
-        with self.assertRaises(TypeError):
-            _valid_spec(close_policy="immediate")
         with self.assertRaises(TypeError):
             _valid_spec(adapters=object())
 
@@ -90,17 +86,15 @@ class SolverSpecTests(unittest.TestCase):
                 resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
             )
 
-    def test_product_specs_retain_titles_models_schemas_and_close_policies(self) -> None:
+    def test_product_specs_retain_titles_models_and_schemas(self) -> None:
         fmf = fmf_solver_spec()
         newt = newt_solver_spec()
         self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
         self.assertEqual("sentman", fmf.model_id)
-        self.assertEqual(ClosePolicy.DEFER_UNTIL_IDLE, fmf.close_policy)
         self.assertIn("S", fmf.case_columns)
         self.assertNotIn("gamma", fmf.case_columns)
         self.assertEqual("newtsolver (GUI)", newt.window_title)
         self.assertEqual("hypersonic", newt.model_id)
-        self.assertEqual(ClosePolicy.IMMEDIATE, newt.close_policy)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
         self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)

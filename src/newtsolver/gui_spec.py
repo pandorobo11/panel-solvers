@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from panelsolver.app import ClosePolicy, SolverGuiAdapters, SolverSpec
+from panelsolver.app import SolverGuiAdapters, SolverSpec
 
 from .csv_adapter import CSV_PROJECTION_POLICY
 
@@ -83,7 +83,6 @@ def solver_spec(
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,
-        close_policy=ClosePolicy.IMMEDIATE,
         adapters=selected_adapters,
     )
 

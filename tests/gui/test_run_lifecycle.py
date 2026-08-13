@@ -207,53 +207,113 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertIn("primary solver failure", panel.log.toPlainText())
         self.assertNotIn("Run canceled.", panel.log.toPlainText())
 
-    def test_fmf_close_defers_until_thread_exit(self) -> None:
+    def test_both_products_defer_active_close_until_thread_cleanup(self) -> None:
+        for spec_factory in (fmf_solver_spec, newt_solver_spec):
+            with self.subTest(product=spec_factory.__module__):
+                entered = threading.Event()
+                release = threading.Event()
+
+                def runner(request, *, started=entered, finish=release):
+                    started.set()
+                    while not request.cancel_requested():
+                        time.sleep(0.001)
+                    finish.wait(timeout=3.0)
+                    raise SchedulerCancelled("case boundary")
+
+                panel, rows, _ = self.make_panel(
+                    runner,
+                    spec_factory=spec_factory,
+                )
+                viewer = _FakeViewer()
+                window = MainWindow(
+                    panel.spec,
+                    cases_panel=panel,
+                    viewer_panel=viewer,
+                )
+                window.show()
+                self.assertEqual((1480, 900), (window.width(), window.height()))
+                self.assertTrue(panel.start_run(rows, 1, "results.csv"))
+                self.wait_until(entered.is_set)
+
+                first_event = QtGui.QCloseEvent()
+                second_event = QtGui.QCloseEvent()
+                with patch.object(
+                    panel,
+                    "cancel_run",
+                    wraps=panel.cancel_run,
+                ) as cancel:
+                    window.closeEvent(first_event)
+                    window.closeEvent(second_event)
+                    cancel.assert_called_once_with()
+
+                self.assertFalse(first_event.isAccepted())
+                self.assertFalse(second_event.isAccepted())
+                self.assertTrue(window._close_when_run_finishes)
+                self.assertTrue(window.isVisible())
+                self.assertEqual(
+                    1,
+                    panel.log.toPlainText().count("[CLOSE] Waiting"),
+                )
+
+                release.set()
+                self.wait_until(lambda active=panel: not active.is_running())
+                self.wait_until(
+                    lambda active=window: not active._close_when_run_finishes
+                )
+                self.wait_until(lambda active=window: not active.isVisible())
+
+        restarted_panel, _rows, _ = self.make_panel(
+            lambda _request: GuiRunResult(),
+            spec_factory=newt_solver_spec,
+        )
+        restarted = MainWindow(
+            restarted_panel.spec,
+            cases_panel=restarted_panel,
+            viewer_panel=_FakeViewer(),
+        )
+        restarted.show()
+        self.assertTrue(restarted.isVisible())
+        restarted.close()
+
+    def test_failure_during_pending_close_still_waits_and_closes(self) -> None:
         entered = threading.Event()
 
         def runner(request):
             entered.set()
             while not request.cancel_requested():
                 time.sleep(0.001)
-            raise SchedulerCancelled("case boundary")
+            raise RuntimeError("solver failed during pending close")
 
-        panel, rows, _ = self.make_panel(runner)
-        viewer = _FakeViewer()
-        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
-        self.assertEqual((1480, 900), (window.width(), window.height()))
+        panel, rows, _ = self.make_panel(runner, spec_factory=newt_solver_spec)
+        window = MainWindow(
+            panel.spec,
+            cases_panel=panel,
+            viewer_panel=_FakeViewer(),
+        )
+        window.show()
         self.assertTrue(panel.start_run(rows, 1, "results.csv"))
         self.wait_until(entered.is_set)
+
         event = QtGui.QCloseEvent()
         window.closeEvent(event)
         self.assertFalse(event.isAccepted())
-        self.assertTrue(window._close_when_run_finishes)
-        self.assertIn("[CLOSE] Waiting", panel.log.toPlainText())
+        self.assertTrue(window.isVisible())
         self.wait_until(lambda: not panel.is_running())
-        self.wait_until(lambda: not window._close_when_run_finishes)
-        self.assertFalse(window.isVisible())
+        self.wait_until(lambda: not window.isVisible())
+        self.assertIn("solver failed during pending close", panel.log.toPlainText())
 
-    def test_newtsolver_close_has_no_deferred_cancel_policy(self) -> None:
-        entered = threading.Event()
-
-        def runner(request):
-            entered.set()
-            while not request.cancel_requested():
-                time.sleep(0.001)
-            raise SchedulerCancelled("case boundary")
-
-        panel, rows, _ = self.make_panel(runner, spec_factory=newt_solver_spec)
-        viewer = _FakeViewer()
-        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
-        self.assertTrue(panel.start_run(rows, 1, "results.csv"))
-        self.wait_until(entered.is_set)
-        event = QtGui.QCloseEvent()
-        with patch.object(panel, "cancel_run", wraps=panel.cancel_run) as cancel:
-            window.closeEvent(event)
-            cancel.assert_not_called()
-        self.assertTrue(event.isAccepted())
-        self.assertFalse(window._close_when_run_finishes)
-        self.assertTrue(panel.is_running())
-        panel.cancel_run()
-        self.wait_until(lambda: not panel.is_running())
+    def test_normal_close_is_not_deferred(self) -> None:
+        panel, _rows, _ = self.make_panel(lambda _request: GuiRunResult())
+        window = MainWindow(
+            panel.spec,
+            cases_panel=panel,
+            viewer_panel=_FakeViewer(),
+        )
+        window.show()
+        normal_event = QtGui.QCloseEvent()
+        window.closeEvent(normal_event)
+        self.assertTrue(normal_event.isAccepted())
+        window.close()
 
     def test_main_window_routes_selected_rows_to_batch_export(self) -> None:
         panel, rows, _ = self.make_panel(lambda _request: GuiRunResult())
