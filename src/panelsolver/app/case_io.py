@@ -38,6 +38,10 @@ def is_filled(value: object) -> bool:
     return str(value).strip() != ""
 
 
+def _is_numeric_boolean(value: object) -> bool:
+    return isinstance(value, (bool, np.bool_))
+
+
 @dataclass(frozen=True, slots=True)
 class ValidationIssue:
     """One structured validation error for an input case table."""
@@ -221,8 +225,9 @@ def _validate_required_numeric(
     add_issue: AddIssue,
 ) -> None:
     for column in policy.numeric_required:
-        parsed = pd.to_numeric(frame[column], errors="coerce")
-        invalid = parsed.isna()
+        boolean = frame[column].map(_is_numeric_boolean)
+        parsed = pd.to_numeric(frame[column].where(~boolean), errors="coerce")
+        invalid = boolean | parsed.isna()
         nonfinite = (~invalid) & (~np.isfinite(parsed))
         if policy.required_numeric_message_style == "finite":
             for index in frame.index[invalid | nonfinite]:
@@ -244,8 +249,11 @@ def _validate_optional_numeric(
         if column not in frame.columns:
             frame[column] = float("nan")
         filled = frame[column].map(is_filled)
-        parsed = pd.to_numeric(frame[column].where(filled), errors="coerce")
-        invalid = filled & parsed.isna()
+        boolean = frame[column].map(_is_numeric_boolean)
+        parsed = pd.to_numeric(
+            frame[column].where(filled & ~boolean), errors="coerce"
+        )
+        invalid = filled & (boolean | parsed.isna())
         nonfinite = parsed.notna() & (~np.isfinite(parsed))
         for index in frame.index[invalid]:
             add_issue(int(index), column, "must be numeric when specified.")
