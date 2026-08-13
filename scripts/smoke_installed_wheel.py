@@ -8,6 +8,7 @@ import importlib
 import importlib.metadata
 import inspect
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -88,6 +89,33 @@ EXPECTED_CLI_DESCRIPTIONS = {
     "fmfsolver": "Run FMF solver from CSV/Excel input without GUI.",
     "newtsolver": "Run newtsolver from CSV/Excel input without GUI.",
 }
+_TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
+
+
+def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith(_TUNING_PREFIXES)
+    }
+    cache_root = staging / "subprocess-cache"
+    cache_paths = {
+        "XDG_CACHE_HOME": cache_root / "xdg",
+        "MPLCONFIGDIR": cache_root / "matplotlib",
+        "PYVISTA_USERDATA_PATH": cache_root / "pyvista",
+        "LOCALAPPDATA": cache_root / "local-app-data",
+    }
+    for path in cache_paths.values():
+        path.mkdir(parents=True, exist_ok=True)
+    environment.update(
+        {
+            "COLUMNS": "80",
+            "LINES": "24",
+            "QT_QPA_PLATFORM": "offscreen",
+            **{name: str(path) for name, path in cache_paths.items()},
+        }
+    )
+    return environment
 
 
 def _expected_backend_hint(product: str, *, embree: bool) -> str:
@@ -411,6 +439,9 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)
+        subprocess_environment = _smoke_subprocess_environment(staging)
+        os.environ.clear()
+        os.environ.update(subprocess_environment)
         _smoke_direct_exporters(staging)
         inputs = staging / "inputs"
         shutil.copytree(
@@ -427,6 +458,7 @@ def main() -> int:
                 capture_output=True,
                 text=True,
                 check=False,
+                env=subprocess_environment,
             )
             if help_result.returncode != 0:
                 raise RuntimeError(
@@ -441,6 +473,7 @@ def main() -> int:
                 capture_output=True,
                 text=True,
                 check=False,
+                env=subprocess_environment,
             )
             if empty_cases.returncode != 2 or "expected at least one argument" not in (
                 empty_cases.stderr
@@ -468,6 +501,7 @@ def main() -> int:
                 capture_output=True,
                 text=True,
                 check=False,
+                env=subprocess_environment,
             )
             if run_result.returncode != 0:
                 raise RuntimeError(

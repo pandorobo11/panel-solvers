@@ -54,8 +54,7 @@ jobs:
       - name: Build and reinstall wheel
         run: |
           uv build
-          uv pip uninstall panel-solvers
-          uv pip install --no-deps dist/panel_solvers-0.1.0-py3-none-any.whl
+          uv run --no-sync python scripts/release_tools.py reinstall-wheel .
 
       - name: Smoke installed commands outside repository
         run: uv run --no-sync python scripts/smoke_installed_wheel.py .
@@ -65,17 +64,7 @@ jobs:
         shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          EXPECTED="$(python - <<'PY'
-          import tomllib
-          with open("pyproject.toml", "rb") as file:
-              data = tomllib.load(file)
-          print(f"v{data['project']['version']}")
-          PY
-          )"
-          if [ "$TAG" != "$EXPECTED" ]; then
-            echo "Tag/version mismatch: tag=$TAG expected=$EXPECTED"
-            exit 1
-          fi
+          uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG"
 
   artifact:
     runs-on: ubuntu-latest
@@ -97,10 +86,13 @@ jobs:
       - name: Build distributions
         run: uv build
 
+      - name: Dry-run a hypothetical release version
+        run: >-
+          uv run --no-sync python scripts/release_tools.py dry-run .
+
       - name: Reinstall built wheel
-        run: |
-          uv pip uninstall panel-solvers
-          uv pip install --no-deps dist/*.whl
+        run: >-
+          uv run --no-sync python scripts/release_tools.py reinstall-wheel .
 
       - name: Smoke test installed wheel
         run: |
@@ -156,12 +148,18 @@ jobs:
           python-version: "3.12"
 
       - name: Build distribution
-        run: uv build
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          python scripts/release_tools.py verify-tag . "$TAG"
+          python scripts/release_tools.py release-notes . --output release-notes.md
+          uv build
+          python scripts/release_tools.py verify-wheel .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             dist/*.whl
             dist/*.tar.gz

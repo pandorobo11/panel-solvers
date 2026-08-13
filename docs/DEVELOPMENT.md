@@ -77,4 +77,5 @@ A tag must be `v<project.version>`. The CI release job publishes one wheel and
 source distribution only after the complete Ubuntu, Windows, macOS, installed-
 wheel, and artifact gates pass. FMF `1.3.8` and newtsolver `1.0.3` are frozen
 product-facing compatibility values, not distribution versions. ADR 0007 and
-`PHASE7_USER_GUIDE.md` define the release and rollback order.
+`PHASE7_USER_GUIDE.md` define the release and rollback order. `CHANGELOG.md` is
+the source of truth for release notes; GitHub-generated notes do not replace it.
