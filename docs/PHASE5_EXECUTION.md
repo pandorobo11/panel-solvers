@@ -87,6 +87,11 @@ choose one product's behavior for the other. The migrated product adapters
 retain the pinned pairing: FMF selects `FORWARD`/`DISCARD_CHUNK`, while
 newtsolver selects `DROP`/`YIELD_COMPLETED`.
 
+This paragraph describes the current implementation, not the Phase 8 target.
+ADR 0008 adopts `FORWARD`/`YIELD_COMPLETED` for both products. A dedicated later
+remediation will make that change without altering successful-run numerical
+results, cancellation, worker lifecycle, signatures, or caches.
+
 Phase 8's independent audit corrected the pairing in this paragraph. A Phase 7
 edit had reversed the two partial-result policies; same-bucket
 good-then-failing probes and the pinned worker envelopes establish the pairing

@@ -22,8 +22,10 @@ formula.
 
 ## Policies that remain adapter-only
 
-Every entry in `phase1/LEGACY_DIFFERENCES.md` remains a dual contract unless a
-separate accepted decision changes it. In particular:
+The list below records the Phase 3 migration state. ADR 0008 now supersedes the
+old rule that every ledger entry remains a dual contract: model-specific schemas
+and outputs remain product-owned, while shared infrastructure and invalid-input
+safety converge. In the Phase 3 implementation:
 
 - attitude-mode parsing and the D007 angle-domain difference happen before this
   adapter;

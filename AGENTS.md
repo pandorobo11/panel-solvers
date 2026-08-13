@@ -33,7 +33,9 @@ The legacy implementations are read-only references. Their authoritative URLs
 and commits are in `docs/MIGRATION_SOURCES.md`. Local checkouts may live at
 `.reference/fmfsolver`, `.reference/newtsolver`, or the workspace sibling paths.
 Do not edit them during migration work. If the implementations differ, report
-both behaviors and their effects; do not silently select one.
+both behaviors and their effects. Apply ADR 0008 when deciding whether the
+difference belongs to the supported product contract; historical observation
+alone does not require preserving invalid-input or Python-internal behavior.
 
 ## Dependency direction
 
@@ -68,8 +70,9 @@ integration.
   `_wind`.
 - Store per-panel vectors as `(n_faces, 3)` unless an approved ADR says otherwise.
 - Validate shapes where NumPy broadcasting is used.
-- Handle NaN, infinity, degenerate faces, and zero reference quantities
-  explicitly.
+- Reject NaN, infinity, numeric booleans, invalid shapes, overflowed derived
+  state, degenerate faces, and zero or negative reference quantities at a shared
+  validation boundary.
 - Do not change signs, axes, or normalization conventions without an accepted ADR
   and compatibility plan.
 - Never mix a numerical-formula change with a structural migration PR.
@@ -79,7 +82,11 @@ integration.
 Do not update expected coefficients, panel loads, shielding masks, CSV columns,
 VTP/NPZ fields, or case signatures without documenting the intended change,
 evidence, effect, and tolerance. Compare VTP/NPZ semantic arrays and metadata, not
-file bytes. Public API changes require compatibility tests and migration notes.
+file bytes. ADR 0008 defines the supported compatibility surface: commands,
+normal GUI operation, documented case files, and documented CSV/VTP/NPZ
+semantics. Direct Python keyword names, GUI methods, object identity, module or
+qualname, pickle globals, cache internals, and exact exception details are not
+contracts unless another ADR explicitly promotes a neutral API.
 
 ## Change discipline
 
@@ -89,8 +96,10 @@ file bytes. Public API changes require compatibility tests and migration notes.
 - Explain every new production dependency.
 - Do not push directly to `main`, rewrite history, or merge on behalf of the user
   unless explicitly requested.
-- If code, tests, literature, and ADRs disagree about numerical behavior, stop
-  that decision and report the conflict.
+- If code, tests, literature, and ADRs disagree about supported numerical or file
+  behavior, stop that decision and report the conflict. For invalid inputs or
+  excluded Python implementation details, follow ADR 0008's common safety and
+  convergence rules instead of recreating an accidental legacy difference.
 
 ## Verification
 

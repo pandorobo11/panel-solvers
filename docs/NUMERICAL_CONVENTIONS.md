@@ -1,8 +1,10 @@
 # Numerical conventions
 
 This document records conventions already common to the two legacy interfaces.
-Phase 1 verifies them against executable semantic goldens. The captured arrays,
-relations, and evidence-based limits are documented in
+Phase 1 verifies them against executable semantic goldens. ADR 0008 governs
+unsupported and invalid inputs; a recorded permissive legacy edge is not a
+requirement to propagate it. The captured arrays, relations, and evidence-based
+limits are documented in
 `phase1/GOLDEN_BASELINES.md` and `phase1/TOLERANCES.md`. An unverified item is not
 permission to normalize differing legacy behavior.
 
@@ -59,8 +61,9 @@ component, so no common contract may replace the vector with a scalar `Cp`.
 - Use NumPy arrays of floating type appropriate to the verified legacy behavior;
   do not change precision as incidental cleanup.
 - Validate shapes before relying on broadcasting.
-- Reject or explicitly handle NaN, infinity, zero reference normalization, and
-  degenerate faces.
+- Reject NaN, infinity, numeric booleans, invalid shapes, overflowed derived
+  state, zero or negative reference normalization, and degenerate faces before
+  unsafe numerical work.
 - Do not hide domain errors by clipping unless the legacy contract and tests
   justify the exact clipping behavior.
 - Regression comparisons use the Phase 1 case profile and quantity-specific

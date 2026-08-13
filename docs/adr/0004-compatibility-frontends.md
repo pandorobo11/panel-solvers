@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-12
+- Refined by: ADR 0008 (supported-domain surface)
 
 ## Context
 
@@ -14,9 +15,12 @@ migration.
 
 Reserve `src/fmfsolver` and `src/newtsolver` for thin compatibility frontends.
 They may translate legacy input and select shared application/model
-configuration, but cannot implement new numerical, artifact, caching, execution,
-or GUI behavior. Preserve old commands through the compatibility period. Any
-deprecation/removal needs a separate accepted plan.
+configuration, but cannot implement new numerical, validation, exception,
+artifact, caching, execution, or GUI behavior. Preserve old package and command
+names through the compatibility period. ADR 0008 makes direct Python call-shape
+and implementation details best effort; removing a supported command, normal GUI
+operation, file field, or numerical behavior still needs a separate accepted
+plan.
 
 ## Consequences
 

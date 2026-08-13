@@ -1,7 +1,11 @@
 # Phase 1 legacy-difference ledger
 
-This ledger records differences at the pinned commits.  A classification is not
-permission to choose one behavior for the shared platform.  `bug` means the
+This ledger records differences at the pinned commits. ADR 0008 now governs
+which observations remain supported product contracts; the behavior columns
+stay immutable evidence, while historical “preserve” guidance in the final
+column is superseded where ADR 0008 selects common safety or infrastructure.
+A classification is not permission to change supported numerical or file
+behavior without evidence. `bug` means the
 implementation contradicts its own advertised or safety contract; compatibility
 handling still requires an explicit decision.  `unknown` means no evidence of
 intent was found.
@@ -57,8 +61,9 @@ These are not differences, but they are inputs to later decisions:
 
 ## Decisions deliberately deferred
 
-Phase 1 does not decide the common angle boundary, case-ID policy, old XLS support,
-mesh strictness, output collision policy, signature migration, cache identity,
-parallel log behavior, window-close lifecycle, or de facto Python API set.  Each
-must use the recorded dual contracts and be handled in the phase that owns it or
-in a dedicated ADR/compatibility issue.
+Phase 1 did not decide the common angle boundary, case-ID policy, old XLS
+support, mesh strictness, output collision policy, signature migration, cache
+identity, parallel log behavior, window-close lifecycle, or de facto Python API
+set. ADR 0008 now supplies the supported-domain rule: model schemas, physics,
+model outputs, and migration names may differ; common infrastructure and invalid
+inputs converge; direct Python details remain best effort.
