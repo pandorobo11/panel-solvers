@@ -261,16 +261,67 @@ No Phase 7 acceptance tag is created automatically by the migration PR.
 
 ## Rollback
 
-Keep input and result files; rollback does not require converting them. Remove
-the shared distribution before restoring either legacy distribution:
+Keep input and result files; rollback does not require converting them. The
+release tags for the two legacy products predate the accepted oracle commits,
+so do not use release-tag artifacts as substitutes. Build wheels from the exact
+commits in `MIGRATION_SOURCES.md` through a read-only archive:
+
+```bash
+python scripts/probe_legacy_rollback.py . \
+  --artifact-dir /absolute/path/to/rollback-artifacts \
+  --fmf-source /absolute/path/to/clean/fmfsolver \
+  --newt-source /absolute/path/to/clean/newtsolver
+```
+
+The two source arguments may instead be their official HTTPS repository URLs.
+Local sources must be clean. The probe verifies the exact commit objects,
+creates temporary sources with `git archive`, never checks out or modifies the
+legacy repositories, builds the two wheels with each commit timestamp as
+`SOURCE_DATE_EPOCH`, and writes `rollback-record.json` with repository URL,
+commit, tree SHA, wheel metadata, and SHA-256.
+
+The Phase 8 local verification on Python 3.12.12 and uv 0.9.13 produced the
+same wheel digests in two independent builds:
+
+| Product | Commit | Tree | Wheel SHA-256 |
+|---|---|---|---|
+| FMF 1.3.8 | `b62bc844d02a8f5212e62a53dea3238a1414317d` | `52e5b876544d90323fa04468fc22ea0fbbf559c3` | `bb42ef01f1af0ac8821ee70f239db7f53b7355dcb674567620ed8f6d618e1933` |
+| newtsolver 1.0.3 | `dc1357d0d50bbedfdc8b3429cab37e6b98b56c70` | `48e3782dd27056e716884a30e72a2ed758e6c8e4` | `6bc2bb436eea3b246549f78493edaab8679947b31c0702de8df278a02ab3939c` |
+
+Treat the probe's record as authoritative for a new build environment; a build
+tool change can alter archive bytes without changing the verified source tree.
+
+The same probe creates a clean temporary environment and executes both sides of
+the transition: install the current built `panel-solvers` candidate, verify all
+six commands, uninstall it, install both pinned legacy wheels, verify all six
+commands and one committed sample per product, then uninstall both legacy
+distributions and reinstall the candidate wheel with both samples. It deletes
+the temporary environment but retains the artifacts and evidence record.
+
+For an operational rollback using those recorded wheels, keep the removal and
+install order exact:
 
 ```bash
 python -m pip uninstall panel-solvers
-python -m pip install /path/to/pinned-fmfsolver-artifact
-python -m pip install /path/to/pinned-newtsolver-artifact
+python -m pip install \
+  /absolute/path/to/rollback-artifacts/legacy/fmfsolver/fmfsolver-1.3.8-*.whl \
+  /absolute/path/to/rollback-artifacts/legacy/newtsolver/newtsolver-1.0.3-*.whl
+fmfsolver-cli --input /path/to/fmfsolver/samples/input_template.csv \
+  --cases baseline_cube_modeA --workers 1 --flush-every-cases 0
+newtsolver-cli --input /path/to/newtsolver/samples/input_template.csv \
+  --cases satellite_baseline_newtonian --workers 1 --flush-every-cases 0
 ```
 
-Use artifacts matching the commits recorded in `MIGRATION_SOURCES.md`. Verify
-the command resolved on `PATH` and run one known case for each product. Never
-layer a legacy wheel over `panel-solvers`. The legacy repositories remain
-unarchived until the independent Phase 8 audit is accepted.
+Return to the shared distribution in the opposite order:
+
+```bash
+python -m pip uninstall fmfsolver newtsolver
+python -m pip install /absolute/path/to/panel_solvers-<version>-py3-none-any.whl
+python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'
+fmfsolver-cli --help
+newtsolver-cli --help
+```
+
+Never layer legacy wheels over `panel-solvers`, or `panel-solvers` over either
+legacy distribution. The repositories themselves remain unmodified and
+unarchived references.

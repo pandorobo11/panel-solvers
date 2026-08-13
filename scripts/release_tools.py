@@ -28,15 +28,7 @@ def project_identity(repository: Path) -> tuple[str, str]:
     return str(project["name"]), str(project["version"])
 
 
-def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
-    directory = dist_dir or repository / "dist"
-    wheels = sorted(directory.glob("*.whl"))
-    if len(wheels) != 1:
-        raise RuntimeError(
-            f"expected exactly one wheel in {directory}, found {len(wheels)}: "
-            f"{[path.name for path in wheels]}"
-        )
-    wheel = wheels[0]
+def wheel_identity(wheel: Path) -> tuple[str, str]:
     with zipfile.ZipFile(wheel) as archive:
         metadata_files = [
             name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
@@ -49,9 +41,20 @@ def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
         metadata = email.parser.BytesParser().parsebytes(
             archive.read(metadata_files[0])
         )
+    return str(metadata["Name"] or ""), str(metadata["Version"] or "")
+
+
+def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
+    directory = dist_dir or repository / "dist"
+    wheels = sorted(directory.glob("*.whl"))
+    if len(wheels) != 1:
+        raise RuntimeError(
+            f"expected exactly one wheel in {directory}, found {len(wheels)}: "
+            f"{[path.name for path in wheels]}"
+        )
+    wheel = wheels[0]
     expected_name, expected_version = project_identity(repository)
-    actual_name = str(metadata["Name"] or "")
-    actual_version = str(metadata["Version"] or "")
+    actual_name, actual_version = wheel_identity(wheel)
     if canonical_distribution_name(actual_name) != canonical_distribution_name(
         expected_name
     ):
