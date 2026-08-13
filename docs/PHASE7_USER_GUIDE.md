@@ -73,9 +73,11 @@ requires `abs(alpha_deg) < 90`. Bank is a finite periodic angle.
 ## Output
 
 The summary CSV preserves each product's exact columns, order, total/component
-rows, blanks, collision scope, and atomic-write policy. `save_vtp_on` and
-`save_npz_on` select per-case artifacts under `out_dir`; the directory side
-effect is retained even when both flags are off.
+rows, and blanks. Both products reject a summary path that collides with the
+input table, any STL, or any planned VTP/NPZ, even when artifact save flags are
+off. CSV snapshots use same-directory temporary files, flush, `fsync`, and
+atomic replace. `save_vtp_on` and `save_npz_on` select per-case artifacts under
+`out_dir`; the directory side effect is retained even when both flags are off.
 
 VTP stores geometry, panel scalars, shielding, case identity/signature, resolved
 attitude, backend, compatibility version, and product-only metadata. NPZ stores

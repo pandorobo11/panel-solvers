@@ -6,9 +6,8 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from panelsolver.app.csv_writer import (
-    AtomicCsvWritePolicy,
-    TempNameStyle,
-    validate_csv_output_path,
+    DURABLE_CSV_WRITE_POLICY,
+    validate_summary_output_path,
     write_csv_atomic,
 )
 from panelsolver.core import CommonResults
@@ -71,10 +70,7 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "npz_path",
     ),
 )
-CSV_WRITE_POLICY = AtomicCsvWritePolicy(
-    temp_name_style=TempNameStyle.UUID,
-    fsync_before_replace=False,
-)
+CSV_WRITE_POLICY = DURABLE_CSV_WRITE_POLICY
 
 
 def project_csv(
@@ -98,17 +94,7 @@ def validate_results_output_path(
     input_path: str | Path,
     case_rows: Iterable[Mapping[str, object]],
 ) -> Path:
-    """Preserve D009: protect input, STL, and planned VTP/NPZ paths."""
-    protected: list[str | Path] = [input_path]
-    for row in case_rows:
-        for raw_stl in str(row.get("stl_path", "")).split(";"):
-            if raw_stl.strip():
-                protected.append(raw_stl.strip())
-        out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser().resolve()
-        case_id = str(row.get("case_id", "")).strip()
-        if case_id:
-            protected.extend((out_dir / f"{case_id}.vtp", out_dir / f"{case_id}.npz"))
-    return validate_csv_output_path(out_path, protected)
+    return validate_summary_output_path(out_path, input_path, case_rows)
 
 
 def write_csv(out_path: str | Path, projection: CsvProjection) -> None:

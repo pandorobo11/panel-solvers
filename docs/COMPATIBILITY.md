@@ -112,9 +112,10 @@ checkpoint snapshots while the remote failure is retained.
 - Shared CSV/Excel format dispatch, portable Unicode case-ID validation,
   casefold collision detection, attitude domains, and CLI selection cardinality
   are implemented. Product readers retain only model schemas, defaults, physical
-  fields, and their field validation. Runtime VTP/NPZ/summary-CSV serialization
-  remains implemented; pending Phase 8 work covers output collision scope and
-  CSV durability.
+  fields, and their field validation. Both CLI and GUI reject summary collision
+  with input/STL/planned VTP/NPZ paths regardless of save flags. Summary and
+  checkpoint CSV use same-directory temporary files, flush, `fsync`, and atomic
+  replace while retaining product schema/order/value semantics.
 - The shared Sentman and hypersonic models are forwarded through product-only
   compatibility modules; the frontends contain no copied physical equations.
 - The Phase 3 CSV and semantic artifact projections are composed with the Phase

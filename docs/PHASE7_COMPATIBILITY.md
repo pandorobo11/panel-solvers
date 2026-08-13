@@ -52,8 +52,8 @@ Phase 7 implements product policy rather than choosing a universal behavior:
 - D004-D008 were retained in Phase 7, then superseded by ADR 0008 and converged
   in Phase 8: common CSV/Excel format dispatch, portable Unicode case IDs,
   casefold collision rejection, attitude domains, and `--cases` cardinality;
-- D009/D010: collision scope and CSV temporary-file/durability policy remain
-  product-selected;
+- D009/D010 were retained in Phase 7, then superseded by ADR 0008 and converged
+  in Phase 8 to shared destructive-collision rejection and durable atomic CSV;
 - D015: worker logging and failure-partial policies remain explicit scheduler
   inputs: when a later case raises a caught Python exception, FMF forwards worker
   logs and discards completed results from that chunk, while newtsolver drops
