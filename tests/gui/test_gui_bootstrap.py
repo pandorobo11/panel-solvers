@@ -13,7 +13,7 @@ from fmfsolver.app import gui_app as fmf_gui_app
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.app import gui_app as newt_gui_app
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
-from panelsolver.app import ClosePolicy, GuiRunResult, SolverGuiAdapters
+from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
     GuiAdaptersUnavailable,
     create_main_window,
@@ -69,7 +69,6 @@ class GuiBootstrapTests(unittest.TestCase):
             "case_columns",
             "preferred_scalars",
             "format_case",
-            "close_policy",
         ):
             self.assertEqual(getattr(selected, field), getattr(runtime, field))
         with self.assertRaisesRegex(GuiAdaptersUnavailable, "not configured"):
@@ -119,13 +118,11 @@ class GuiBootstrapTests(unittest.TestCase):
         self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
         self.assertIsNotNone(fmf.adapters)
         self.assertEqual("sentman", fmf.model_id)
-        self.assertEqual(ClosePolicy.DEFER_UNTIL_IDLE, fmf.close_policy)
         self.assertIn("S", fmf.case_columns)
         self.assertNotIn("gamma", fmf.case_columns)
         self.assertEqual("newtsolver (GUI)", newt.window_title)
         self.assertIsNotNone(newt.adapters)
         self.assertEqual("hypersonic", newt.model_id)
-        self.assertEqual(ClosePolicy.IMMEDIATE, newt.close_policy)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
         self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)

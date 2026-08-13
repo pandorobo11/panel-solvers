@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 
 from panelsolver.core import CaseSignature, match_case_signature
@@ -68,13 +67,6 @@ class GuiRunResult:
 
 
 type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
-
-
-class ClosePolicy(str, Enum):
-    """Product-selected behavior when a window closes during an active run."""
-
-    DEFER_UNTIL_IDLE = "defer_until_idle"
-    IMMEDIATE = "immediate"
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,7 +157,6 @@ class SolverSpec:
     case_columns: tuple[str, ...]
     preferred_scalars: tuple[str, ...]
     format_case: FormatCaseCallback
-    close_policy: ClosePolicy
     adapters: SolverGuiAdapters | None = None
 
     def __post_init__(self) -> None:
@@ -201,8 +192,6 @@ class SolverSpec:
         )
         if not callable(self.format_case):
             raise TypeError("SolverSpec.format_case must be callable")
-        if not isinstance(self.close_policy, ClosePolicy):
-            raise TypeError("SolverSpec.close_policy must be a ClosePolicy")
         if self.adapters is not None and not isinstance(
             self.adapters,
             SolverGuiAdapters,
@@ -215,7 +204,6 @@ __all__ = (
     "BuildCaseSignaturesCallback",
     "CancelRequestedCallback",
     "CaseRow",
-    "ClosePolicy",
     "FormatCaseCallback",
     "GuiRunRequest",
     "GuiRunResult",

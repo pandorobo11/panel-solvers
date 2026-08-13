@@ -1,16 +1,16 @@
-"""Shared GUI shell with product-selected close behavior."""
+"""Shared GUI shell with a common cooperative close lifecycle."""
 
 from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
 from .cases_panel import CasesPanel
-from .solver_spec import ClosePolicy, SolverSpec
+from .solver_spec import SolverSpec
 from .viewer import ViewerPanel
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    """Wire shared cases and viewer panels without choosing a product policy."""
+    """Wire shared cases and viewer panels with common lifecycle behavior."""
 
     def __init__(
         self,
@@ -59,14 +59,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.viewer_panel.save_images_for_case_rows(rows)
 
     def closeEvent(self, event) -> None:
-        """Apply the product's pinned close policy while a run is active."""
-        if (
-            self.spec.close_policy is ClosePolicy.DEFER_UNTIL_IDLE
-            and self.cases_panel.is_running()
-        ):
-            self._close_when_run_finishes = True
-            self.cases_panel.cancel_run()
-            self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
+        """Cancel an active run and defer close until its thread is cleaned up."""
+        if self.cases_panel.is_running():
+            if not self._close_when_run_finishes:
+                self._close_when_run_finishes = True
+                self.cases_panel.cancel_run()
+                self.cases_panel.logln(
+                    "[CLOSE] Waiting for the active run to stop..."
+                )
             event.ignore()
             return
         super().closeEvent(event)

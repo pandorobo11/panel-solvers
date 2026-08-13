@@ -44,7 +44,6 @@ from .runtime import (
 )
 from .solver_spec import (
     ArtifactSignatureCandidates,
-    ClosePolicy,
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
@@ -72,7 +71,6 @@ __all__ = (
     "ArtifactSignatureCandidates",
     "AtomicCsvWritePolicy",
     "CaseReaderPolicy",
-    "ClosePolicy",
     "GuiRunRequest",
     "GuiRunResult",
     "InputValidationError",

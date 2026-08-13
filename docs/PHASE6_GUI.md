@@ -134,10 +134,10 @@ terminal path, and releases worker/thread references only after `QThread` exit.
 Cancellation remains case-boundary cooperative and does not promise interruption
 inside a ray query, root solve, or ODE.
 
-The shared `MainWindow` keeps the pinned 1480 x 900 horizontal splitter and uses
-`SolverSpec.close_policy` for D023. FMF requests cancellation, ignores the first
-close, and closes only after `run_finished`; newtsolver uses the normal immediate
-Qt close path and receives no equivalent deferral behavior.
+The shared `MainWindow` keeps the pinned 1480 x 900 horizontal splitter. ADR
+0008 supersedes the product-selected `SolverSpec.close_policy` recorded for
+D023: both products request cancellation, ignore active-run close requests, and
+close only after `run_finished` confirms QThread cleanup.
 
 ## Image export
 
