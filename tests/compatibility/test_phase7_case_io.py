@@ -231,10 +231,7 @@ class ProductCaseAdapterTests(unittest.TestCase):
         self.assertEqual(MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy)
         self.assertEqual("FMFSOLVER", fmf.request.shielding.legacy_env_prefix)
         self.assertEqual("hypersonic", newt.request.model_case.model_id)
-        self.assertEqual(
-            MeshValidationPolicy.LEGACY_WARN_REPAIR,
-            newt.request.mesh_validation_policy,
-        )
+        self.assertEqual(MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy)
         self.assertEqual("NEWTSOLVER", newt.request.shielding.legacy_env_prefix)
         self.assertEqual("1.3.8", FMFSOLVER_COMPATIBILITY_VERSION)
         self.assertEqual("1.0.3", NEWTSOLVER_COMPATIBILITY_VERSION)

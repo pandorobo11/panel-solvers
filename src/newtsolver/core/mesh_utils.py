@@ -21,7 +21,7 @@ def load_meshes(stl_paths: list[str], scale_m_per_unit: float, logfn) -> MeshDat
         stl_paths,
         scale_m_per_unit,
         logfn,
-        validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR,
+        validation_policy=MeshValidationPolicy.STRICT,
     )
 
 

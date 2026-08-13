@@ -66,10 +66,11 @@ Phase 7 implements product policy rather than choosing a universal behavior:
 - D025: the de facto Python surfaces are forwarded independently rather than
   replaced with a cross-product union.
 
-ADR 0006 recorded D011 mesh-repair policy during migration. ADR 0008 now makes
-common validation and infrastructure the target while retaining legacy names as
-aliases. Phase 5 already defines neutral environment-variable precedence while
-reading one explicitly selected legacy prefix.
+ADR 0006 recorded D011 mesh-repair policy during migration. Phase 8 applies ADR
+0008 strict mesh safety to both frontends: repair exceptions and unresolved
+winding are rejected together with non-finite and degenerate geometry. Phase 5
+already defines neutral environment-variable precedence while reading one
+explicitly selected legacy prefix.
 
 ## Compatibility boundaries
 

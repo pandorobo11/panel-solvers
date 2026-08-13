@@ -28,13 +28,7 @@ class MeshLoadError(PanelSolverError, ValueError):
 
 
 class MeshValidationPolicy(str, Enum):
-    """Compatibility policy for legacy normal-repair failures.
-
-    Both policies still enforce the finite, positive-area Phase 2 geometry
-    contract. ``LEGACY_WARN_REPAIR`` preserves newtsolver's warning behavior
-    when normal repair itself raises or leaves inconsistent winding; ``STRICT``
-    preserves FMF's rejection behavior.
-    """
+    """Accepted mesh-policy names; both enforce ADR 0008 strict safety."""
 
     STRICT = "strict"
     LEGACY_WARN_REPAIR = "legacy_warn_repair"
@@ -199,21 +193,37 @@ def _load_uncached(
         else source_meshes[0]
     )
     combined.vertices = np.asarray(combined.vertices, dtype=np.float64) * scale_m_per_unit
+    vertices = np.asarray(combined.vertices, dtype=np.float64)
+    if not np.isfinite(vertices).all():
+        raise MeshLoadError(
+            "Mesh geometry violates the shared contract: contains non-finite vertices."
+        )
+    faces = np.asarray(combined.faces, dtype=np.int64)
+    with np.errstate(over="ignore", invalid="ignore"):
+        edges_a = vertices[faces[:, 1]] - vertices[faces[:, 0]]
+        edges_b = vertices[faces[:, 2]] - vertices[faces[:, 0]]
+        pre_repair_areas = 0.5 * np.linalg.norm(
+            np.cross(edges_a, edges_b), axis=1
+        )
+    invalid_pre_repair = ~np.isfinite(pre_repair_areas) | (pre_repair_areas <= 0.0)
+    if np.any(invalid_pre_repair):
+        count = int(np.count_nonzero(invalid_pre_repair))
+        raise MeshLoadError(
+            "Mesh geometry violates the shared contract: "
+            f"contains {count} degenerate or non-finite triangle face(s)."
+        )
 
     warning_messages: list[str] = []
     try:
         trimesh.repair.fix_normals(combined, multibody=True)
     except Exception as exc:
         message = f"Failed to repair mesh face normals: {exc}"
-        if validation_policy is MeshValidationPolicy.STRICT:
-            raise MeshLoadError(message) from exc
-        warning_messages.append(f"[WARN] {message}")
+        raise MeshLoadError(message) from exc
 
     if not combined.is_winding_consistent:
-        message = "Mesh face winding remains inconsistent after normal repair."
-        if validation_policy is MeshValidationPolicy.STRICT:
-            raise MeshLoadError(message)
-        warning_messages.append(f"[WARN] {message}")
+        raise MeshLoadError(
+            "Mesh face winding remains inconsistent after normal repair."
+        )
     if not combined.is_watertight:
         warning_messages.append("[WARN] Mesh is not watertight (trimesh). Continuing anyway.")
 

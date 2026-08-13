@@ -199,8 +199,10 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(product)
         direct_logs: list[str] = []
         result = solver.run_case(row, direct_logs.append)
-        if direct_logs != [MESH_WARNING]:
-            raise RuntimeError(f"{product} direct-case logs changed: {direct_logs!r}")
+        if direct_logs not in ([], [MESH_WARNING]):
+            raise RuntimeError(
+                f"{product} direct-case logs contain unexpected output: {direct_logs!r}"
+            )
         if product in runtime._RAY_ACCEL_HINTED_PRODUCTS:
             raise RuntimeError(f"{product} direct case consumed backend hint")
 

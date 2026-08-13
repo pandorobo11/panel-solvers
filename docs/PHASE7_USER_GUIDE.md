@@ -219,13 +219,13 @@ original callback exception returns to the caller.
 
 ## Current historical differences
 
-Phase 7 did not choose between several product contracts. Its current
-differences include XLS dispatch, case IDs and duplicate comparison, FMF's
-stricter `beta_tan` domain, mesh repair, CLI `--cases`, output collision and CSV
-durability, parallel logs/partial results, legacy signatures, model-only
-CSV/VTP/NPZ fields, GUI titles/overlays/close behavior, and D025 Python exports.
-The observation ledger remains `phase1/LEGACY_DIFFERENCES.md`; ADR 0008 now
-decides which differences are supported requirements and which may converge.
+Phase 7 did not choose between several product contracts. Phase 8 has converged
+XLS dispatch, case-ID/duplicate and attitude rules, mesh safety, CLI `--cases`,
+output collision/CSV durability, and scheduler logs/partial results. Retained
+differences include model fields and formulas, legacy signatures, model-only
+CSV/VTP/NPZ fields, GUI titles/overlays, and D025 Python exports. The historical
+observation ledger remains `phase1/LEGACY_DIFFERENCES.md`; ADR 0008 determines
+which observations belong to the supported contract.
 
 ## Release
 
