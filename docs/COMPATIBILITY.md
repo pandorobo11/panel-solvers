@@ -118,6 +118,10 @@ checkpoint snapshots while the remote failure is retained.
   replace while retaining product schema/order/value semantics.
 - The shared Sentman and hypersonic models are forwarded through product-only
   compatibility modules; the frontends contain no copied physical equations.
+- Both frontends use strict shared mesh safety: non-finite or degenerate geometry,
+  repair exceptions, and winding that remains inconsistent after repair are
+  rejected. Valid face order, component IDs, fingerprints, and numerical results
+  remain unchanged.
 - The Phase 3 CSV and semantic artifact projections are composed with the Phase
   5 engine and are also reachable through the frozen legacy Python call shapes.
 

@@ -45,7 +45,10 @@ selection.
 
 ## Consequences
 
-Phase 5 retained the two repair-failure behaviors during migration. ADR 0008 no
+Phase 5 retained the two repair-failure behaviors during migration. Phase 8 now
+applies ADR 0008 strict safety to both frontends: repair exceptions and remaining
+inconsistent winding are rejected. The legacy policy enum name remains accepted
+internally but no longer enables permissive behavior. ADR 0008 no
 longer treats that invalid-geometry difference as a permanent product contract;
 future convergence must retain the strict common geometry safety boundary. The
 content hash adds file-reading cost before a mesh-cache hit; correctness has

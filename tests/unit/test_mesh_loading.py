@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import numpy as np
 import trimesh
@@ -82,23 +82,41 @@ class MeshLoadingTests(unittest.TestCase):
         )
         self.assertEqual(mesh_cache_stats().misses, 2)
 
-    def test_repair_failure_policy_remains_explicit(self) -> None:
+    def test_all_policy_names_reject_repair_failure(self) -> None:
         path = FIXTURE_STL / "cube.stl"
-        with patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")):
-            with self.assertRaisesRegex(MeshLoadError, "Failed to repair"):
-                load_panel_mesh([path], 1.0)
+        for policy in MeshValidationPolicy:
+            clear_mesh_cache()
+            with self.subTest(policy=policy), patch(
+                "trimesh.repair.fix_normals", side_effect=RuntimeError("repair")
+            ), self.assertRaisesRegex(MeshLoadError, "Failed to repair"):
+                load_panel_mesh([path], 1.0, validation_policy=policy)
 
-        clear_mesh_cache()
-        messages: list[str] = []
-        with patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")):
-            loaded = load_panel_mesh(
-                [path],
-                1.0,
-                validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR,
-                warning_callback=messages.append,
-            )
-        self.assertTrue(any("Failed to repair" in message for message in messages))
-        self.assertEqual(tuple(messages), loaded.warnings)
+    def test_all_policy_names_reject_inconsistent_winding_after_repair(self) -> None:
+        path = FIXTURE_STL / "cube.stl"
+        for policy in MeshValidationPolicy:
+            clear_mesh_cache()
+            with self.subTest(policy=policy), patch.object(
+                trimesh.Trimesh,
+                "is_winding_consistent",
+                new_callable=PropertyMock,
+                return_value=False,
+            ), self.assertRaisesRegex(MeshLoadError, "winding remains inconsistent"):
+                load_panel_mesh([path], 1.0, validation_policy=policy)
+
+    def test_rejects_nonfinite_vertices_before_repair(self) -> None:
+        mesh = trimesh.Trimesh(
+            vertices=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            faces=[[0, 1, 2]],
+            process=False,
+        )
+        mesh.vertices[0, 0] = np.nan
+        source = FIXTURE_STL / "cube.stl"
+        with patch(
+            "panelsolver.core.mesh_loading._load_source_mesh", return_value=mesh
+        ), patch("trimesh.repair.fix_normals") as repair:
+            with self.assertRaisesRegex(MeshLoadError, "non-finite vertices"):
+                load_panel_mesh([source], 1.0)
+        repair.assert_not_called()
 
     def test_rejects_degenerate_nonfinite_and_invalid_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
