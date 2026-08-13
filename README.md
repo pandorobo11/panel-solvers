@@ -57,7 +57,7 @@ sequence is tracked in [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md).
 One `panel-solvers` wheel installs both compatible command families:
 
 ```bash
-python -m pip install panel_solvers-0.1.0-py3-none-any.whl
+python -m pip install panel_solvers-<version>-py3-none-any.whl
 fmfsolver-cli --input cases.csv
 newtsolver-cli --input cases.csv
 fmfsolver-gui
@@ -76,3 +76,4 @@ acceptance evidence is in
 [the execution record](docs/PHASE7_EXECUTION_RECORD.md). ADR 0008 and the
 [Phase 8 Issue disposition](docs/PHASE8_ISSUE_DISPOSITION.md) govern the active
 numerical, architecture, performance, and lifecycle audit.
+Release notes are maintained in [CHANGELOG.md](CHANGELOG.md).

@@ -17,7 +17,7 @@ packages and commands.
 
 ```bash
 python -m pip uninstall fmfsolver newtsolver panel-solvers
-python -m pip install panel_solvers-0.1.0-py3-none-any.whl
+python -m pip install panel_solvers-<version>-py3-none-any.whl
 ```
 
 Install the platform's `rayaccel` extra when installing from a source/index that
@@ -229,13 +229,33 @@ which observations belong to the supported contract.
 
 ## Release
 
-1. Update `project.version` and release notes in a reviewable change.
-2. Run the locked full suite, Ruff, build, built-wheel reinstall/smoke, both
-   unchanged samples, and both manual macOS GUI smokes.
-3. Require successful Ubuntu, Windows, macOS, and artifact CI.
-4. Create exactly `v<project.version>` only after those gates pass.
-5. The tag workflow rebuilds and publishes the wheel and source distribution in
-   one GitHub Release. Both products always ship together.
+`CHANGELOG.md` is the source of truth for release notes. A release change must
+update all of the following together:
+
+1. Set `project.version` in `pyproject.toml`, then run `uv lock` so the editable
+   `panel-solvers` package version in `uv.lock` matches.
+2. Move the applicable `CHANGELOG.md` entries from `[Unreleased]` into a
+   non-empty `## [<version>] - YYYY-MM-DD` section and retain a fresh
+   `[Unreleased]` section.
+3. Update current distribution-version references in `README.md`,
+   `docs/DEVELOPMENT.md`, and this guide. Do not change the independent FMF
+   `1.3.8` or newtsolver `1.0.3` compatibility versions.
+4. Run the locked full suite, Ruff, build, the version-independent wheel
+   reinstall/smoke, both unchanged samples, and both manual macOS GUI smokes.
+   `python scripts/release_tools.py dry-run . --version <hypothetical-version>`
+   exercises a temporary copy and must also pass without changing the checkout.
+5. Require successful Ubuntu, Windows, macOS, and artifact CI. On the verified
+   release commit, run
+   `python scripts/release_tools.py verify-tag . v<version>`; this checks the
+   project, lock, tag, and changelog section together.
+6. Record the verified commit SHA, then create an annotated tag at that exact
+   commit: `git tag -a v<version> <verified-commit-sha> -m "panel-solvers
+   v<version>"`. Verify `git rev-parse v<version>^{}` equals the recorded SHA
+   before `git push origin v<version>`.
+7. The tag workflow rebuilds exactly one wheel and one source distribution,
+   revalidates the tag and artifact metadata, and publishes the matching
+   `CHANGELOG.md` section in one GitHub Release. Both products always ship
+   together.
 
 No Phase 7 acceptance tag is created automatically by the migration PR.
 
