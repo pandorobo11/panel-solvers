@@ -69,10 +69,10 @@ quantities. Products do not preserve accidental propagation or an early return
 that bypasses invalid normalization. Exception categories and field attribution
 remain diagnostic; exact wording, cause/context, traceback, and timing do not.
 
-D015 is transitional. The current implementation is FMF
-`FORWARD / DISCARD_CHUNK` and newtsolver `DROP / YIELD_COMPLETED`; the adopted
-common target is `FORWARD / YIELD_COMPLETED` for both. The policy decision itself
-does not modify scheduler code.
+D015 now uses common `FORWARD / YIELD_COMPLETED` behavior for both products.
+Worker logs and warnings cross the process boundary, and successful earlier
+cases from a later-failing chunk remain visible in input-ordered progress and
+checkpoint snapshots while the remote failure is retained.
 
 ## Current implementation status
 

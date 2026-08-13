@@ -156,15 +156,12 @@ mixes both product prefixes:
 | shielding ray batch | `PANELSOLVER_SHIELD_BATCH_SIZE`, then selected legacy prefix | Embree 64; rtree 8 |
 | scheduler chunk cases | `PANELSOLVER_PARALLEL_CHUNK_CASES`, then selected legacy prefix | 8 |
 
-Values must be integers in the documented positive/nonnegative domain. In the
-current implementation, a later caught Python exception in one worker chunk
-causes FMF to forward worker logs but discard earlier completed results;
-newtsolver drops logs but yields those completed cases. ADR 0008 adopts common
-`FORWARD`/`YIELD_COMPLETED` behavior for both products. The later remediation
-will include prior successful cases in input-ordered progress, checkpoints, and
-summary results while retaining the remote failure. This policy decision does
-not roll back already-written per-case artifacts or change scheduler code by
-itself.
+Values must be integers in the documented positive/nonnegative domain. Both
+products use common `FORWARD`/`YIELD_COMPLETED` behavior: worker logs and
+warnings are forwarded, and prior successful cases from a later-failing chunk
+remain in input-ordered progress, checkpoints, and summary results while the
+remote failure is retained. Already-written per-case artifacts are not rolled
+back.
 
 ### Current direct Python cancellation and failures
 

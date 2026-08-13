@@ -180,10 +180,9 @@ Scheduling bucket keys are reuse hints only and never replace geometry,
 shielding, or result-cache identities. Completion-order delivery carries stable
 input indices; progress and checkpoint snapshots are rebuilt deterministically
 in caller-defined input order. Cancellation is cooperative between cases and
-does not interrupt an active ray query or model solve. The current D015 worker
-logging and failure-partial differences remain explicit adapter-selected
-policies until remediation; ADR 0008 adopts common
-`FORWARD / YIELD_COMPLETED` as the target. Worker startup failures, remote
+does not interrupt an active ray query or model solve. D015 now uses common
+`FORWARD / YIELD_COMPLETED` behavior for worker logs and failed-chunk completed
+results. Worker startup failures, remote
 tracebacks, and unexpected exits cross the process boundary as distinct errors.
 
 Phase 6 adds one `SolverSpec`-driven Qt shell, cases panel, and PyVista viewer.

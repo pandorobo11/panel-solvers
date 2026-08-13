@@ -60,17 +60,14 @@ def _assert_artifact_semantics_equal(
 
 
 class Phase7RuntimeTests(unittest.TestCase):
-    def test_product_scheduler_policies_remain_independent(self) -> None:
-        self.assertIs(WorkerLogPolicy.FORWARD, FMF_POLICY.worker_log_policy)
-        self.assertIs(
-            PartialResultPolicy.DISCARD_CHUNK,
-            FMF_POLICY.partial_result_policy,
-        )
-        self.assertIs(WorkerLogPolicy.DROP, NEWT_POLICY.worker_log_policy)
-        self.assertIs(
-            PartialResultPolicy.YIELD_COMPLETED,
-            NEWT_POLICY.partial_result_policy,
-        )
+    def test_products_share_supported_scheduler_policy(self) -> None:
+        for policy in (FMF_POLICY, NEWT_POLICY):
+            with self.subTest(product=policy.product_id):
+                self.assertIs(WorkerLogPolicy.FORWARD, policy.worker_log_policy)
+                self.assertIs(
+                    PartialResultPolicy.YIELD_COMPLETED,
+                    policy.partial_result_policy,
+                )
 
     def test_artifacts_off_still_creates_directory_and_blank_csv_paths(self) -> None:
         row = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[0].to_dict()
@@ -143,24 +140,12 @@ class Phase7RuntimeTests(unittest.TestCase):
         self,
     ) -> None:
         products = (
-            (
-                "fmfsolver",
-                read_fmf_cases,
-                "fmfsolver_cases.csv",
-                FMF_POLICY,
-                False,
-            ),
-            (
-                "newtsolver",
-                read_newt_cases,
-                "newtsolver_cases.csv",
-                NEWT_POLICY,
-                True,
-            ),
+            ("fmfsolver", read_fmf_cases, "fmfsolver_cases.csv", FMF_POLICY),
+            ("newtsolver", read_newt_cases, "newtsolver_cases.csv", NEWT_POLICY),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            for product_id, reader, filename, policy, yields_completed in products:
+            for product_id, reader, filename, policy in products:
                 with self.subTest(product=product_id):
                     product_root = root / product_id
                     product_root.mkdir()
@@ -168,22 +153,28 @@ class Phase7RuntimeTests(unittest.TestCase):
                     blocker.write_text("worker failure fixture\n", encoding="utf-8")
                     case_output = product_root / "case-output"
                     summary = product_root / "summary.csv"
-                    sentinel = b"pre-existing summary must remain unchanged\n"
-                    summary.write_bytes(sentinel)
+                    summary.write_bytes(b"pre-existing summary is replaced\n")
 
                     base = reader(INPUTS / filename).iloc[0].to_dict()
-                    good = dict(base)
+                    good_a = dict(base)
+                    good_b = dict(base)
                     bad = dict(base)
-                    good_id = f"{product_id}_good"
-                    bad_id = f"{product_id}_bad"
-                    good.update(
-                        case_id=good_id,
-                        shielding_on=1,
-                        ray_backend="rtree",
-                        out_dir=str(case_output),
-                        save_vtp_on=1,
-                        save_npz_on=1,
+                    good_ids = (
+                        f"{product_id}_good_a",
+                        f"{product_id}_good_b",
                     )
+                    bad_id = f"{product_id}_bad"
+                    for good, good_id in zip(
+                        (good_a, good_b), good_ids, strict=True
+                    ):
+                        good.update(
+                            case_id=good_id,
+                            shielding_on=1,
+                            ray_backend="rtree",
+                            out_dir=str(case_output),
+                            save_vtp_on=1,
+                            save_npz_on=1,
+                        )
                     bad.update(
                         case_id=bad_id,
                         shielding_on=1,
@@ -197,11 +188,11 @@ class Phase7RuntimeTests(unittest.TestCase):
 
                     with mock.patch.dict(
                         os.environ,
-                        {"PANELSOLVER_PARALLEL_CHUNK_CASES": "2"},
+                        {"PANELSOLVER_PARALLEL_CHUNK_CASES": "3"},
                     ):
                         with self.assertRaises(WorkerExecutionError) as caught:
                             run_and_write_product_cases(
-                                (good, bad),
+                                (good_a, good_b, bad),
                                 policy,
                                 summary,
                                 workers=2,
@@ -214,15 +205,16 @@ class Phase7RuntimeTests(unittest.TestCase):
                             )
 
                     self.assertIn("FileExistsError", caught.exception.remote_traceback)
-                    self.assertTrue((case_output / f"{good_id}.vtp").is_file())
-                    self.assertTrue((case_output / f"{good_id}.npz").is_file())
+                    for good_id in good_ids:
+                        self.assertTrue((case_output / f"{good_id}.vtp").is_file())
+                        self.assertTrue((case_output / f"{good_id}.npz").is_file())
                     self.assertTrue(blocker.is_file())
                     self.assertFalse((blocker / f"{bad_id}.vtp").exists())
                     self.assertFalse((blocker / f"{bad_id}.npz").exists())
                     self.assertFalse(any("[SAVE] final" in message for message in logs))
 
                     reference_output = product_root / "reference-output"
-                    reference_good = dict(good, out_dir=str(reference_output))
+                    reference_good = dict(good_a, out_dir=str(reference_output))
                     run_and_write_product_cases(
                         (reference_good,),
                         policy,
@@ -230,40 +222,29 @@ class Phase7RuntimeTests(unittest.TestCase):
                     )
                     _assert_artifact_semantics_equal(
                         self,
-                        case_output / f"{good_id}.vtp",
-                        case_output / f"{good_id}.npz",
-                        reference_output / f"{good_id}.vtp",
-                        reference_output / f"{good_id}.npz",
+                        case_output / f"{good_ids[0]}.vtp",
+                        case_output / f"{good_ids[0]}.npz",
+                        reference_output / f"{good_ids[0]}.vtp",
+                        reference_output / f"{good_ids[0]}.npz",
                     )
 
-                    if yields_completed:
-                        self.assertEqual([(1, 2)], progress)
-                        with summary.open(encoding="utf-8", newline="") as stream:
-                            rows = tuple(csv.DictReader(stream))
-                        self.assertEqual(
-                            [good_id],
-                            [row["case_id"] for row in rows if row["scope"] == "total"],
-                        )
-                        self.assertFalse(any(row["case_id"] == bad_id for row in rows))
-                        self.assertTrue(
-                            any("[SAVE] checkpoint 1/2" in message for message in logs)
-                        )
-                        self.assertTrue(
-                            any("[OK] (1/2)" in message for message in logs)
-                        )
-                        self.assertFalse(
-                            any(message.startswith("[WARN]") for message in logs)
-                        )
-                    else:
-                        self.assertEqual([], progress)
-                        self.assertEqual(sentinel, summary.read_bytes())
-                        self.assertFalse(any("[SAVE]" in message for message in logs))
-                        self.assertFalse(any("[OK]" in message for message in logs))
-                        self.assertTrue(
-                            any(message.startswith("[WARN]") for message in logs)
-                        )
+                    self.assertEqual([(1, 3), (2, 3)], progress)
+                    with summary.open(encoding="utf-8", newline="") as stream:
+                        rows = tuple(csv.DictReader(stream))
+                    self.assertEqual(
+                        list(good_ids),
+                        [row["case_id"] for row in rows if row["scope"] == "total"],
+                    )
+                    self.assertFalse(any(row["case_id"] == bad_id for row in rows))
+                    self.assertTrue(
+                        any("[SAVE] checkpoint 2/3" in message for message in logs)
+                    )
+                    self.assertTrue(any("[OK] (2/3)" in message for message in logs))
+                    self.assertTrue(
+                        any(message.startswith("[WARN]") for message in logs)
+                    )
 
-    def test_parallel_success_is_input_ordered_and_retains_worker_log_split(self) -> None:
+    def test_parallel_success_is_input_ordered_and_forwards_worker_logs(self) -> None:
         products = (
             (
                 read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0, 1]],
@@ -273,7 +254,7 @@ class Phase7RuntimeTests(unittest.TestCase):
             (
                 read_newt_cases(INPUTS / "newtsolver_cases.csv").iloc[[0, 1]],
                 run_newt_cases,
-                False,
+                True,
             ),
         )
         with tempfile.TemporaryDirectory() as temp_dir:

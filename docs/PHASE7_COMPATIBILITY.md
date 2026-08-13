@@ -112,12 +112,12 @@ not by the returned public signature. User paths and limitations are recorded in
 ## Execution, serialization, and GUI adapters
 
 The shared runtime executes adapted requests serially or through the Phase 5
-spawn scheduler. The current implementation selects FMF
-`FORWARD`/`DISCARD_CHUNK` and newtsolver `DROP`/`YIELD_COMPLETED`. Phase 8
+spawn scheduler. Phase 7 selected FMF `FORWARD`/`DISCARD_CHUNK` and newtsolver
+`DROP`/`YIELD_COMPLETED`. Phase 8
 independently found that the original Phase 7 policy wiring and documentation had
 the partial-result choices reversed, then restored the pinned same-chunk failure
-behavior. ADR 0008 subsequently adopted common `FORWARD`/`YIELD_COMPLETED` as
-the next specification; this policy PR does not change scheduler code. Per-case
+behavior. ADR 0008 subsequently adopted and Phase 8 implemented common
+`FORWARD`/`YIELD_COMPLETED`. Per-case
 numerical values and all-success runs are unchanged. Shielding reuse may change execution
 order, but every
 checkpoint and final summary is reconstructed in input order. Cancellation is

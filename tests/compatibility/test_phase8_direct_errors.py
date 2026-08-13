@@ -741,12 +741,11 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                             self.assertTrue(
                                 any(message.startswith("[OK]") for message in observed_logs)
                             )
-                            self.assertEqual(
-                                product == "fmfsolver",
+                            self.assertTrue(
                                 any(
                                     message.startswith("[worker]")
                                     for message in observed_logs
-                                ),
+                                )
                             )
                         self.assertEqual([], unraisable)
                         self.assertEqual([], list(root.rglob("*.vtp")))
