@@ -93,12 +93,13 @@ branch or a universal superset schema in core. Serialization and CSV writing are
 separate concerns.
 
 The Phase 7 application runtime composes adapted case requests, the shared
-spawn scheduler, semantic projections, and filesystem serializers. Its runtime
-policy requires each compatibility frontend to select worker-log and
-failure-partial behavior, CSV schema/durability, compatibility version, and
-model-specific projection additions explicitly. Successful checkpoint and final
-snapshots are assembled in input order even when shielding reuse changes
-execution order or workers complete out of order.
+spawn scheduler, semantic projections, and filesystem serializers. Its current
+runtime policy uses common `FORWARD / YIELD_COMPLETED` worker-log and
+failure-partial behavior for both compatibility frontends. CSV schema,
+compatibility version, and model-specific projection additions remain explicit
+product inputs. Successful checkpoint and final snapshots are assembled in
+input order even when shielding reuse changes execution order or workers
+complete out of order.
 
 Phase 7 Python-import adapters restore the two frozen module inventories without
 moving implementation back into the compatibility frontends. Shared application
@@ -106,8 +107,8 @@ adapters translate legacy DataFrames, result dictionaries, mutable mesh views,
 direct serializers, and scheduler signatures. Model-specific public helpers
 delegate to the same Sentman or hypersonic equations used by `PanelLoadModel`;
 newtsolver's explicit D025 exports remain a product contract rather than a
-common-model union. Product modules select strictness and worker policies and
-perform only call-shape translation.
+common-model union. Product modules select strictness, use the common D015
+worker policies, and perform only call-shape translation.
 
 Summary CSV projection likewise receives an ordered schema from a product
 adapter. Core calculates shared total/component cells while adapter-supplied run

@@ -54,10 +54,12 @@ Phase 7 implements product policy rather than choosing a universal behavior:
   casefold collision rejection, attitude domains, and `--cases` cardinality;
 - D009/D010 were retained in Phase 7, then superseded by ADR 0008 and converged
   in Phase 8 to shared destructive-collision rejection and durable atomic CSV;
-- D015: worker logging and failure-partial policies remain explicit scheduler
-  inputs: when a later case raises a caught Python exception, FMF forwards worker
-  logs and discards completed results from that chunk, while newtsolver drops
-  worker logs and yields those completed results before reporting the error;
+- D015 was retained as an explicit scheduler-policy difference in Phase 7:
+  when a later case raised a caught Python exception, FMF forwarded worker logs
+  and discarded completed results from that chunk, while newtsolver dropped
+  worker logs and yielded those completed results before reporting the error.
+  This historical behavior is superseded by ADR 0008; both products now use
+  `FORWARD`/`YIELD_COMPLETED`;
 - D017/D018: the ADR 0005 signature is primary and ordered legacy hashes remain
   opaque fallbacks, including distinct direct/file variants;
 - D019/D020/D029: VTP, NPZ, and result CSV model fields remain separate;

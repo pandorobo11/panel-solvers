@@ -51,17 +51,19 @@ bypasses invalid normalization inputs. Exact exception text, cause/context,
 traceback structure, and import-time versus execution-time validation are not
 contracts; stable shared exception categories and field-aware diagnostics are.
 
-For D015, the current implementation remains temporarily different:
+For D015, the migration implementation was temporarily different. The
+historical evidence was:
 
 - FMF selects `FORWARD / DISCARD_CHUNK`;
 - newtsolver selects `DROP / YIELD_COMPLETED`.
 
-The adopted common target is `FORWARD / YIELD_COMPLETED` for both products. A
-later dedicated remediation will forward worker logs and warnings and retain
-successful earlier cases from a later-failing chunk in input-ordered progress,
-checkpoints, and summary results. That change must not alter successful-run
-results, cancellation, startup/unexpected-exit handling, cleanup, artifacts,
-signatures, cache identities, or numerical formulas.
+That historical difference is superseded by the adopted common
+`FORWARD / YIELD_COMPLETED` policy for both products. The implemented
+remediation forwards worker logs and warnings and retains successful earlier
+cases from a later-failing chunk in input-ordered progress, checkpoints, and
+summary results. It does not alter successful-run results, cancellation,
+startup/unexpected-exit handling, cleanup, artifacts, signatures, cache
+identities, or numerical formulas.
 
 Phase 1 evidence remains an authoritative record of what the pinned programs
 did. Its historical behavior columns are not, by themselves, normative Phase 8

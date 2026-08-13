@@ -122,9 +122,11 @@ validated output path; Phase 6e owns execution and lifecycle.
 adapter. It carries an ordered tuple of mapping rows, the validated output path,
 workers, and callbacks for log delivery, deterministic `done/total` progress,
 and cooperative cancellation. Product adapters retain ownership of checkpoint
-and final result serialization and therefore retain the Phase 5
-`WorkerLogPolicy`/`PartialResultPolicy` choices. `GuiRunResult` exposes only the
-first completed VTP needed to refresh the viewer.
+and final result serialization. At the historical Phase 6 boundary they also
+retained the Phase 5 `WorkerLogPolicy`/`PartialResultPolicy` choices; that
+product-specific D015 behavior is superseded by ADR 0008, and both products now
+use `FORWARD`/`YIELD_COMPLETED`. `GuiRunResult` exposes only the first completed
+VTP needed to refresh the viewer.
 
 `CaseRunWorker` executes the adapter on a `QThread`. Only
 `SchedulerCancelled` is classified as cancellation; another exception remains

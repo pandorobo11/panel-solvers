@@ -42,6 +42,10 @@ intent was found.
 | D028 | Canonical validation strength | Sentman analytic flat-plate oracle over multiple speed ratios and angles | Newtonian analytic plate plus model-internal numerical consistency; no independent high-precision cone/PM oracle | intentional | Tangent-cone and PM fixtures freeze legacy behavior, not independent physical correctness. |
 | D029 | Summary CSV model fields | Adds `mode`, `out_S`, and `out_Ti_K` to the result portion; also repeats `out_attitude_input` | Has no flow-mode/S/Ti result fields; windward/leeward equation choices remain repeated input columns, and it also repeats `out_attitude_input` | intentional | A common result envelope must preserve model-specific fields and exact product column order; neither schema is a universal superset. |
 
+The D015 row above is a historical Phase 1 evidence record; its fact columns are
+unchanged. ADR 0008 supersedes that product difference, and the current policy
+for both products is `FORWARD / YIELD_COMPLETED`.
+
 ## Shared unresolved quirks
 
 These are not differences, but they are inputs to later decisions:

@@ -253,9 +253,11 @@ invalid, explicit-precedence, base-auto, accelerated-auto, and forced probes.
 Both have process-local one-entry mesh caches, mask/intersector caches, shielding
 reuse scheduling, spawn-based workers, cooperative case-boundary cancellation,
 remote traceback propagation, unexpected-worker-exit detection, ordered final
-results, and checkpoint snapshots.  The precise cache keys differ.  FMF forwards
-worker logs; newtsolver drops them.  Cancellation does not interrupt a ray query
-or ODE already executing.
+results, and checkpoint snapshots.  The precise cache keys differ.  As a
+historical Phase 1 observation, FMF forwarded worker logs while newtsolver
+dropped them; that product difference is superseded by ADR 0008 and both current
+frontends forward worker logs.  Cancellation does not interrupt a ray query or
+ODE already executing.
 
 ## GUI-visible behavior
 
