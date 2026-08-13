@@ -84,6 +84,10 @@ EXPECTED_DIRECT_COMPONENT_KEYS = [
     "npz_path",
 ]
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
+EXPECTED_CLI_DESCRIPTIONS = {
+    "fmfsolver": "Run FMF solver from CSV/Excel input without GUI.",
+    "newtsolver": "Run newtsolver from CSV/Excel input without GUI.",
+}
 
 
 def _expected_backend_hint(product: str, *, embree: bool) -> str:
@@ -100,6 +104,21 @@ def _command_path(name: str) -> Path:
     scripts = Path(sys.executable).parent
     suffix = ".exe" if sys.platform == "win32" else ""
     return scripts / f"{name}{suffix}"
+
+
+def _validate_cli_help(product: str, help_text: str) -> None:
+    required = (
+        f"usage: {product}-cli",
+        EXPECTED_CLI_DESCRIPTIONS[product],
+        "--input INPUT",
+        "--output OUTPUT",
+        "--workers WORKERS",
+        "--cases CASES [CASES ...]",
+        "--flush-every-cases FLUSH_EVERY_CASES",
+    )
+    missing = [fragment for fragment in required if fragment not in help_text]
+    if missing:
+        raise RuntimeError(f"{product} help is missing Phase 8 contract: {missing}")
 
 
 def _smoke_direct_exporters(staging: Path) -> None:
@@ -407,11 +426,27 @@ def main() -> int:
                 text=True,
                 check=False,
             )
-            expected_help = contract_data[product]["cli"]["help"]
-            if help_result.returncode != 0 or help_result.stdout != expected_help:
+            if help_result.returncode != 0:
                 raise RuntimeError(
-                    f"{product} help mismatch: {help_result.returncode}\n"
+                    f"{product} help failed: {help_result.returncode}\n"
                     f"stdout={help_result.stdout!r}\nstderr={help_result.stderr!r}"
+                )
+            _validate_cli_help(product, help_result.stdout)
+
+            empty_cases = subprocess.run(
+                [command, "--input", "cases.csv", "--cases"],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if empty_cases.returncode != 2 or "expected at least one argument" not in (
+                empty_cases.stderr
+            ):
+                raise RuntimeError(
+                    f"{product} explicit empty --cases did not fail in argparse: "
+                    f"{empty_cases.returncode}\nstdout={empty_cases.stdout!r}\n"
+                    f"stderr={empty_cases.stderr!r}"
                 )
 
             output = staging / f"{product}_results.csv"

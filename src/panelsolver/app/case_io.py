@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import unicodedata
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,15 @@ type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
 
 FLAG_COLUMNS = ("shielding_on", "save_vtp_on", "save_npz_on")
 RAY_BACKEND_VALUES = frozenset({"auto", "rtree", "embree"})
+_INVALID_CASE_ID_CHARS = frozenset('/\\<>:"|?*')
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{index}" for index in range(1, 10)),
+    *(f"LPT{index}" for index in range(1, 10)),
+}
 
 
 def is_filled(value: object) -> bool:
@@ -72,29 +82,64 @@ class CaseReaderPolicy:
     numeric_optional: tuple[str, ...]
     positive_columns: frozenset[str]
     defaults: Mapping[str, object]
-    validate_case_ids: DataFrameValidator
     validate_rows: DataFrameValidator
-    validate_attitude_domain: DataFrameValidator
     required_numeric_message_style: str
     keep_default_na: bool
     fill_defaults_by_presence: bool
-    xls_engine: str
-    excel_case_id_dtype: object
 
     def __post_init__(self) -> None:
-        for field_name in (
-            "validate_case_ids",
-            "validate_rows",
-            "validate_attitude_domain",
-        ):
+        for field_name in ("validate_rows",):
             if not callable(getattr(self, field_name)):
                 raise TypeError(f"CaseReaderPolicy.{field_name} must be callable")
         if self.required_numeric_message_style not in {"split", "finite"}:
             raise ValueError(
                 "required_numeric_message_style must be 'split' or 'finite'"
             )
-        if self.xls_engine not in {"xlrd", "openpyxl"}:
-            raise ValueError("xls_engine must be 'xlrd' or 'openpyxl'")
+
+
+def validate_case_id(value: object) -> str:
+    """Return one portable Unicode case identifier or raise ``ValueError``."""
+    case_id = "" if value is None else str(value)
+    if not case_id:
+        raise ValueError("must not be empty.")
+    if case_id in {".", ".."}:
+        raise ValueError("must not be '.' or '..'.")
+    if case_id.endswith((".", " ")):
+        raise ValueError("must not end with a dot or space.")
+    if any(
+        char in _INVALID_CASE_ID_CHARS or unicodedata.category(char) == "Cc"
+        for char in case_id
+    ):
+        raise ValueError(
+            "must be a portable filename without path separators, control "
+            "characters, or Windows-invalid characters."
+        )
+    reserved_stem = case_id.split(".", 1)[0].rstrip(" ").upper()
+    if reserved_stem in _WINDOWS_RESERVED_NAMES:
+        raise ValueError("is a reserved filename on Windows.")
+    return case_id
+
+
+def _validate_case_ids(frame: pd.DataFrame, add_issue: AddIssue) -> None:
+    frame["case_id"] = frame["case_id"].where(frame["case_id"].notna(), "").astype(str)
+    valid_ids: list[str] = []
+    for index, value in frame["case_id"].items():
+        try:
+            valid_ids.append(validate_case_id(value))
+        except ValueError as exc:
+            valid_ids.append(str(value))
+            add_issue(int(index), "case_id", str(exc))
+    duplicate_keys = pd.Series(valid_ids, index=frame.index).str.casefold()
+    duplicate_ids = sorted(
+        frame.loc[duplicate_keys.duplicated(keep=False), "case_id"].unique()
+    )
+    if duplicate_ids:
+        add_issue(
+            None,
+            "case_id",
+            "Duplicate case_id values are not allowed after Unicode casefold: "
+            f"{duplicate_ids}",
+        )
 
 
 def count_semicolon_entries(value: object) -> int:
@@ -262,6 +307,25 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         )
 
 
+def _validate_attitude_domain(frame: pd.DataFrame, add_issue: AddIssue) -> None:
+    beta_tan = frame["attitude_input"] == "beta_tan"
+    beta_sin = frame["attitude_input"] == "beta_sin"
+    invalid_alpha = (beta_tan | beta_sin) & (frame["alpha_deg"].abs() >= 90.0)
+    invalid_beta = beta_tan & (frame["beta_or_bank_deg"].abs() >= 90.0)
+    for index in frame.index[invalid_alpha]:
+        add_issue(
+            int(index),
+            "alpha_deg",
+            "must satisfy abs(alpha_deg) < 90 for beta_tan or beta_sin.",
+        )
+    for index in frame.index[invalid_beta]:
+        add_issue(
+            int(index),
+            "beta_or_bank_deg",
+            "must satisfy abs(beta_or_bank_deg) < 90 for beta_tan.",
+        )
+
+
 def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:
     frame["out_dir"] = frame["out_dir"].astype(str).str.strip()
     for index in frame.index[frame["out_dir"] == ""]:
@@ -292,7 +356,7 @@ def _validate_and_normalize(
             case_id = text or None
         issues.append(ValidationIssue(row_number, case_id, field, message))
 
-    policy.validate_case_ids(frame, add_issue)
+    _validate_case_ids(frame, add_issue)
     _validate_and_resolve_stl_paths(frame, input_path, add_issue)
     _validate_required_numeric(frame, policy, add_issue)
     _validate_optional_numeric(frame, policy, add_issue)
@@ -301,7 +365,7 @@ def _validate_and_normalize(
     _validate_flags(frame, add_issue)
     _validate_ray_backend(frame, add_issue)
     _validate_attitude(frame, add_issue)
-    policy.validate_attitude_domain(frame, add_issue)
+    _validate_attitude_domain(frame, add_issue)
     _validate_out_dir(frame, add_issue)
     if issues:
         raise InputValidationError(issues)
@@ -322,11 +386,11 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
             keep_default_na=policy.keep_default_na,
         )
     elif suffix in {".xlsx", ".xlsm", ".xls"}:
-        engine = policy.xls_engine if suffix == ".xls" else "openpyxl"
+        engine = "xlrd" if suffix == ".xls" else "openpyxl"
         frame = pd.read_excel(
             input_path,
             engine=engine,
-            dtype={"case_id": policy.excel_case_id_dtype},
+            dtype={"case_id": "string"},
             keep_default_na=policy.keep_default_na,
         )
     else:
@@ -373,4 +437,5 @@ __all__ = (
     "is_filled",
     "read_case_table",
     "split_semicolon_tokens",
+    "validate_case_id",
 )

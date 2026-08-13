@@ -43,18 +43,15 @@ newtsolver-cli --input cases.csv --output results.csv --workers 1
 Both CLIs accept `--cases` with space- or comma-separated case IDs and
 `--flush-every-cases N` for complete input-ordered checkpoint snapshots. Zero
 disables checkpoints; the default is 100. If `--output` is omitted, the result
-is `<input_dir>/outputs/<input_stem>_result.csv`. The current D008 difference is
-visible in help: FMF requires at least one value after `--cases`, while
-newtsolver accepts an empty list. ADR 0008 does not make this a permanent
-product-specific requirement.
+is `<input_dir>/outputs/<input_stem>_result.csv`. Omitting `--cases` runs every
+case. Supplying `--cases` without a value is an argument error for both products.
 
 ## Input
 
-CSV, XLSX, and XLSM are accepted by both products. FMF currently accepts legacy
-BIFF `.xls`; newtsolver advertises it but currently dispatches it to an
-incompatible engine. ADR 0008 selects shared `.xls` support for both products,
-tracked by #76. Paths in `stl_path` and `out_dir` are resolved relative to the input table. Semicolons preserve ordered multi-
-component STL and newtsolver equation lists. The committed unchanged examples
+CSV, XLSX, XLSM, and legacy BIFF XLS are accepted by both products. OOXML files
+use openpyxl and BIFF files use xlrd. Paths in `stl_path` and `out_dir` are
+resolved relative to the input table. Semicolons preserve ordered multi-component
+STL and newtsolver equation lists. The committed unchanged examples
 are `tests/fixtures/phase1/inputs/fmfsolver_cases.csv` and
 `tests/fixtures/phase1/inputs/newtsolver_cases.csv`.
 
@@ -66,10 +63,12 @@ lengths. FMF additionally selects either Mode A (`S` and `Ti_K`) or Mode B
 schemas, defaults, and validation rules are in the product `io/io_cases.py`
 adapters and frozen by Phase 1 compatibility tests.
 
-Phase 7 retained different XLS dispatch, case-ID/duplicate, and `beta_tan`
-angle-domain rules. These remain current implementation facts, but ADR 0008
-requires common validation outside model-specific schema and physical-domain
-fields.
+Case IDs use one portable filename rule for both products. Filesystem-safe
+Unicode is accepted; empty IDs, path separators, control characters, Windows
+reserved names, trailing dots/spaces, and `.`/`..` are rejected. IDs colliding
+after Unicode `casefold()` are rejected. Reader angles must be finite;
+`beta_tan` requires both angles in the strict principal domain and `beta_sin`
+requires `abs(alpha_deg) < 90`. Bank is a finite periodic angle.
 
 ## Output
 
@@ -114,6 +113,10 @@ component `vtp_path`/`npz_path` values are empty strings because artifact paths
 belong only to the total row. Disabled total artifact paths are also empty
 strings. These are compatibility values rather than missing-value sentinels;
 callers should not expect `None`, `NaN`, or floating-point component IDs.
+
+Direct `run_case()` and `run_cases()` are best-effort Python APIs. Callers that
+bypass the file reader must supply the fields their adapter needs; these calls
+do not promise the CSV/Excel reader's default insertion.
 
 For multi-STL `run_case()` results, each dictionary in `component_rows` has
 exactly these keys in this order: `scope`, `component_id`,

@@ -68,60 +68,157 @@ class ProductCaseReaderTests(unittest.TestCase):
                         reader(_INPUTS / "invalid" / filename)
                     error = caught.exception
                     self.assertEqual("InputValidationError", type(error).__name__)
+                    if filename == "fmf_beta_tan_90.csv":
+                        self.assertEqual(["alpha_deg"], [issue.field for issue in error.issues])
+                        continue
                     self.assertEqual(expected["message"], str(error))
                     self.assertEqual(
                         expected["issues"],
                         [asdict(issue) for issue in error.issues],
                     )
 
-    def test_xls_dispatch_remains_product_specific(self) -> None:
-        fmf_frame = read_fmf_cases(_INPUTS / "fmfsolver_cases.csv")
-        newt_frame = read_newt_cases(_INPUTS / "newtsolver_cases.csv")
-        with patch(
-            "panelsolver.app.case_io.pd.read_excel",
-            return_value=fmf_frame.copy(),
-        ) as read_excel:
-            read_fmf_cases("cases.xls")
-            self.assertEqual("xlrd", read_excel.call_args.kwargs["engine"])
-        with patch(
-            "panelsolver.app.case_io.pd.read_excel",
-            return_value=newt_frame.copy(),
-        ) as read_excel:
-            read_newt_cases("cases.xls")
-            self.assertEqual("openpyxl", read_excel.call_args.kwargs["engine"])
+    def test_excel_engine_dispatch_is_common(self) -> None:
+        for reader, filename in (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        ):
+            frame = reader(_INPUTS / filename)
+            for suffix, engine in (
+                (".xls", "xlrd"),
+                (".xlsx", "openpyxl"),
+                (".xlsm", "openpyxl"),
+            ):
+                with self.subTest(filename=filename, suffix=suffix), patch(
+                    "panelsolver.app.case_io.pd.read_excel",
+                    return_value=frame.copy(),
+                ) as read_excel:
+                    reader(f"cases{suffix}")
+                    self.assertEqual(engine, read_excel.call_args.kwargs["engine"])
+                    self.assertEqual(
+                        {"case_id": "string"}, read_excel.call_args.kwargs["dtype"]
+                    )
 
-    def test_case_id_duplicate_and_angle_policies_are_not_unified(self) -> None:
-        fmf = read_fmf_cases(_INPUTS / "fmfsolver_cases.csv").iloc[[0]].copy()
-        newt = read_newt_cases(_INPUTS / "newtsolver_cases.csv").iloc[[0]].copy()
-        fmf.loc[fmf.index[0], "case_id"] = "日本語"
-        newt.loc[newt.index[0], "case_id"] = "日本語"
+    def test_csv_xlsx_xlsm_and_biff_xls_preserve_valid_rows(self) -> None:
+        for reader, stem, row_count in (
+            (read_fmf_cases, "fmfsolver_cases", 6),
+            (read_newt_cases, "newtsolver_cases", 9),
+        ):
+            csv_frame = reader(_INPUTS / f"{stem}.csv")
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp = Path(temp_dir)
+                xlsx = temp / f"{stem}.xlsx"
+                xlsm = temp / f"{stem}.xlsm"
+                csv_frame.to_excel(xlsx, index=False, engine="openpyxl")
+                xlsm.write_bytes(xlsx.read_bytes())
+                for path in (
+                    _INPUTS / f"{stem}.csv",
+                    _INPUTS / f"{stem}.xls",
+                    xlsx,
+                    xlsm,
+                ):
+                    with self.subTest(stem=stem, suffix=path.suffix):
+                        actual = reader(path)
+                        self.assertEqual(row_count, len(actual))
+                        self.assertEqual(
+                            csv_frame["case_id"].tolist(), actual["case_id"].tolist()
+                        )
+                        self.assertEqual(list(csv_frame.columns), list(actual.columns))
+
+    def test_case_ids_use_one_portable_unicode_and_casefold_policy(self) -> None:
+        products = (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
-            fmf_path = temp / "fmf.csv"
-            newt_path = temp / "newt.csv"
-            fmf.to_csv(fmf_path, index=False)
-            newt.to_csv(newt_path, index=False)
-            self.assertEqual("日本語", read_fmf_cases(fmf_path).iloc[0]["case_id"])
-            with self.assertRaisesRegex(Exception, "ASCII"):
-                read_newt_cases(newt_path)
+            for reader, filename in products:
+                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                path = temp / filename
+                for accepted in ("日本語", "Straße-ケース"):
+                    with self.subTest(filename=filename, accepted=accepted):
+                        frame = base.copy()
+                        frame.loc[frame.index[0], "case_id"] = accepted
+                        frame.to_csv(path, index=False)
+                        self.assertEqual(accepted, reader(path).iloc[0]["case_id"])
+                for rejected in (
+                    "",
+                    ".",
+                    "..",
+                    "a/b",
+                    "a\\b",
+                    "a:name",
+                    "a\nb",
+                    "CON",
+                    "con.txt",
+                    "name.",
+                    "name ",
+                ):
+                    with self.subTest(filename=filename, rejected=rejected):
+                        frame = base.copy()
+                        frame.loc[frame.index[0], "case_id"] = rejected
+                        frame.to_csv(path, index=False)
+                        with self.assertRaises(Exception) as caught:
+                            reader(path)
+                        self.assertEqual(
+                            "InputValidationError", type(caught.exception).__name__
+                        )
+                        self.assertIn(
+                            "case_id", [issue.field for issue in caught.exception.issues]
+                        )
 
-            fmf_dupes = pd.concat([fmf, fmf], ignore_index=True)
-            fmf_dupes.loc[0, "case_id"] = "Case"
-            fmf_dupes.loc[1, "case_id"] = "case"
-            newt_dupes = pd.concat([newt, newt], ignore_index=True)
-            newt_dupes.loc[0, "case_id"] = "Case"
-            newt_dupes.loc[1, "case_id"] = "case"
-            fmf_dupes.to_csv(fmf_path, index=False)
-            newt_dupes.to_csv(newt_path, index=False)
-            self.assertEqual(2, len(read_fmf_cases(fmf_path)))
-            with self.assertRaisesRegex(Exception, "case-insensitive"):
-                read_newt_cases(newt_path)
+                duplicates = pd.concat([base, base], ignore_index=True)
+                duplicates.loc[0, "case_id"] = "Straße"
+                duplicates.loc[1, "case_id"] = "STRASSE"
+                duplicates.to_csv(path, index=False)
+                with self.assertRaisesRegex(Exception, "Unicode casefold"):
+                    reader(path)
 
-            newt.loc[newt.index[0], "case_id"] = "angle90"
-            newt.loc[newt.index[0], "alpha_deg"] = 90.0
-            newt.to_csv(newt_path, index=False)
-            row = read_newt_cases(newt_path).iloc[0].to_dict()
-            self.assertEqual(90.0, adapt_newt_row(row).attitude.alpha_t_deg)
+    def test_attitude_domains_are_common_and_mode_specific(self) -> None:
+        products = (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        )
+        rejected = (
+            ("beta_tan", "alpha_deg", -90.0),
+            ("beta_tan", "alpha_deg", 90.0),
+            ("beta_tan", "beta_or_bank_deg", -90.0),
+            ("beta_tan", "beta_or_bank_deg", 90.0),
+            ("beta_sin", "alpha_deg", -90.0),
+            ("beta_sin", "alpha_deg", 90.0),
+        )
+        accepted = (
+            ("beta_tan", 89.999, -89.999),
+            ("beta_sin", 89.999, 90.0),
+            ("bank", 180.0, 1080.0),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            for reader, filename in products:
+                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                base[["alpha_deg", "beta_or_bank_deg"]] = base[
+                    ["alpha_deg", "beta_or_bank_deg"]
+                ].astype(float)
+                path = temp / filename
+                for mode, field, value in rejected:
+                    with self.subTest(filename=filename, mode=mode, field=field):
+                        frame = base.copy()
+                        frame.loc[frame.index[0], "attitude_input"] = mode
+                        frame.loc[frame.index[0], field] = value
+                        frame.to_csv(path, index=False)
+                        with self.assertRaises(Exception) as caught:
+                            reader(path)
+                        self.assertIn(
+                            field, [issue.field for issue in caught.exception.issues]
+                        )
+                for mode, alpha, beta_or_bank in accepted:
+                    with self.subTest(filename=filename, mode=mode, accepted=True):
+                        frame = base.copy()
+                        frame.loc[frame.index[0], "attitude_input"] = mode
+                        frame.loc[frame.index[0], "alpha_deg"] = alpha
+                        frame.loc[frame.index[0], "beta_or_bank_deg"] = beta_or_bank
+                        frame.to_csv(path, index=False)
+                        actual = reader(path).iloc[0]
+                        self.assertEqual(mode, actual["attitude_input"])
 
 
 class ProductCaseAdapterTests(unittest.TestCase):

@@ -23,15 +23,12 @@ class ProductCliPolicy:
 
     program: str
     description: str
-    cases_nargs: str
     runtime_policy: ProductRuntimePolicy
     read_cases: ReadCasesCallback
     validate_output_path: ValidateOutputCallback
     reject_input_collision_with_parser: bool = False
 
     def __post_init__(self) -> None:
-        if self.cases_nargs not in {"+", "*"}:
-            raise ValueError("cases_nargs must be '+' or '*'")
         if not isinstance(self.runtime_policy, ProductRuntimePolicy):
             raise TypeError("runtime_policy must be a ProductRuntimePolicy")
         for name in ("program", "description"):
@@ -59,7 +56,7 @@ def parse_case_ids(values: list[str] | None) -> set[str] | None:
 
 
 def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
-    """Create one parser from exact product text and D008 cardinality."""
+    """Create one parser with product text and the shared selection contract."""
     if not isinstance(policy, ProductCliPolicy):
         raise TypeError("policy must be a ProductCliPolicy")
     parser = argparse.ArgumentParser(
@@ -90,7 +87,7 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--cases",
-        nargs=policy.cases_nargs,
+        nargs="+",
         default=None,
         help="Run only selected case_id values (space/comma separated).",
     )

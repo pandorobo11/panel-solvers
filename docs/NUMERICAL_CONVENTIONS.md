@@ -34,8 +34,10 @@ Vhat_stl = normalize([
 Thus positive `alpha_t` points freestream toward `+Z_stl`, and positive `beta_t`
 points it toward `-Y_stl`. The `beta_sin` and included-angle/bank inputs remain
 public legacy alternatives and must resolve to the same explicit vector before
-panel calculations. Their legacy domains and edge behavior are frozen in the
-Phase 1 valid/invalid fixtures; differing product behavior remains separate.
+panel calculations. Readers reject non-finite angles, require both `beta_tan`
+angles and the tangent-based `beta_sin` alpha inside `abs(angle) < 90 degrees`,
+and treat bank as a finite periodic angle. Phase 1 evidence remains historical;
+ADR 0008 selects this common supported-domain policy.
 
 ## Local loads and integration
 
