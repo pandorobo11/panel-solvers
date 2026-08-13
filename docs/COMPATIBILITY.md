@@ -75,6 +75,22 @@ Direct Sentman helpers validate reference area, physical scalars, unit vectors,
 and shielding masks before computation. A valid shielded panel remains exact
 zero, but shielding does not hide invalid normalization input.
 
+Reader boundary coverage uses the following ADR 0008 matrix. Tests assert the
+shared exception category, accept/reject decision, and diagnostic field, not
+exact message text, issue order, cause/context, traceback, or timing.
+
+| Field class | Zero | Negative finite | NaN | +Inf | -Inf |
+|---|---:|---:|---:|---:|---:|
+| Shared positive: STL scale, reference area, three reference lengths | reject | reject | reject | reject | reject |
+| Shared signed: two attitude inputs, three reference coordinates | accept | accept | reject | reject | reject |
+| FMF positive: `S`, `Ti_K`, `Mach`, `Tw_K` | reject | reject | reject | reject | reject |
+| FMF altitude in the supported atmosphere table | accept | reject | reject | reject | reject |
+| newtsolver model fields: `Mach`, `gamma` | reject | reject | reject | reject | reject |
+
+FMF Mode A/Mode B pair diagnostics may attribute an absent NaN cell to its
+mode-field pair as well as to the individual field. Fields that exist in only
+one model remain model-specific.
+
 D015 now uses common `FORWARD / YIELD_COMPLETED` behavior for both products.
 Worker logs and warnings cross the process boundary, and successful earlier
 cases from a later-failing chunk remain visible in input-ordered progress and
