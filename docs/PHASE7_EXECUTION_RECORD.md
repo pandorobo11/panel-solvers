@@ -59,6 +59,11 @@ expected result was changed to obtain a green job.
   progress, and checkpoint visibility now match the pinned policies. Ordering
   rules, cancellation, signatures, and cache identity are unchanged.
 
+ADR 0008 later classified that failed-chunk difference as transitional rather
+than a permanent compatibility requirement and adopted common
+`FORWARD`/`YIELD_COMPLETED` as the next specification. This execution record
+continues to describe the code and evidence at each historical point.
+
 ## Manual macOS GUI smoke
 
 Date: 2026-08-12, correct logged-in macOS user session, built from main
@@ -99,5 +104,5 @@ be completely successful before merge.
 
 Remaining risks are the subjects of Phase 8: an independent numerical and
 architecture audit, performance/memory comparison, and broader lifecycle audit.
-Phase 8 has not started, no legacy repository was archived, and no release tag
-was created.
+At the Phase 7 handoff Phase 8 had not started. It is now in progress under ADR
+0008; no legacy repository has been archived and no release tag was created.

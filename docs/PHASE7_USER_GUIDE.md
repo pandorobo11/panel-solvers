@@ -4,6 +4,11 @@ Phase 7 provides one `panel-solvers` distribution containing the shared engine,
 both physical models, both compatibility packages, and all six old command
 names. It does not deprecate the old names or perform the Phase 8 audit.
 
+Phase 8 is now in progress. ADR 0008 limits the supported compatibility surface
+to commands, normal launcher-driven GUI operation, documented case files, and
+documented result semantics. Direct Python details below describe the current
+implementation on a best-effort basis rather than a frozen product contract.
+
 ## Install or migrate
 
 Python 3.12 or newer is required. The new wheel and either legacy distribution
@@ -38,14 +43,17 @@ newtsolver-cli --input cases.csv --output results.csv --workers 1
 Both CLIs accept `--cases` with space- or comma-separated case IDs and
 `--flush-every-cases N` for complete input-ordered checkpoint snapshots. Zero
 disables checkpoints; the default is 100. If `--output` is omitted, the result
-is `<input_dir>/outputs/<input_stem>_result.csv`. The retained D008 difference is
+is `<input_dir>/outputs/<input_stem>_result.csv`. The current D008 difference is
 visible in help: FMF requires at least one value after `--cases`, while
-newtsolver accepts an empty list.
+newtsolver accepts an empty list. ADR 0008 does not make this a permanent
+product-specific requirement.
 
 ## Input
 
-CSV, XLSX, XLSM, and XLS are accepted. Paths in `stl_path` and `out_dir` are
-resolved relative to the input table. Semicolons preserve ordered multi-
+CSV, XLSX, and XLSM are accepted by both products. FMF currently accepts legacy
+BIFF `.xls`; newtsolver advertises it but currently dispatches it to an
+incompatible engine. ADR 0008 selects shared `.xls` support for both products,
+tracked by #76. Paths in `stl_path` and `out_dir` are resolved relative to the input table. Semicolons preserve ordered multi-
 component STL and newtsolver equation lists. The committed unchanged examples
 are `tests/fixtures/phase1/inputs/fmfsolver_cases.csv` and
 `tests/fixtures/phase1/inputs/newtsolver_cases.csv`.
@@ -58,9 +66,10 @@ lengths. FMF additionally selects either Mode A (`S` and `Ti_K`) or Mode B
 schemas, defaults, and validation rules are in the product `io/io_cases.py`
 adapters and frozen by Phase 1 compatibility tests.
 
-The products deliberately retain different XLS dispatch, case-ID/duplicate,
-and `beta_tan` angle-domain rules. Do not normalize one input merely because it
-is accepted by the other.
+Phase 7 retained different XLS dispatch, case-ID/duplicate, and `beta_tan`
+angle-domain rules. These remain current implementation facts, but ADR 0008
+requires common validation outside model-specific schema and physical-domain
+fields.
 
 ## Output
 
@@ -77,7 +86,7 @@ not by file bytes. The precise inventory is in
 `phase1/BEHAVIORAL_INVENTORY.md` and the tolerances are in
 `phase1/TOLERANCES.md`.
 
-Direct Python artifact calls remain product-specific compatibility APIs:
+Direct Python artifact calls currently remain available on a best-effort basis:
 
 ```python
 from fmfsolver.io.exporters import export_npz, export_vtp
@@ -93,13 +102,12 @@ export_npz(out_path="case.npz", **arrays)
 ```
 
 The same names are available from `newtsolver.io.exporters`. Both functions
-write the supplied `out_path` and return `None`, as in the pinned products. Keep
-the path in caller state if it is needed later; the shared application's
-internal serializers return `Path`, but that is not the compatibility contract.
-The internal `path=` spelling is not a public synonym for `out_path=`.
+currently write the supplied `out_path` and return `None`. ADR 0008 does not
+freeze exact keyword names, object identity, defining module, or return-type
+quirks for direct Python helpers.
 
-Direct `fmfsolver.core.solver` and `newtsolver.core.solver` calls retain the
-pinned blank/type contract. In `run_case()` dictionaries and `run_cases()`
+Direct `fmfsolver.core.solver` and `newtsolver.core.solver` calls currently
+retain the recorded blank/type behavior. In `run_case()` dictionaries and `run_cases()`
 DataFrames, total-row `component_id` and `component_stl_path` values are empty
 strings. Multi-STL component IDs are Python integers in input-STL order, and
 component `vtp_path`/`npz_path` values are empty strings because artifact paths
@@ -148,16 +156,22 @@ mixes both product prefixes:
 | shielding ray batch | `PANELSOLVER_SHIELD_BATCH_SIZE`, then selected legacy prefix | Embree 64; rtree 8 |
 | scheduler chunk cases | `PANELSOLVER_PARALLEL_CHUNK_CASES`, then selected legacy prefix | 8 |
 
-Values must be integers in the documented positive/nonnegative domain. If a
-later case in one worker chunk raises a caught Python exception, FMF forwards
-worker logs but discards earlier completed results from that chunk. newtsolver
-drops worker logs but yields those completed cases before reporting the worker
-error. Yielded cases update progress and reach a CSV checkpoint only when the
-configured flush interval is met; neither product emits a final snapshot after
-the error. Already-written per-case artifacts are not rolled back by either
-policy.
+Values must be integers in the documented positive/nonnegative domain. In the
+current implementation, a later caught Python exception in one worker chunk
+causes FMF to forward worker logs but discard earlier completed results;
+newtsolver drops logs but yields those completed cases. ADR 0008 adopts common
+`FORWARD`/`YIELD_COMPLETED` behavior for both products. The later remediation
+will include prior successful cases in input-ordered progress, checkpoints, and
+summary results while retaining the remote failure. This policy decision does
+not roll back already-written per-case artifacts or change scheduler code by
+itself.
 
-### Direct Python cancellation and failures
+### Current direct Python cancellation and failures
+
+The following details are retained as implementation and diagnostic history.
+ADR 0008 does not freeze exact direct-Python exception messages, chains,
+tracebacks, validation timing, logging order, or product-specific failure
+envelopes.
 
 The frozen `fmfsolver.core.solver` and `newtsolver.core.solver` Python APIs use
 their legacy built-in exceptions. A true `run_cases(..., cancel_cb=...)`
@@ -201,15 +215,15 @@ also applies to parent-side progress, checkpoint, and `[OK]` callbacks after a
 parallel result is yielded: the active scheduler iterator is closed before the
 original callback exception returns to the caller.
 
-## Known retained differences
+## Current historical differences
 
-Phase 7 does not choose between product contracts. Notable retained differences
-include XLS dispatch, case IDs and duplicate comparison, FMF's stricter
-`beta_tan` domain, mesh repair, CLI `--cases`, output collision and CSV
+Phase 7 did not choose between several product contracts. Its current
+differences include XLS dispatch, case IDs and duplicate comparison, FMF's
+stricter `beta_tan` domain, mesh repair, CLI `--cases`, output collision and CSV
 durability, parallel logs/partial results, legacy signatures, model-only
 CSV/VTP/NPZ fields, GUI titles/overlays/close behavior, and D025 Python exports.
-The authoritative ledger is `phase1/LEGACY_DIFFERENCES.md`; accepted Phase 7
-handling is summarized in `PHASE7_COMPATIBILITY.md`.
+The observation ledger remains `phase1/LEGACY_DIFFERENCES.md`; ADR 0008 now
+decides which differences are supported requirements and which may converge.
 
 ## Release
 

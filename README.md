@@ -6,7 +6,8 @@ It will provide one geometry/execution/integration platform while keeping the
 Sentman and hypersonic physical models independent.
 
 The repository has completed **migration Phase 7**. Phase 8, the independent
-final audit, has not started.
+final audit, is in progress; ADR 0008 defines its supported-domain compatibility
+policy.
 Phase 1 freezes both legacy implementations as regression oracles, Phase 2
 defines the immutable central contracts and model registry, and Phase 3 extracts
 resolved-attitude/frame transforms, topology-preserving
@@ -72,5 +73,6 @@ top-level packages and commands overlap. The shared distribution version is
 See [the Phase 7 user and release guide](docs/PHASE7_USER_GUIDE.md) for input,
 output, environment, known-difference, release, and rollback details. Phase 7
 acceptance evidence is in
-[the execution record](docs/PHASE7_EXECUTION_RECORD.md). Numerical correctness,
-performance, and lifecycle remain subject to the separate Phase 8 audit.
+[the execution record](docs/PHASE7_EXECUTION_RECORD.md). ADR 0008 and the
+[Phase 8 Issue disposition](docs/PHASE8_ISSUE_DISPOSITION.md) govern the active
+numerical, architecture, performance, and lifecycle audit.

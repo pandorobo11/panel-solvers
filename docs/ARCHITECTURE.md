@@ -4,8 +4,9 @@
 
 One repository owns the shared application and numerical pipeline, while each
 physical model owns only its model-specific inputs, equations, scalars, and
-signature payload. The architecture must preserve current public behavior during
-incremental migration.
+signature payload. ADR 0008 limits preserved product differences to those model
+surfaces and migration names; common infrastructure and invalid-input safety
+converge.
 
 ## Layers
 
@@ -179,15 +180,18 @@ Scheduling bucket keys are reuse hints only and never replace geometry,
 shielding, or result-cache identities. Completion-order delivery carries stable
 input indices; progress and checkpoint snapshots are rebuilt deterministically
 in caller-defined input order. Cancellation is cooperative between cases and
-does not interrupt an active ray query or model solve. D015 worker logging and
-the differing legacy failure-partial behavior remain explicit adapter-selected
-policies. Worker startup failures, remote tracebacks, and unexpected exits cross
-the process boundary as distinct errors.
+does not interrupt an active ray query or model solve. The current D015 worker
+logging and failure-partial differences remain explicit adapter-selected
+policies until remediation; ADR 0008 adopts common
+`FORWARD / YIELD_COMPLETED` as the target. Worker startup failures, remote
+tracebacks, and unexpected exits cross the process boundary as distinct errors.
 
 Phase 6 adds one `SolverSpec`-driven Qt shell, cases panel, and PyVista viewer.
 The spec carries product identity, exact title, ordered case columns, preferred
-scalars, overlay formatting, adapter callbacks, and the product-selected close
-policy. Widgets import neither compatibility frontend nor concrete model. VTP
+model scalars, overlay formatting, and adapter callbacks. Product-selected
+legacy lifecycle policy is transitional rather than a permanent compatibility
+requirement under ADR 0008. Widgets import neither compatibility frontend nor
+concrete model. VTP
 scalar discovery and exact case/signature matching are shared services; product
 case schemas and overlays remain independent. QThread execution delegates case
 I/O, scheduling policy, checkpoint/final serialization, and wind resolution to

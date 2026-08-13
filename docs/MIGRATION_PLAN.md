@@ -8,9 +8,10 @@ its tests and documented acceptance criteria pass; elapsed work or copied code i
 not completion.
 
 The pinned legacy implementations in `MIGRATION_SOURCES.md` remain numerical
-oracles. The final design is one repository, one shared engine/application shell,
-independent physical models, and temporary compatibility frontends for both old
-products.
+oracles for supported inputs. ADR 0008 prevents accidental invalid-input and
+Python-internal differences from becoming permanent product contracts. The final
+design is one repository, one shared engine/application shell, independent
+physical models, and temporary compatibility frontends for both old products.
 
 ## Dependency sequence
 
@@ -211,17 +212,19 @@ unchanged. `PHASE7_COMPATIBILITY.md`, `PHASE7_USER_GUIDE.md`, and
 
 ## Phase 8 — Independent final audit
 
-**Status:** Not started.
+**Status:** In progress. ADR 0008 establishes the supported-domain compatibility
+policy and the remaining Issue disposition before further remediation.
 
 **Scope:** Audit numerical correctness, architecture/dependencies, compatibility,
 parallelism/caching, performance, GUI lifecycle, tests, and installed artifacts.
 Run the complete baseline on clean environments and compare performance/memory
 without changing algorithms to improve benchmark optics.
 
-**Acceptance:** no unexplained numerical delta; all compatibility exceptions have
-an accepted record and user path; performance regressions are understood and
-accepted or fixed; release/rollback instructions are complete. Only then may the
-legacy repositories be marked read-only.
+**Acceptance:** no unexplained supported-domain numerical delta; all retained
+compatibility exceptions have an accepted record and user path; shared
+invalid-input safety and infrastructure conform to ADR 0008; performance
+regressions are understood and accepted or fixed; release/rollback instructions
+are complete. Only then may the legacy repositories be marked read-only.
 
 ## Decision and risk log
 

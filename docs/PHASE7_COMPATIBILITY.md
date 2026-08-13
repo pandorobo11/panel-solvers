@@ -6,6 +6,10 @@ contract while removing duplicated common implementation from the compatibility
 packages. It does not perform the independent Phase 8 audit or archive either
 legacy repository.
 
+This document also records Phase 7's historical decisions. ADR 0008 supersedes
+the assumption that every legacy discrepancy is a permanent product contract;
+its supported-domain policy governs Phase 8 remediation and close-out.
+
 ## Dependency sequence
 
 Implementation is serialized through one issue, one worktree, and one draft PR
@@ -41,7 +45,7 @@ Python surfaces. `importlib.metadata.version("panel-solvers")` reports the share
 distribution release. Canonical numerical signatures continue to use explicit
 model and shielding algorithm versions, never an application version.
 
-## Retained dual contracts
+## Phase 7 retained dual contracts
 
 Phase 7 implements product policy rather than choosing a universal behavior:
 
@@ -63,9 +67,10 @@ Phase 7 implements product policy rather than choosing a universal behavior:
 - D025: the de facto Python surfaces are forwarded independently rather than
   replaced with a cross-product union.
 
-ADR 0006 already preserves D011 mesh-repair policy. Phase 5 already defines the
-neutral environment-variable precedence while retaining one explicitly selected
-legacy prefix.
+ADR 0006 recorded D011 mesh-repair policy during migration. ADR 0008 now makes
+common validation and infrastructure the target while retaining legacy names as
+aliases. Phase 5 already defines neutral environment-variable precedence while
+reading one explicitly selected legacy prefix.
 
 ## Compatibility boundaries
 
@@ -107,12 +112,13 @@ not by the returned public signature. User paths and limitations are recorded in
 ## Execution, serialization, and GUI adapters
 
 The shared runtime executes adapted requests serially or through the Phase 5
-spawn scheduler. FMF selects `FORWARD`/`DISCARD_CHUNK`; newtsolver selects
-`DROP`/`YIELD_COMPLETED`. Phase 8 independently found that the original Phase 7
-policy wiring and documentation had the partial-result choices reversed, then
-restored the pinned same-chunk failure behavior. Per-case numerical values and
-all-success runs are unchanged; failed-run progress and checkpoint visibility
-now follow the pinned product contracts. Shielding reuse may change execution
+spawn scheduler. The current implementation selects FMF
+`FORWARD`/`DISCARD_CHUNK` and newtsolver `DROP`/`YIELD_COMPLETED`. Phase 8
+independently found that the original Phase 7 policy wiring and documentation had
+the partial-result choices reversed, then restored the pinned same-chunk failure
+behavior. ADR 0008 subsequently adopted common `FORWARD`/`YIELD_COMPLETED` as
+the next specification; this policy PR does not change scheduler code. Per-case
+numerical values and all-success runs are unchanged. Shielding reuse may change execution
 order, but every
 checkpoint and final summary is reconstructed in input order. Cancellation is
 observed at case boundaries and worker failures retain their remote traceback.
@@ -285,4 +291,4 @@ architecture, performance, and lifecycle audit reserved for Phase 8.
 **Status:** Complete. Issues #47–#52 and their dependent draft PRs passed the
 listed gates and merged serially. `PHASE7_USER_GUIDE.md` is the user/release
 handoff and `PHASE7_EXECUTION_RECORD.md` records the exact CI, installed-wheel,
-numerical, and manual GUI evidence. Phase 8 remains not started.
+numerical, and manual GUI evidence. Phase 8 is now in progress under ADR 0008.

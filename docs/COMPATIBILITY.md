@@ -1,5 +1,9 @@
 # Compatibility contract
 
+ADR 0008 defines compatibility inside the supported domain. Phase 1 evidence
+continues to record all pinned differences, but invalid-input quirks and Python
+implementation details are not automatically permanent product contracts.
+
 Compatibility is preserved per migrated surface, not asserted globally. During
 Phase 0, the new distribution intentionally exposes only importable placeholder
 packages; legacy repositories remain the supported calculators.
@@ -9,7 +13,7 @@ packages; legacy repositories remain the supported calculators.
 | Surface | Required target | Freeze phase |
 |---|---|---|
 | Commands | `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`, `newtsolver`, `newtsolver-gui`, `newtsolver-cli` | 1 and 7 |
-| Python imports | public imports discovered from source/tests and real usage | 1 |
+| Python packages | `fmfsolver` and `newtsolver` package names; direct Python call shapes are best effort | 1 and 8 |
 | Case input | CSV/Excel column names, defaults, validation, path resolution, row selection | 1 |
 | Result CSV | column names, order, row scopes, blank/value semantics | 1 |
 | VTP | cell arrays, field metadata, case-signature matching | 1 |
@@ -18,9 +22,16 @@ packages; legacy repositories remain the supported calculators.
 | Environment | current backend/cache/worker variables and precedence | 1 and 5 |
 | Numerical results | panel loads, masks, totals, components, force/moment transforms | 1 |
 
-No legacy option, field, or behavior may be deleted because it appears unused.
-Deprecation requires evidence, an announced transition, tests for the warning and
-fallback, and a separately approved removal phase.
+No documented command, normal GUI operation, model-specific input/output field,
+or supported numerical behavior may be deleted because it appears unused.
+Deprecation of those surfaces requires evidence, an announced transition, tests
+for the warning and fallback, and a separately approved removal phase.
+
+Exact direct-Python keyword names, direct GUI methods, function/class identity,
+`__module__`, `__qualname__`, pickle globals, cache objects, `cache_info()`, exact
+exception messages or chains, traceback structure, validation timing, logger
+line ordering, and accidental invalid-input NaN/broadcast behavior are excluded
+unless another ADR explicitly adopts a neutral public API.
 
 ## Comparison rules
 
@@ -32,8 +43,9 @@ fallback, and a separately approved removal phase.
   near zero.
 - Paths, timestamps, backend identities, and nondeterministic metadata are
   normalized only when explicitly documented.
-- A legacy discrepancy is recorded as two contracts until an ADR selects a
-  unified behavior and defines compatibility handling.
+- A supported-domain legacy discrepancy remains recorded until an ADR selects a
+  unified behavior and defines compatibility handling. ADR 0008 already selects
+  common safety/convergence for invalid inputs and excluded Python internals.
 
 The Phase 1 evidence is frozen in `phase1/BEHAVIORAL_INVENTORY.md`, the dual
 contract ledger in `phase1/LEGACY_DIFFERENCES.md`, and semantic artifact captures
@@ -43,10 +55,24 @@ drift.
 
 ## Compatibility frontends
 
-`src/fmfsolver` and `src/newtsolver` may parse or translate legacy interfaces,
-select a solver specification, and forward calls. They may not own physical
-equations, geometry, integration, caching, scheduling, artifact generation, or
-new application behavior.
+`src/fmfsolver` and `src/newtsolver` may parse or translate model-specific input
+and output schemas, select a solver specification, retain migration names, and
+forward calls. They may not own physical equations, common validation or
+exceptions, geometry, integration, caching, scheduling, artifact generation,
+GUI implementation, or new application behavior.
+
+## Supported-domain safety
+
+Shared boundaries reject NaN, infinity, numeric booleans, invalid/ragged shapes,
+overflowed derived state, degenerate geometry, and zero or negative reference
+quantities. Products do not preserve accidental propagation or an early return
+that bypasses invalid normalization. Exception categories and field attribution
+remain diagnostic; exact wording, cause/context, traceback, and timing do not.
+
+D015 is transitional. The current implementation is FMF
+`FORWARD / DISCARD_CHUNK` and newtsolver `DROP / YIELD_COMPLETED`; the adopted
+common target is `FORWARD / YIELD_COMPLETED` for both. The policy decision itself
+does not modify scheduler code.
 
 ## Current implementation status
 
@@ -77,6 +103,7 @@ matching VTP display, scalar/camera controls, PNG export, and close. The exact
 evidence is in `PHASE7_EXECUTION_RECORD.md`; installation and rollback are in
 `PHASE7_USER_GUIDE.md`.
 
-This is migration compatibility acceptance, not the independent Phase 8 audit.
-No legacy name is deprecated and the pinned legacy repositories remain
-unarchived references.
+This is migration compatibility acceptance, not final Phase 8 acceptance. ADR
+0008 now governs the remaining audit and remediation. No migration package or
+command name is deprecated and the pinned legacy repositories remain unarchived
+references.

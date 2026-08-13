@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-12
+- Refined by: ADR 0008 (dual repair behavior is transitional)
 
 ## Context
 
@@ -44,8 +45,9 @@ selection.
 
 ## Consequences
 
-The two repair-failure behaviors are not silently unified, while all shared
-execution remains inside the already-accepted geometry safety boundary. The
+Phase 5 retained the two repair-failure behaviors during migration. ADR 0008 no
+longer treats that invalid-geometry difference as a permanent product contract;
+future convergence must retain the strict common geometry safety boundary. The
 content hash adds file-reading cost before a mesh-cache hit; correctness has
 priority over the legacy metadata-only optimization. A future loader, repair,
 or fingerprint algorithm change must increment its explicit version and add
