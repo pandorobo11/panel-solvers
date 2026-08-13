@@ -49,10 +49,9 @@ model and shielding algorithm versions, never an application version.
 
 Phase 7 implements product policy rather than choosing a universal behavior:
 
-- D004: FMF dispatches `.xls` to xlrd; newtsolver retains its openpyxl failure;
-- D005/D006/D007: case IDs, duplicate comparison, and FMF-only `beta_tan`
-  principal-angle rejection remain independent;
-- D008: FMF `--cases` requires at least one value while newtsolver accepts none;
+- D004-D008 were retained in Phase 7, then superseded by ADR 0008 and converged
+  in Phase 8: common CSV/Excel format dispatch, portable Unicode case IDs,
+  casefold collision rejection, attitude domains, and `--cases` cardinality;
 - D009/D010: collision scope and CSV temporary-file/durability policy remain
   product-selected;
 - D015: worker logging and failure-partial policies remain explicit scheduler
@@ -87,9 +86,11 @@ read-only numerical references through Phase 8.
 ## Case input and artifact identity
 
 The compatibility readers keep separate FMF and newtsolver schemas, defaults,
-validation callbacks, and error wording over one table-reading mechanism. Rows
-are adapted to `CaseExecutionRequest` through product policies that select the
-model, mesh validation rule, legacy environment prefix, and attitude domain.
+model-field validation callbacks, and model fields over one table-reading
+mechanism. Common format dispatch, case-ID safety, duplicate detection, and
+attitude domains are owned by that shared boundary. Rows are adapted to
+`CaseExecutionRequest` through product policies that select the model, mesh
+validation rule, and legacy environment prefix.
 
 The ADR 0005 execution signature is prepared through the same mesh and
 shielding-resolution path used by execution, without evaluating physical panel
@@ -139,15 +140,15 @@ used by either normal product launcher.
 
 The distribution registers both GUI aliases and the batch command for each
 product. The two batch entry modules select one shared CLI flow while retaining
-their exact frozen program name, description, help wrapping, D008 `--cases`
-cardinality, and D009 collision behavior. Case selection remains comma/space
-aware and input ordered; invalid parser values exit 2, while reader, solver, and
-worker exceptions remain uncaught command failures. Checkpoints rewrite the
+their program names and descriptions. Both use `--cases CASES [CASES ...]`;
+omitting the option runs every case and an explicit option with no value exits 2.
+Case selection remains comma/space aware and input ordered, while reader, solver,
+and worker exceptions remain uncaught command failures. Checkpoints rewrite the
 complete successful snapshot and final output uses the same product-selected
 atomic CSV policy.
 
 CI builds and reinstalls the wheel on Ubuntu, Windows, and macOS, verifies all
-six entry-point targets, compares both CLI help texts exactly, and runs both
+six entry-point targets, validates the common CLI semantics, and runs both
 unchanged Phase 1 input tables from a temporary directory outside the checkout.
 
 ## Python compatibility surface

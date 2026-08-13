@@ -82,8 +82,8 @@ checkpoint snapshots while the remote failure is retained.
 
 ## Current implementation status
 
-- All six legacy console commands are registered; exact batch help and installed
-  execution are checked on Ubuntu, Windows, and macOS.
+- All six legacy console commands are registered; batch help semantics and
+  installed execution are checked on Ubuntu, Windows, and macOS.
 - The complete frozen FMF and newtsolver module inventories and representative
   call shapes are forwarded. Product roots retain `__all__ = []`, compatibility
   versions remain distinct, and newtsolver's explicit D025 underscore exports
@@ -93,10 +93,12 @@ checkpoint snapshots while the remote failure is retained.
   launchers read cases, execute, checkpoint, write results, and match primary or
   ordered legacy artifact signatures. An explicitly adapter-free `SolverSpec`
   remains a failing test/configuration path; it is not used by either launcher.
-- Compatible CSV/Excel readers and runtime VTP/NPZ/summary-CSV serialization are
-  implemented. Product policies retain worker logging, failure-partial behavior,
-  output collision scope, CSV durability, compatibility versions, and model-only
-  output fields independently.
+- Shared CSV/Excel format dispatch, portable Unicode case-ID validation,
+  casefold collision detection, attitude domains, and CLI selection cardinality
+  are implemented. Product readers retain only model schemas, defaults, physical
+  fields, and their field validation. Runtime VTP/NPZ/summary-CSV serialization
+  remains implemented; pending Phase 8 work covers output collision scope and
+  CSV durability.
 - The shared Sentman and hypersonic models are forwarded through product-only
   compatibility modules; the frontends contain no copied physical equations.
 - The Phase 3 CSV and semantic artifact projections are composed with the Phase

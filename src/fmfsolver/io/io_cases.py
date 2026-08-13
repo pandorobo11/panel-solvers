@@ -88,55 +88,6 @@ DEFAULTS = {
     "attitude_input": "beta_tan",
     "out_dir": "outputs",
 }
-_INVALID_CASE_ID_CHARS = frozenset('/\\<>:"|?*')
-_WINDOWS_RESERVED_NAMES = {
-    "CON",
-    "PRN",
-    "AUX",
-    "NUL",
-    *(f"COM{index}" for index in range(1, 10)),
-    *(f"LPT{index}" for index in range(1, 10)),
-}
-
-
-def _validate_case_ids(frame: pd.DataFrame, add_issue: AddIssue) -> None:
-    frame["case_id"] = (
-        frame["case_id"].where(frame["case_id"].notna(), "").astype(str).str.strip()
-    )
-    blank = frame["case_id"] == ""
-    for index in frame.index[blank]:
-        add_issue(int(index), "case_id", "must not be blank.")
-    for index, case_id in frame.loc[~blank, "case_id"].items():
-        invalid_char = next(
-            (char for char in case_id if char in _INVALID_CASE_ID_CHARS),
-            None,
-        )
-        stem = case_id.split(".", 1)[0].upper()
-        if invalid_char is not None or any(ord(char) < 32 for char in case_id):
-            add_issue(
-                int(index),
-                "case_id",
-                "must be a portable file name without path separators or "
-                "reserved characters.",
-            )
-        elif case_id in {".", ".."} or case_id.endswith((".", " ")):
-            add_issue(int(index), "case_id", "must be a safe file name.")
-        elif stem in _WINDOWS_RESERVED_NAMES:
-            add_issue(int(index), "case_id", "uses a reserved file name.")
-    duplicates = sorted(
-        frame.loc[
-            frame["case_id"].duplicated(keep=False),
-            "case_id",
-        ].unique()
-    )
-    if duplicates:
-        add_issue(
-            None,
-            "case_id",
-            f"Duplicate case_id values are not allowed: {duplicates}",
-        )
-
-
 def _validate_rows(frame: pd.DataFrame, add_issue: AddIssue) -> None:
     mode_a_s = frame["S"].notna()
     mode_a_ti = frame["Ti_K"].notna()
@@ -177,22 +128,6 @@ def _validate_rows(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         )
 
 
-def _validate_attitude_domain(frame: pd.DataFrame, add_issue: AddIssue) -> None:
-    beta_tan = frame["attitude_input"] == "beta_tan"
-    invalid = beta_tan & (
-        (frame["alpha_deg"] <= -90.0)
-        | (frame["alpha_deg"] >= 90.0)
-        | (frame["beta_or_bank_deg"] <= -90.0)
-        | (frame["beta_or_bank_deg"] >= 90.0)
-    )
-    for index in frame.index[invalid]:
-        add_issue(
-            int(index),
-            "alpha_deg,beta_or_bank_deg",
-            "beta_tan angles must be strictly between -90 and 90 degrees.",
-        )
-
-
 CASE_READER_POLICY = CaseReaderPolicy(
     required_columns=REQUIRED,
     input_columns=INPUT_COLUMN_ORDER,
@@ -200,14 +135,10 @@ CASE_READER_POLICY = CaseReaderPolicy(
     numeric_optional=NUMERIC_OPTIONAL,
     positive_columns=POSITIVE_COLUMNS,
     defaults=DEFAULTS,
-    validate_case_ids=_validate_case_ids,
     validate_rows=_validate_rows,
-    validate_attitude_domain=_validate_attitude_domain,
     required_numeric_message_style="split",
     keep_default_na=True,
     fill_defaults_by_presence=False,
-    xls_engine="xlrd",
-    excel_case_id_dtype=str,
 )
 
 

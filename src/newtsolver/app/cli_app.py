@@ -12,7 +12,6 @@ from ..runtime import RUNTIME_POLICY
 CLI_POLICY = ProductCliPolicy(
     program="newtsolver-cli",
     description="Run newtsolver from CSV/Excel input without GUI.",
-    cases_nargs="*",
     runtime_policy=RUNTIME_POLICY,
     read_cases=read_cases,
     validate_output_path=validate_results_output_path,

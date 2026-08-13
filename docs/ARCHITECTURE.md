@@ -65,8 +65,9 @@ Phase 3 begins with pure frame primitives in `panelsolver.core`. They construct
 `velocity_hat_stl` from already-resolved tangent angles, map STL-axis vectors to
 body axes, and rotate body-axis vectors into stability axes. They preserve any
 leading array dimensions and validate the trailing vector dimension explicitly.
-Legacy attitude-mode parsing and public angle-domain policy remain adapter-owned,
-so this extraction does not select either behavior recorded in D007.
+Legacy attitude-mode parsing remains application-owned. The shared case-reader
+boundary applies the ADR 0008 public angle-domain policy before model adaptation;
+the frame primitive only receives resolved angles.
 
 The topology contract pairs immutable vertices and triangular face indices with
 an already-validated `PanelGeometry` and ordered component/source metadata. It
