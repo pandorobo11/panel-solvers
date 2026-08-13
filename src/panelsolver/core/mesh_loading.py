@@ -318,15 +318,17 @@ def load_panel_mesh(
         if cached is not None:
             _CACHE_HITS += 1
             _MESH_CACHE.move_to_end(key)
-            return cached
 
-    loaded = _load_uncached(source_snapshots, scale, policy)
-    with _CACHE_LOCK:
-        _CACHE_MISSES += 1
-        _MESH_CACHE[key] = loaded
-        _MESH_CACHE.move_to_end(key)
-        while len(_MESH_CACHE) > _MESH_CACHE_MAX:
-            _MESH_CACHE.popitem(last=False)
+    if cached is None:
+        loaded = _load_uncached(source_snapshots, scale, policy)
+        with _CACHE_LOCK:
+            _CACHE_MISSES += 1
+            _MESH_CACHE[key] = loaded
+            _MESH_CACHE.move_to_end(key)
+            while len(_MESH_CACHE) > _MESH_CACHE_MAX:
+                _MESH_CACHE.popitem(last=False)
+    else:
+        loaded = cached
 
     if warning_callback is not None:
         for message in loaded.warnings:
