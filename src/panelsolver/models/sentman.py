@@ -278,6 +278,59 @@ def _sentman_traction_coefficients(
     return out
 
 
+def _helper_positive_real(value: object, *, field: str) -> float:
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise SentmanCaseError(field, "must be a real scalar")
+    result = float(value)
+    if not math.isfinite(result):
+        raise SentmanCaseError(field, "must be finite")
+    if result <= 0.0:
+        raise SentmanCaseError(field, "must be > 0")
+    return result
+
+
+def _helper_unit_array(
+    value: object,
+    *,
+    field: str,
+    shape: tuple[int | str, ...],
+) -> np.ndarray:
+    try:
+        raw = np.asarray(value)
+    except (TypeError, ValueError) as exc:
+        raise SentmanCaseError(field, "must be a rectangular real array") from exc
+    if raw.dtype.kind not in "iuf":
+        raise SentmanCaseError(field, "must be a real array")
+    array = np.asarray(raw, dtype=np.float64)
+    if len(array.shape) != len(shape) or any(
+        not isinstance(required, str) and actual != required
+        for actual, required in zip(array.shape, shape, strict=True)
+    ):
+        raise SentmanCaseError(field, f"must have shape {shape}")
+    if not np.isfinite(array).all():
+        raise SentmanCaseError(field, "must contain only finite values")
+    norms = np.hypot.reduce(np.abs(array), axis=-1)
+    if not np.allclose(norms, 1.0, rtol=0.0, atol=1.0e-12):
+        raise SentmanCaseError(field, "must contain unit vectors")
+    return array
+
+
+def _helper_shield_mask(value: object, *, n_faces: int) -> np.ndarray:
+    if isinstance(value, (bool, np.bool_)):
+        return np.full(n_faces, bool(value), dtype=np.bool_)
+    try:
+        mask = np.asarray(value)
+    except (TypeError, ValueError) as exc:
+        raise SentmanCaseError(
+            "shielded", "must be a boolean scalar or rectangular array"
+        ) from exc
+    if mask.dtype.kind != "b" or mask.shape != (n_faces,):
+        raise SentmanCaseError(
+            "shielded", f"must be a boolean scalar or shape ({n_faces},)"
+        )
+    return np.asarray(mask, dtype=np.bool_)
+
+
 def sentman_dC_dA_vectors(
     Vhat: np.ndarray,
     n_out: np.ndarray,
@@ -288,29 +341,23 @@ def sentman_dC_dA_vectors(
     shielded: np.ndarray | bool = False,
 ) -> np.ndarray:
     """Expose the pinned legacy Sentman density over the shared model formula."""
-    velocity = np.asarray(Vhat, dtype=np.float64)
-    normals = np.asarray(n_out, dtype=np.float64)
-    if velocity.shape != (3,):
-        raise ValueError("Vhat must have shape (3,).")
-    if normals.ndim != 2 or normals.shape[1] != 3:
-        raise ValueError("n_out must have shape (N, 3).")
-    speed_ratio = float(S)
-    if speed_ratio <= 0.0:
-        raise ValueError(f"S must be > 0, got {speed_ratio:g}")
-    if np.isscalar(shielded):
-        mask = np.full(normals.shape[0], bool(shielded), dtype=np.bool_)
-    else:
-        mask = np.asarray(shielded, dtype=np.bool_)
-        if mask.shape != (normals.shape[0],):
-            raise ValueError("shielded must be scalar or shape (N,).")
+    reference_area = _helper_positive_real(Aref, field="Aref")
+    speed_ratio = _helper_positive_real(S, field="S")
+    translational_temperature = _helper_positive_real(Ti, field="Ti")
+    wall_temperature = _helper_positive_real(Tw, field="Tw")
+    velocity = _helper_unit_array(Vhat, field="Vhat", shape=(3,))
+    normals = _helper_unit_array(n_out, field="n_out", shape=("N", 3))
+    if normals.shape[0] == 0:
+        raise SentmanCaseError("n_out", "must contain at least one panel normal")
+    mask = _helper_shield_mask(shielded, n_faces=normals.shape[0])
     return _sentman_traction_coefficients(
         velocity_hat_stl=velocity,
         normals_out_stl=normals,
         speed_ratio=speed_ratio,
-        translational_temperature_k=float(Ti),
-        wall_temperature_k=float(Tw),
+        translational_temperature_k=translational_temperature,
+        wall_temperature_k=wall_temperature,
         shielded=mask,
-    ) / float(Aref)
+    ) / reference_area
 
 
 def sentman_dC_dA_vector(
@@ -323,9 +370,7 @@ def sentman_dC_dA_vector(
     shielded: bool = False,
 ) -> np.ndarray:
     """Scalar-panel compatibility form of :func:`sentman_dC_dA_vectors`."""
-    normal = np.asarray(n_out, dtype=np.float64)
-    if normal.shape != (3,):
-        raise ValueError("n_out must have shape (3,).")
+    normal = _helper_unit_array(n_out, field="n_out", shape=(3,))
     return sentman_dC_dA_vectors(
         Vhat,
         normal[None, :],
@@ -333,7 +378,7 @@ def sentman_dC_dA_vector(
         Ti,
         Tw,
         Aref,
-        np.asarray([shielded], dtype=np.bool_),
+        shielded,
     )[0]
 
 

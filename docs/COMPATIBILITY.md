@@ -71,6 +71,9 @@ remain diagnostic; exact wording, cause/context, traceback, and timing do not.
 Sentman Mode B therefore rejects a finite Mach value when the pinned computation
 order overflows its derived speed ratio; finite positive derived values retain
 the same formula and result.
+Direct Sentman helpers validate reference area, physical scalars, unit vectors,
+and shielding masks before computation. A valid shielded panel remains exact
+zero, but shielding does not hide invalid normalization input.
 
 D015 now uses common `FORWARD / YIELD_COMPLETED` behavior for both products.
 Worker logs and warnings cross the process boundary, and successful earlier

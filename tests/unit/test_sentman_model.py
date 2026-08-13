@@ -23,6 +23,7 @@ from panelsolver.models import (
     resolve_sentman_case,
     sample_at_altitude_km,
 )
+from panelsolver.models.sentman import sentman_dC_dA_vector, sentman_dC_dA_vectors
 
 
 def _geometry(normals: np.ndarray) -> PanelGeometry:
@@ -281,6 +282,106 @@ class SentmanModelTests(unittest.TestCase):
                 },
             )
         )
+
+    def test_public_helpers_validate_before_shielded_zero(self) -> None:
+        velocity = np.array([1.0, 0.0, 0.0])
+        normals = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+        valid = {
+            "Vhat": velocity,
+            "n_out": normals,
+            "S": 5.0,
+            "Ti": 300.0,
+            "Tw": 450.0,
+            "Aref": 2.0,
+            "shielded": np.array([True, True]),
+        }
+        invalid = (
+            ("Aref", 0.0, "Aref"),
+            ("Aref", -1.0, "Aref"),
+            ("Aref", np.nan, "Aref"),
+            ("Aref", np.inf, "Aref"),
+            ("Aref", True, "Aref"),
+            ("S", 0.0, "S"),
+            ("S", np.nan, "S"),
+            ("Ti", 0.0, "Ti"),
+            ("Ti", np.inf, "Ti"),
+            ("Tw", -1.0, "Tw"),
+            ("Tw", np.nan, "Tw"),
+            ("Vhat", [np.nan, 0.0, 0.0], "Vhat"),
+            ("Vhat", [1.0, 0.0], "Vhat"),
+            ("Vhat", [True, False, False], "Vhat"),
+            ("Vhat", [2.0, 0.0, 0.0], "Vhat"),
+            ("n_out", [[-1.0, 0.0]], "n_out"),
+            ("n_out", [[-2.0, 0.0, 0.0]], "n_out"),
+            ("n_out", [[-1.0, 0.0, np.inf]], "n_out"),
+            ("shielded", np.array([1, 1]), "shielded"),
+            ("shielded", np.array([True]), "shielded"),
+            ("shielded", [[True], [False, True]], "shielded"),
+        )
+        for name, value, field in invalid:
+            with self.subTest(name=name, value=value), self.assertRaises(
+                SentmanCaseError
+            ) as caught:
+                sentman_dC_dA_vectors(**{**valid, name: value})
+            self.assertEqual(field, caught.exception.field)
+
+        for aref in (0.0, np.nan, np.inf):
+            with self.subTest(scalar_aref=aref), self.assertRaises(
+                SentmanCaseError
+            ) as caught:
+                sentman_dC_dA_vector(
+                    velocity,
+                    normals[0],
+                    5.0,
+                    300.0,
+                    450.0,
+                    aref,
+                    True,
+                )
+            self.assertEqual("Aref", caught.exception.field)
+
+    def test_public_helpers_preserve_valid_shielded_and_unshielded_results(self) -> None:
+        velocity = np.array([1.0, 0.0, 0.0])
+        normals = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+        all_shielded = sentman_dC_dA_vectors(
+            velocity,
+            normals,
+            5.0,
+            300.0,
+            450.0,
+            2.0,
+            True,
+        )
+        np.testing.assert_array_equal(all_shielded, np.zeros((2, 3)))
+        self.assertEqual(np.dtype(np.float64), all_shielded.dtype)
+
+        scalar_shielded = sentman_dC_dA_vector(
+            velocity,
+            normals[0],
+            5.0,
+            300.0,
+            450.0,
+            2.0,
+            True,
+        )
+        np.testing.assert_array_equal(scalar_shielded, np.zeros(3))
+
+        mixed = sentman_dC_dA_vectors(
+            velocity,
+            normals,
+            5.0,
+            300.0,
+            300.0,
+            2.0,
+            np.array([False, True]),
+        )
+        np.testing.assert_allclose(
+            mixed[0],
+            np.array([1.1972453850905538, 0.0, 0.0]),
+            rtol=0.0,
+            atol=1.0e-15,
+        )
+        np.testing.assert_array_equal(mixed[1], np.zeros(3))
 
 
 if __name__ == "__main__":
