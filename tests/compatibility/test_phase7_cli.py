@@ -74,19 +74,17 @@ class Phase7CliTests(unittest.TestCase):
             input_path = Path(temp_dir) / "cases.csv"
             frame = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0]].copy()
             frame.to_csv(input_path, index=False)
-            with contextlib.redirect_stderr(io.StringIO()):
-                with self.assertRaises(SystemExit) as collision_exit:
-                    fmf_main(
-                        [
-                            "--input",
-                            str(input_path),
-                            "--output",
-                            str(input_path),
-                            "--flush-every-cases",
-                            "0",
-                        ]
-                    )
-            self.assertEqual(2, collision_exit.exception.code)
+            with self.assertRaisesRegex(ValueError, "protected path"):
+                fmf_main(
+                    [
+                        "--input",
+                        str(input_path),
+                        "--output",
+                        str(input_path),
+                        "--flush-every-cases",
+                        "0",
+                    ]
+                )
             with self.assertRaisesRegex(ValueError, "Unknown case_id"):
                 fmf_main(
                     [

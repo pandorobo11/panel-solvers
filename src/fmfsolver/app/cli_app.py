@@ -8,6 +8,7 @@ from pathlib import Path
 from panelsolver.app.cli import ProductCliPolicy, run_cli
 from panelsolver.app.cli import build_parser as build_product_parser
 
+from ..csv_adapter import validate_results_output_path
 from ..io.io_cases import read_cases
 from ..runtime import RUNTIME_POLICY
 
@@ -15,9 +16,9 @@ from ..runtime import RUNTIME_POLICY
 def _validate_output(
     output_path: str | Path,
     input_path: str | Path,
-    _rows: Sequence[Mapping[str, object]],
+    rows: Sequence[Mapping[str, object]],
 ) -> Path:
-    return Path(output_path).expanduser()
+    return validate_results_output_path(output_path, input_path, rows)
 
 
 CLI_POLICY = ProductCliPolicy(
@@ -26,7 +27,6 @@ CLI_POLICY = ProductCliPolicy(
     runtime_policy=RUNTIME_POLICY,
     read_cases=read_cases,
     validate_output_path=_validate_output,
-    reject_input_collision_with_parser=True,
 )
 
 

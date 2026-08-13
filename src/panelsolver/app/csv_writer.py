@@ -6,7 +6,7 @@ import csv
 import os
 import tempfile
 import uuid
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
@@ -42,6 +42,12 @@ class AtomicCsvWritePolicy:
                 "AtomicCsvWritePolicy.fsync_before_replace",
                 "must be a boolean",
             )
+
+
+DURABLE_CSV_WRITE_POLICY = AtomicCsvWritePolicy(
+    temp_name_style=TempNameStyle.NAMED_RANDOM,
+    fsync_before_replace=True,
+)
 
 
 def write_csv_atomic(
@@ -107,6 +113,24 @@ def validate_csv_output_path(
     return out
 
 
+def validate_summary_output_path(
+    out_path: str | Path,
+    input_path: str | Path,
+    case_rows: Iterable[Mapping[str, object]],
+) -> Path:
+    """Reject a summary path that could destroy any input or planned artifact."""
+    protected: list[str | Path] = [input_path]
+    for row in case_rows:
+        for raw_stl in str(row.get("stl_path", "")).split(";"):
+            if raw_stl.strip():
+                protected.append(raw_stl.strip())
+        out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser().resolve()
+        case_id = str(row.get("case_id", "")).strip()
+        if case_id:
+            protected.extend((out_dir / f"{case_id}.vtp", out_dir / f"{case_id}.npz"))
+    return validate_csv_output_path(out_path, protected)
+
+
 def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
     writer = csv.writer(handle, lineterminator="\n")
     writer.writerow(projection.columns)
@@ -114,8 +138,10 @@ def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
 
 
 __all__ = (
+    "DURABLE_CSV_WRITE_POLICY",
     "AtomicCsvWritePolicy",
     "TempNameStyle",
     "validate_csv_output_path",
+    "validate_summary_output_path",
     "write_csv_atomic",
 )

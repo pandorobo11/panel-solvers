@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from panelsolver.app.csv_writer import (
-    AtomicCsvWritePolicy,
-    TempNameStyle,
-    validate_csv_output_path,
+    DURABLE_CSV_WRITE_POLICY,
+    validate_summary_output_path,
     write_csv_atomic,
 )
 from panelsolver.core import CommonResults
@@ -75,10 +74,7 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "npz_path",
     ),
 )
-CSV_WRITE_POLICY = AtomicCsvWritePolicy(
-    temp_name_style=TempNameStyle.NAMED_RANDOM,
-    fsync_before_replace=True,
-)
+CSV_WRITE_POLICY = DURABLE_CSV_WRITE_POLICY
 
 
 def project_csv(
@@ -100,9 +96,9 @@ def project_csv(
 def validate_results_output_path(
     out_path: str | Path,
     input_path: str | Path,
+    case_rows: Iterable[Mapping[str, object]] = (),
 ) -> Path:
-    """Preserve D009: FMF protects only the selected input table."""
-    return validate_csv_output_path(out_path, (input_path,))
+    return validate_summary_output_path(out_path, input_path, case_rows)
 
 
 def write_csv(out_path: str | Path, projection: CsvProjection) -> None:

@@ -26,7 +26,6 @@ class ProductCliPolicy:
     runtime_policy: ProductRuntimePolicy
     read_cases: ReadCasesCallback
     validate_output_path: ValidateOutputCallback
-    reject_input_collision_with_parser: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.runtime_policy, ProductRuntimePolicy):
@@ -38,8 +37,6 @@ class ProductCliPolicy:
         for name in ("read_cases", "validate_output_path"):
             if not callable(getattr(self, name)):
                 raise TypeError(f"{name} must be callable")
-        if not isinstance(self.reject_input_collision_with_parser, bool):
-            raise TypeError("reject_input_collision_with_parser must be a boolean")
 
 
 def parse_case_ids(values: list[str] | None) -> set[str] | None:
@@ -134,11 +131,6 @@ def run_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
         if args.output
         else input_path.parent / "outputs" / f"{input_path.stem}_result.csv"
     )
-    if (
-        policy.reject_input_collision_with_parser
-        and raw_output.resolve() == input_path.resolve()
-    ):
-        parser.error("--output must be different from --input")
     output = policy.validate_output_path(raw_output, input_path, rows)
     output.parent.mkdir(parents=True, exist_ok=True)
 

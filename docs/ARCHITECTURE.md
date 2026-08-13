@@ -111,11 +111,11 @@ perform only call-shape translation.
 
 Summary CSV projection likewise receives an ordered schema from a product
 adapter. Core calculates shared total/component cells while adapter-supplied run
-values fill product fields. The FMF and newtsolver adapters retain separate
-input/result column lists, collision sets, and atomic-write policies: FMF uses a
-same-directory named temporary file plus flush/`fsync`, while newtsolver uses a
-same-directory UUID name without explicit `fsync`. These policies preserve D009,
-D010, and D029 without choosing a universal behavior.
+values fill product fields. FMF and newtsolver retain separate input/result
+column lists, while Phase 8 converges D009/D010: both reject collision with the
+input table, every STL, and every planned VTP/NPZ path, then write through a
+same-directory temporary file with flush, `fsync`, and atomic `os.replace`.
+Temporary naming is not a compatibility contract.
 
 The final Phase 3 adapter boundary accepts topology, geometry, shielding state,
 and local traction that a legacy model has already computed. It derives the

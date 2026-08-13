@@ -89,9 +89,9 @@ def _read_gui_cases(path: str | Path) -> tuple[dict[str, object], ...]:
 def _validate_gui_output(
     output_path: str | Path,
     input_path: str | Path,
-    _rows: Sequence[Mapping[str, object]],
+    rows: Sequence[Mapping[str, object]],
 ) -> Path:
-    return validate_results_output_path(output_path, input_path)
+    return validate_results_output_path(output_path, input_path, rows)
 
 
 def _resolve_velocity(row: Mapping[str, object]):
