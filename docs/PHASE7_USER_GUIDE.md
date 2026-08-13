@@ -162,7 +162,7 @@ mixes both product prefixes:
 | scheduler chunk cases | `PANELSOLVER_PARALLEL_CHUNK_CASES`, then selected legacy prefix | 8 |
 
 Values must be integers in the documented positive/nonnegative domain. Both
-products use common `FORWARD`/`YIELD_COMPLETED` behavior: worker logs and
+products use common `FORWARD / YIELD_COMPLETED` behavior: worker logs and
 warnings are forwarded, and prior successful cases from a later-failing chunk
 remain in input-ordered progress, checkpoints, and summary results while the
 remote failure is retained. Already-written per-case artifacts are not rolled
@@ -196,8 +196,9 @@ A missing STL raises `FileNotFoundError` from serial `run_case()` or
 `run_cases()` calls. From a parallel worker it raises a built-in `RuntimeError`
 whose first line starts `[WorkerError]` and whose remaining text contains the
 remote traceback. Other caught worker Python exceptions use the same
-`[WorkerError]` form. FMF and newtsolver continue to apply their distinct
-worker-log and failed-chunk partial-result policies described above.
+`[WorkerError]` form. FMF and newtsolver both apply the common D015 policy
+described above: worker logs are forwarded and completed results from a
+later-failing chunk are yielded.
 
 The public compatibility scheduler also retains product-specific unexpected-exit
 wording and its historical empty-Queue exception context. A broken Pipe frame

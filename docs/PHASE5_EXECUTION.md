@@ -79,18 +79,19 @@ reports cancellation. No new chunks are dispatched after the request. Worker
 startup failure, a remote Python exception and traceback, and an unexpected
 process exit have distinct scheduler errors and always trigger cleanup.
 
-The two pinned D015 logging behaviors remain `WorkerLogPolicy.FORWARD` and
-`WorkerLogPolicy.DROP`. The differing worker-failure behavior remains
+At this historical Phase 5/Phase 7 point, the two pinned D015 logging behaviors
+were `WorkerLogPolicy.FORWARD` and `WorkerLogPolicy.DROP`. The differing
+worker-failure behavior was
 `PartialResultPolicy.DISCARD_CHUNK` and
-`PartialResultPolicy.YIELD_COMPLETED`. Both are required arguments; core does not
+`PartialResultPolicy.YIELD_COMPLETED`. Both were required arguments; core did not
 choose one product's behavior for the other. The migrated product adapters
-retain the pinned pairing: FMF selects `FORWARD`/`DISCARD_CHUNK`, while
-newtsolver selects `DROP`/`YIELD_COMPLETED`.
+retained the pinned pairing: FMF selected `FORWARD`/`DISCARD_CHUNK`, while
+newtsolver selected `DROP`/`YIELD_COMPLETED`.
 
-This paragraph describes the current implementation, not the Phase 8 target.
-ADR 0008 adopts `FORWARD`/`YIELD_COMPLETED` for both products. A dedicated later
-remediation will make that change without altering successful-run numerical
-results, cancellation, worker lifecycle, signatures, or caches.
+Those historical choices are superseded by ADR 0008. The current implementation
+uses `FORWARD`/`YIELD_COMPLETED` for both products without altering
+successful-run numerical results, cancellation, worker lifecycle, signatures,
+or caches.
 
 Phase 8's independent audit corrected the pairing in this paragraph. A Phase 7
 edit had reversed the two partial-result policies; same-bucket
