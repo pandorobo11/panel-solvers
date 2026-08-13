@@ -4,8 +4,11 @@ import tempfile
 import unittest
 from collections.abc import Callable, Iterable
 from pathlib import Path
+from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
+from openpyxl import Workbook
 
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
@@ -39,6 +42,24 @@ type Reader = Callable[[str | Path], pd.DataFrame]
 
 
 class Phase8ReaderValidationMatrixTests(unittest.TestCase):
+    def _write_openpyxl_workbook(
+        self,
+        frame: pd.DataFrame,
+        path: Path,
+        overrides: dict[str, object],
+    ) -> None:
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(list(frame.columns))
+        for row_index, row in enumerate(frame.itertuples(index=False, name=None)):
+            values = [value.item() if hasattr(value, "item") else value for value in row]
+            if row_index == 0:
+                for field, value in overrides.items():
+                    values[frame.columns.get_loc(field)] = value
+            sheet.append(values)
+        workbook.save(path)
+        workbook.close()
+
     def _assert_boundary(
         self,
         *,
@@ -172,6 +193,78 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                             accepted=False,
                             attributed_fields=(field,),
                         )
+
+    def test_openpyxl_boolean_cells_are_flags_not_physical_numbers(self) -> None:
+        products = (
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                ("Aref_m2", "ref_x_m", "S", "Mach", "Ti_K", "Tw_K"),
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                ("Aref_m2", "ref_x_m", "Mach", "gamma"),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for product, reader, filename, numeric_fields in products:
+                source = reader(_INPUTS / filename)
+                for field in numeric_fields:
+                    row_index = 1 if product == "fmfsolver" and field == "Mach" else 0
+                    base = source.iloc[[row_index]].copy()
+                    for value in (True, False):
+                        with self.subTest(product=product, field=field, value=value):
+                            path = root / f"{product}-{field}-{value}.xlsx"
+                            self._write_openpyxl_workbook(base, path, {field: value})
+                            with self.assertRaises(InputValidationError) as caught:
+                                reader(path)
+                            self.assertIn(
+                                field,
+                                {issue.field for issue in caught.exception.issues},
+                            )
+
+                base = source.iloc[[0]].copy()
+                flags = {
+                    "shielding_on": True,
+                    "save_vtp_on": False,
+                    "save_npz_on": True,
+                }
+                path = root / f"{product}-flags.xlsx"
+                self._write_openpyxl_workbook(base, path, flags)
+                actual = reader(path).iloc[0]
+                self.assertEqual(1, actual["shielding_on"])
+                self.assertEqual(0, actual["save_vtp_on"])
+                self.assertEqual(1, actual["save_npz_on"])
+
+                for text in ("true", "false"):
+                    with self.subTest(product=product, text=text):
+                        path = root / f"{product}-{text}.xlsx"
+                        self._write_openpyxl_workbook(base, path, {"Aref_m2": text})
+                        with self.assertRaises(InputValidationError) as caught:
+                            reader(path)
+                        self.assertIn(
+                            "Aref_m2",
+                            {issue.field for issue in caught.exception.issues},
+                        )
+
+    def test_numpy_booleans_are_rejected_before_numeric_coercion(self) -> None:
+        for reader, filename in (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        ):
+            frame = reader(_INPUTS / filename).iloc[[0]].copy()
+            frame["Aref_m2"] = frame["Aref_m2"].astype(object)
+            frame.at[frame.index[0], "Aref_m2"] = np.bool_(True)
+            with patch("panelsolver.app.case_io.pd.read_excel", return_value=frame):
+                with self.assertRaises(InputValidationError) as caught:
+                    reader("cases.xlsx")
+            self.assertIn(
+                "Aref_m2", {issue.field for issue in caught.exception.issues}
+            )
 
 
 if __name__ == "__main__":
