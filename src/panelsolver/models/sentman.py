@@ -149,6 +149,11 @@ def resolve_sentman_case(case: ModelCasePayload) -> ResolvedSentmanCase:
     translational_temperature_k = atmosphere["T_K"]
     most_probable_speed_ms = mean_to_most_probable_speed(atmosphere["Vmean_ms"])
     speed_ratio = mach * atmosphere["c_ms"] / most_probable_speed_ms
+    if not math.isfinite(speed_ratio) or speed_ratio <= 0.0:
+        raise SentmanCaseError(
+            "ResolvedSentmanCase.speed_ratio",
+            "Mode B must produce a finite positive speed ratio",
+        )
     return ResolvedSentmanCase(
         mode="B",
         speed_ratio=speed_ratio,
