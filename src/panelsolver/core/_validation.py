@@ -14,6 +14,14 @@ from .errors import ContractValueError, NonFiniteError, ShapeError
 _UNIT_VECTOR_ATOL = 1.0e-12
 
 
+def _array_input(value: object, *, field: str) -> np.ndarray:
+    """Coerce an array input without leaking NumPy's container errors."""
+    try:
+        return np.asarray(value)
+    except (TypeError, ValueError) as exc:
+        raise ContractValueError(field, "must be a rectangular array") from exc
+
+
 class FrozenMapping[T](Mapping[str, T]):
     """Small insertion-ordered, immutable, and pickle-friendly mapping."""
 
@@ -91,7 +99,7 @@ def float_array(
     shape: tuple[int | str, ...],
 ) -> np.ndarray:
     """Copy, validate, and freeze a real-valued array as float64."""
-    raw = np.asarray(value)
+    raw = _array_input(value, field=field)
     if raw.dtype.kind not in "iuf":
         raise ContractValueError(field, "must be a real-valued array")
     array = np.array(raw, dtype=np.float64, copy=True, order="C")
@@ -108,7 +116,7 @@ def index_array(
     shape: tuple[int | str, ...],
 ) -> np.ndarray:
     """Copy, validate, and freeze a non-negative integer array."""
-    raw = np.asarray(value)
+    raw = _array_input(value, field=field)
     if raw.dtype.kind not in "iu" or not np.can_cast(
         raw.dtype, np.dtype(np.int64), casting="safe"
     ):
@@ -127,7 +135,7 @@ def bool_array(
     shape: tuple[int | str, ...],
 ) -> np.ndarray:
     """Copy, validate, and freeze a strict boolean array."""
-    raw = np.asarray(value)
+    raw = _array_input(value, field=field)
     if raw.dtype.kind != "b":
         raise ContractValueError(field, "must be a boolean array")
     array = np.array(raw, dtype=np.bool_, copy=True, order="C")
@@ -142,7 +150,7 @@ def scalar_array(
     shape: tuple[int | str, ...],
 ) -> np.ndarray:
     """Copy, validate, and freeze a real or boolean visualization array."""
-    raw = np.asarray(value)
+    raw = _array_input(value, field=field)
     if raw.dtype.kind not in "biuf":
         raise ContractValueError(
             field,
