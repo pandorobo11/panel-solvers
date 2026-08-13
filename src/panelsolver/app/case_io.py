@@ -99,7 +99,7 @@ class CaseReaderPolicy:
 
 def validate_case_id(value: object) -> str:
     """Return one portable Unicode case identifier or raise ``ValueError``."""
-    case_id = "" if value is None else str(value)
+    case_id = unicodedata.normalize("NFC", "" if value is None else str(value))
     if not case_id:
         raise ValueError("must not be empty.")
     if case_id in {".", ".."}:
@@ -127,9 +127,12 @@ def _validate_case_ids(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         try:
             valid_ids.append(validate_case_id(value))
         except ValueError as exc:
-            valid_ids.append(str(value))
+            valid_ids.append(unicodedata.normalize("NFC", str(value)))
             add_issue(int(index), "case_id", str(exc))
-    duplicate_keys = pd.Series(valid_ids, index=frame.index).str.casefold()
+    frame["case_id"] = pd.Series(valid_ids, index=frame.index)
+    duplicate_keys = frame["case_id"].map(
+        lambda case_id: unicodedata.normalize("NFC", case_id.casefold())
+    )
     duplicate_ids = sorted(
         frame.loc[duplicate_keys.duplicated(keep=False), "case_id"].unique()
     )

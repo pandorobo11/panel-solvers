@@ -173,6 +173,31 @@ class ProductCaseReaderTests(unittest.TestCase):
                 with self.assertRaisesRegex(Exception, "Unicode casefold"):
                     reader(path)
 
+                canonical_duplicates = pd.concat([base, base], ignore_index=True)
+                canonical_duplicates.loc[0, "case_id"] = "é"
+                canonical_duplicates.loc[1, "case_id"] = "e\N{COMBINING ACUTE ACCENT}"
+                canonical_duplicates.to_csv(path, index=False)
+                with self.assertRaisesRegex(Exception, "Unicode casefold"):
+                    reader(path)
+
+                normalized_values = []
+                for equivalent in ("é", "e\N{COMBINING ACUTE ACCENT}"):
+                    frame = base.copy()
+                    frame.loc[frame.index[0], "case_id"] = equivalent
+                    frame.to_csv(path, index=False)
+                    normalized_values.append(reader(path).iloc[0]["case_id"])
+                self.assertEqual(["é", "é"], normalized_values)
+
+                distinct = pd.concat([base, base], ignore_index=True)
+                distinct.loc[0, "case_id"] = "é-a"
+                distinct.loc[1, "case_id"] = "e\N{COMBINING ACUTE ACCENT}-b"
+                distinct.to_csv(path, index=False)
+                normalized = reader(path)["case_id"].tolist()
+                self.assertEqual(["é-a", "é-b"], normalized)
+                for suffix in (".vtp", ".npz"):
+                    paths = {temp / f"{case_id}{suffix}" for case_id in normalized}
+                    self.assertEqual(2, len(paths))
+
     def test_attitude_domains_are_common_and_mode_specific(self) -> None:
         products = (
             (read_fmf_cases, "fmfsolver_cases.csv"),
