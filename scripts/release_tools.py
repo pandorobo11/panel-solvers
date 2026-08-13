@@ -99,6 +99,64 @@ def verify_tag(tag: str, version: str) -> None:
         raise RuntimeError(f"tag/version mismatch: tag={tag}, expected={expected}")
 
 
+def _git_output(repository: Path, *arguments: str) -> str:
+    result = subprocess.run(
+        ["git", *arguments],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(
+            f"git {' '.join(arguments)} failed in {repository}: {detail}"
+        )
+    return result.stdout.strip()
+
+
+def verify_tag_target(
+    repository: Path,
+    tag: str,
+    expected_commit: str | None = None,
+) -> str:
+    reference = f"refs/tags/{tag}"
+    object_type = _git_output(repository, "cat-file", "-t", reference)
+    if object_type != "tag":
+        raise RuntimeError(
+            f"release tag {tag!r} must be annotated; object type is {object_type!r}"
+        )
+
+    peeled_commit = _git_output(repository, "rev-parse", f"{reference}^{{}}")
+    expected = expected_commit or "HEAD"
+    resolved_expected = _git_output(
+        repository,
+        "rev-parse",
+        "--verify",
+        f"{expected}^{{commit}}",
+    )
+    if peeled_commit != resolved_expected:
+        raise RuntimeError(
+            "release tag target mismatch: "
+            f"tag={peeled_commit}, expected={resolved_expected}"
+        )
+    return peeled_commit
+
+
+def verify_release_tag(
+    repository: Path,
+    tag: str,
+    expected_commit: str | None = None,
+) -> str:
+    name, version = project_identity(repository)
+    if canonical_distribution_name(name) != "panel-solvers":
+        raise RuntimeError(f"unexpected project name: {name}")
+    verify_tag(tag, version)
+    verify_lock_version(repository, version)
+    release_notes(repository, version)
+    return verify_tag_target(repository, tag, expected_commit)
+
+
 def release_notes(repository: Path, version: str) -> str:
     changelog = (repository / "CHANGELOG.md").read_text(encoding="utf-8")
     heading = re.compile(
@@ -250,6 +308,7 @@ def _parser() -> argparse.ArgumentParser:
     tag = subparsers.add_parser("verify-tag")
     tag.add_argument("repository", type=Path)
     tag.add_argument("tag")
+    tag.add_argument("--expected-commit")
     notes = subparsers.add_parser("release-notes")
     notes.add_argument("repository", type=Path)
     notes.add_argument("--output", required=True, type=Path)
@@ -267,12 +326,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "reinstall-wheel":
         print(reinstall_built_wheel(repository, args.dist_dir))
     elif args.command == "verify-tag":
-        name, version = project_identity(repository)
-        if canonical_distribution_name(name) != "panel-solvers":
-            raise RuntimeError(f"unexpected project name: {name}")
-        verify_lock_version(repository, version)
-        verify_tag(args.tag, version)
-        release_notes(repository, version)
+        print(verify_release_tag(repository, args.tag, args.expected_commit))
     elif args.command == "release-notes":
         _name, version = project_identity(repository)
         args.output.write_text(release_notes(repository, version), encoding="utf-8")

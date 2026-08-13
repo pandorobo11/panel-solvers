@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v9.0.0
@@ -64,7 +66,9 @@ jobs:
         shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG"
+          EXPECTED_COMMIT="$(git rev-parse HEAD)"
+          uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG" \
+            --expected-commit "$EXPECTED_COMMIT"
 
   artifact:
     runs-on: ubuntu-latest
@@ -147,6 +151,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v9.0.0
@@ -157,7 +163,9 @@ jobs:
         shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          python scripts/release_tools.py verify-tag . "$TAG"
+          EXPECTED_COMMIT="$(git rev-parse HEAD)"
+          python scripts/release_tools.py verify-tag . "$TAG" \
+            --expected-commit "$EXPECTED_COMMIT"
           python scripts/release_tools.py release-notes . --output release-notes.md
           uv build
           python scripts/release_tools.py verify-wheel .

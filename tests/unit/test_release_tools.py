@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -11,6 +12,7 @@ from scripts.release_tools import (
     release_notes,
     select_built_wheel,
     verify_lock_version,
+    verify_release_tag,
     verify_tag,
 )
 from scripts.smoke_installed_wheel import _smoke_subprocess_environment
@@ -56,6 +58,31 @@ class ReleaseToolTests(unittest.TestCase):
             )
         return wheel
 
+    def git(self, repository: Path, *arguments: str) -> str:
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+
+    def make_git_repository(self, root: Path) -> Path:
+        repository = self.make_repository(root)
+        self.git(repository, "init")
+        self.git(repository, "config", "user.name", "Release Test")
+        self.git(repository, "config", "user.email", "release@example.invalid")
+        self.git(repository, "add", ".")
+        self.git(repository, "commit", "-m", "release candidate")
+        return repository
+
+    def commit_file(self, repository: Path, path: str, content: str) -> str:
+        (repository / path).write_text(content, encoding="utf-8")
+        self.git(repository, "add", path)
+        self.git(repository, "commit", "-m", f"update {path}")
+        return self.git(repository, "rev-parse", "HEAD")
+
     def test_wheel_selection_is_version_independent_and_metadata_checked(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
@@ -89,6 +116,78 @@ class ReleaseToolTests(unittest.TestCase):
                 verify_tag("2.3.4", "2.3.4")
             with self.assertRaisesRegex(RuntimeError, "no release section"):
                 release_notes(repository, "9.9.9")
+
+    def test_annotated_tag_matches_expected_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            expected_commit = self.git(repository, "rev-parse", "HEAD")
+            self.git(repository, "tag", "-a", "v2.3.4", "-m", "release 2.3.4")
+
+            self.assertEqual(
+                expected_commit,
+                verify_release_tag(repository, "v2.3.4", expected_commit),
+            )
+            self.git(repository, "checkout", "--detach", "v2.3.4")
+            self.assertEqual(
+                expected_commit,
+                verify_release_tag(repository, "v2.3.4"),
+            )
+
+    def test_lightweight_tag_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            self.git(repository, "tag", "v2.3.4")
+
+            with self.assertRaisesRegex(RuntimeError, "must be annotated"):
+                verify_release_tag(repository, "v2.3.4")
+
+    def test_version_mismatched_tag_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            self.git(repository, "tag", "-a", "v2.3.5", "-m", "wrong version")
+
+            with self.assertRaisesRegex(RuntimeError, "tag/version mismatch"):
+                verify_release_tag(repository, "v2.3.5")
+
+    def test_annotated_tag_on_wrong_commit_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            self.git(repository, "tag", "-a", "v2.3.4", "-m", "wrong target")
+            expected_commit = self.commit_file(
+                repository,
+                "candidate.txt",
+                "intended release commit\n",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "tag target mismatch"):
+                verify_release_tag(repository, "v2.3.4", expected_commit)
+
+    def test_release_tag_requires_nonempty_changelog_section(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            self.commit_file(
+                repository,
+                "CHANGELOG.md",
+                "# Changelog\n\n## [Unreleased]\n\n- Later.\n",
+            )
+            self.git(repository, "tag", "-a", "v2.3.4", "-m", "no notes")
+
+            with self.assertRaisesRegex(RuntimeError, "no release section"):
+                verify_release_tag(repository, "v2.3.4")
+
+    def test_release_tag_requires_matching_lock_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            self.commit_file(
+                repository,
+                "uv.lock",
+                'version = 1\n\n[[package]]\nname = "panel-solvers"\n'
+                'version = "2.3.5"\n',
+            )
+            self.git(repository, "tag", "-a", "v2.3.4", "-m", "wrong lock")
+
+            with self.assertRaisesRegex(RuntimeError, "uv.lock.*mismatch"):
+                verify_release_tag(repository, "v2.3.4")
 
     def test_smoke_environment_is_fixed_and_removes_product_tuning(self) -> None:
         inherited = {
