@@ -122,7 +122,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     self.assertEqual([], logs)
                     self.assertEqual(set(), hinted)
 
-    def test_direct_log_callback_is_checked_only_when_a_case_message_is_emitted(
+    def test_direct_log_callback_is_checked_on_cache_hit_and_miss_warnings(
         self,
     ) -> None:
         for product, reader, run_one, _run_many, filename in self.products():
@@ -144,14 +144,19 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     )
                     clear_mesh_cache()
                     run_one(row, lambda _message: None)
-                    self.assertEqual(row["case_id"], run_one(row, None)["case_id"])
-
-                    clear_mesh_cache()
-                    with self.assertRaises(TypeError) as caught:
+                    with self.assertRaises(TypeError) as hot:
                         run_one(row, None)
                     self.assertEqual(
                         "'NoneType' object is not callable",
-                        str(caught.exception),
+                        str(hot.exception),
+                    )
+
+                    clear_mesh_cache()
+                    with self.assertRaises(TypeError) as cold:
+                        run_one(row, None)
+                    self.assertEqual(
+                        "'NoneType' object is not callable",
+                        str(cold.exception),
                     )
                     self.assertEqual(set(), hinted)
 
@@ -206,7 +211,10 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     hot_logs: list[str] = []
                     run_many(frame, hot_logs.append, workers=1)
                     self.assertEqual(
-                        [f"[RUN] (1/1) case_id={row['case_id']}"],
+                        [
+                            f"[RUN] (1/1) case_id={row['case_id']}",
+                            MESH_WARNING,
+                        ],
                         hot_logs,
                     )
 

@@ -57,6 +57,62 @@ class MeshLoadingTests(unittest.TestCase):
         self.assertEqual(scaled.geometry_fingerprint, permissive.geometry_fingerprint)
         self.assertEqual(mesh_cache_stats().misses, 3)
 
+    def test_cache_hit_replays_warnings_and_propagates_callback_errors(self) -> None:
+        path = FIXTURE_STL / "plate.stl"
+        first = load_panel_mesh([path], 1.0)
+        self.assertTrue(first.warnings)
+        stats = mesh_cache_stats()
+        self.assertEqual((stats.entries, stats.hits, stats.misses), (1, 0, 1))
+
+        observed: list[str] = []
+        second = load_panel_mesh([path], 1.0, warning_callback=observed.append)
+        self.assertIs(first, second)
+        self.assertEqual(first.warnings, tuple(observed))
+        self.assertEqual(first.geometry_fingerprint, second.geometry_fingerprint)
+        stats = mesh_cache_stats()
+        self.assertEqual((stats.entries, stats.hits, stats.misses), (1, 1, 1))
+
+        failure = RuntimeError("warning callback failed")
+
+        def fail_callback(_message: str) -> None:
+            raise failure
+
+        with self.assertRaises(RuntimeError) as caught:
+            load_panel_mesh([path], 1.0, warning_callback=fail_callback)
+        self.assertIs(failure, caught.exception)
+        stats = mesh_cache_stats()
+        self.assertEqual((stats.entries, stats.hits, stats.misses), (1, 2, 1))
+
+    def test_cache_hit_warning_callback_can_reenter_mesh_cache(self) -> None:
+        class FailOnReentryLock:
+            def __init__(self) -> None:
+                self.held = False
+
+            def __enter__(self):
+                if self.held:
+                    raise RuntimeError("mesh cache lock was re-entered")
+                self.held = True
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                self.held = False
+                return False
+
+        path = FIXTURE_STL / "plate.stl"
+        first = load_panel_mesh([path], 1.0)
+        reentrant: list[object] = []
+
+        def callback(_message: str) -> None:
+            reentrant.append(load_panel_mesh([path], 1.0))
+
+        with patch("panelsolver.core.mesh_loading._CACHE_LOCK", FailOnReentryLock()):
+            second = load_panel_mesh([path], 1.0, warning_callback=callback)
+
+        self.assertIs(first, second)
+        self.assertEqual([first], reentrant)
+        stats = mesh_cache_stats()
+        self.assertEqual((stats.entries, stats.hits, stats.misses), (1, 2, 1))
+
     def test_same_size_metadata_preserving_replacement_misses_cache(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "mesh.stl"
