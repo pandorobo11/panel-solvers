@@ -29,6 +29,13 @@ class ShieldingError(PanelSolverError, ValueError):
     """Shielding configuration or execution failed."""
 
 
+def _shielding_array(value: object, *, field: str) -> np.ndarray:
+    try:
+        return np.asarray(value)
+    except (TypeError, ValueError) as exc:
+        raise ShieldingError(f"{field} must be a rectangular array.") from exc
+
+
 class RayBackend(str, Enum):
     """Supported ray-intersector selectors."""
 
@@ -126,7 +133,7 @@ class ShieldingResult:
     cache_hit: bool
 
     def __post_init__(self) -> None:
-        mask = np.asarray(self.shielded)
+        mask = _shielding_array(self.shielded, field="shielded")
         if mask.dtype != np.bool_ or mask.ndim != 1:
             raise ShieldingError("shielded must be a one-dimensional bool array.")
         immutable = np.frombuffer(
@@ -233,7 +240,7 @@ def _resolve_batch_size(config: ShieldingConfig, effective_backend: str) -> int:
 
 
 def _validated_direction(value: np.ndarray) -> np.ndarray:
-    direction = np.asarray(value)
+    direction = _shielding_array(value, field="velocity_hat_stl")
     if direction.shape != (3,):
         raise ShieldingError("velocity_hat_stl must have shape (3,).")
     if direction.dtype.kind not in "fiu":

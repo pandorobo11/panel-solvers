@@ -12,8 +12,10 @@ from panelsolver.core import (
     PanelGeometry,
     PanelMesh,
     RayBackend,
+    ResolvedShieldingConfig,
     ShieldingConfig,
     ShieldingError,
+    ShieldingResult,
     clear_mesh_cache,
     clear_shielding_cache,
     compute_shielding,
@@ -309,6 +311,60 @@ class ShieldingTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(ShieldingError):
                     ShieldingConfig(**kwargs)
+
+    def test_ragged_arrays_are_field_aware_shielding_errors(self) -> None:
+        config = ResolvedShieldingConfig(
+            enabled=False,
+            requested_backend="auto",
+            effective_backend="not_used",
+            batch_size=0,
+            cache_max=0,
+        )
+
+        class TypeErrorArray:
+            def __array__(self, *_args: object, **_kwargs: object) -> np.ndarray:
+                raise TypeError("synthetic shielding coercion failure")
+
+        cases = (
+            (
+                lambda: ShieldingResult(
+                    [[True], [False, True]], config, "fingerprint", False
+                ),
+                "shielded",
+                ValueError,
+            ),
+            (
+                lambda: ShieldingResult(
+                    TypeErrorArray(), config, "fingerprint", False
+                ),
+                "shielded",
+                TypeError,
+            ),
+            (
+                lambda: compute_shielding(
+                    self.mesh,
+                    [[1.0], [0.0, 0.0]],
+                    ShieldingConfig(ray_backend="rtree"),
+                ),
+                "velocity_hat_stl",
+                ValueError,
+            ),
+            (
+                lambda: compute_shielding(
+                    self.mesh,
+                    TypeErrorArray(),
+                    ShieldingConfig(ray_backend="rtree"),
+                ),
+                "velocity_hat_stl",
+                TypeError,
+            ),
+        )
+        for construct, field, cause_type in cases:
+            with self.subTest(field=field), self.assertRaisesRegex(
+                ShieldingError, field
+            ) as caught:
+                construct()
+            self.assertIsInstance(caught.exception.__cause__, cause_type)
 
 
 if __name__ == "__main__":
