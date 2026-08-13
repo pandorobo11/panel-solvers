@@ -68,6 +68,9 @@ overflowed derived state, degenerate geometry, and zero or negative reference
 quantities. Products do not preserve accidental propagation or an early return
 that bypasses invalid normalization. Exception categories and field attribution
 remain diagnostic; exact wording, cause/context, traceback, and timing do not.
+Sentman Mode B therefore rejects a finite Mach value when the pinned computation
+order overflows its derived speed ratio; finite positive derived values retain
+the same formula and result.
 
 D015 now uses common `FORWARD / YIELD_COMPLETED` behavior for both products.
 Worker logs and warnings cross the process boundary, and successful earlier

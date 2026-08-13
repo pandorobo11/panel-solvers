@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import sys
 import unittest
 
 import numpy as np
@@ -17,6 +18,9 @@ from panelsolver.models import (
     ModelRegistry,
     SentmanCaseError,
     SentmanModel,
+    altitude_range_km,
+    mean_to_most_probable_speed,
+    resolve_sentman_case,
     sample_at_altitude_km,
 )
 
@@ -37,6 +41,18 @@ def _mode_a_case(**updates: object) -> ModelCasePayload:
         "Ti_K": 300.0,
         "Mach": None,
         "Altitude_km": None,
+        "Tw_K": 450.0,
+    }
+    payload.update(updates)
+    return ModelCasePayload("sentman", payload)
+
+
+def _mode_b_case(**updates: object) -> ModelCasePayload:
+    payload: dict[str, object] = {
+        "S": None,
+        "Ti_K": None,
+        "Mach": 25.0,
+        "Altitude_km": 100.0,
         "Tw_K": 450.0,
     }
     payload.update(updates)
@@ -150,16 +166,7 @@ class SentmanModelTests(unittest.TestCase):
         self.assertEqual(180.0, loads.cell_scalars["theta_deg"][1])
 
     def test_mode_b_resolves_the_pinned_atmosphere_values(self) -> None:
-        case = ModelCasePayload(
-            "sentman",
-            {
-                "S": None,
-                "Ti_K": None,
-                "Mach": 25.0,
-                "Altitude_km": 100.0,
-                "Tw_K": 450.0,
-            },
-        )
+        case = _mode_b_case()
         atmosphere = sample_at_altitude_km(100.0)
         self.assertEqual(
             {"T_K": 195.081, "c_ms": 280.0, "Vmean_ms": 381.36},
@@ -176,6 +183,42 @@ class SentmanModelTests(unittest.TestCase):
         self.assertEqual("B", loads.metadata["mode"])
         self.assertEqual(195.081, loads.metadata["Ti_K"])
         self.assertAlmostEqual(20.71180556342718, loads.metadata["S"], places=14)
+
+    def test_mode_b_rejects_only_overflowed_derived_speed_ratio(self) -> None:
+        minimum_altitude, maximum_altitude = altitude_range_km()
+        for altitude_km in (minimum_altitude, 100.0, maximum_altitude):
+            with self.subTest(altitude_km=altitude_km):
+                resolved = resolve_sentman_case(
+                    _mode_b_case(Altitude_km=altitude_km)
+                )
+                self.assertTrue(math.isfinite(resolved.speed_ratio))
+                self.assertGreater(resolved.speed_ratio, 0.0)
+
+        atmosphere = sample_at_altitude_km(100.0)
+        maximum_product_mach = sys.float_info.max / atmosphere["c_ms"]
+        finite_mach = math.nextafter(maximum_product_mach, 0.0)
+        finite = resolve_sentman_case(_mode_b_case(Mach=finite_mach))
+        expected = (
+            finite_mach
+            * atmosphere["c_ms"]
+            / mean_to_most_probable_speed(atmosphere["Vmean_ms"])
+        )
+        self.assertEqual(expected, finite.speed_ratio)
+        self.assertTrue(math.isfinite(finite.speed_ratio))
+
+        for mach in (
+            math.nextafter(maximum_product_mach, math.inf),
+            1.0e308,
+            sys.float_info.max,
+        ):
+            with self.subTest(mach=mach), self.assertRaises(
+                SentmanCaseError
+            ) as caught:
+                resolve_sentman_case(_mode_b_case(Mach=mach))
+            self.assertEqual(
+                "ResolvedSentmanCase.speed_ratio",
+                caught.exception.field,
+            )
 
     def test_signature_payload_preserves_raw_mode_fields(self) -> None:
         model = SentmanModel()
