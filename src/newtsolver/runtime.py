@@ -44,7 +44,7 @@ RUNTIME_POLICY = ProductRuntimePolicy(
     case_policy=CASE_POLICY,
     csv_projection_policy=CSV_PROJECTION_POLICY,
     csv_write_policy=CSV_WRITE_POLICY,
-    worker_log_policy=WorkerLogPolicy.DROP,
+    worker_log_policy=WorkerLogPolicy.FORWARD,
     partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
     build_projection_additions=_projection_additions,
 )
