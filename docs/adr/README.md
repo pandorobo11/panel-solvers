@@ -1,0 +1,15 @@
+# Architecture decision records
+
+Accepted ADRs are retained as decision records:
+
+1. [Use one development repository](0001-single-repository.md)
+2. [Put a local load vector at the model boundary](0002-panel-load-vector-contract.md)
+3. [Enforce inward dependency direction](0003-dependency-direction.md)
+4. [Preserve legacy interfaces with thin frontends](0004-compatibility-frontends.md)
+5. [Canonical numerical signatures](0005-case-signature-versioning.md)
+6. [Mesh repair policies and content-safe identities](0006-mesh-loading-and-fingerprints.md)
+7. [One distribution with distinct compatibility versions](0007-single-distribution-compatibility-versions.md)
+8. [Preserve compatibility in the supported domain](0008-supported-domain-compatibility.md)
+
+ADRs describe why the current contracts exist. Migration execution records and
+phase evidence are indexed separately in [History](../history/README.md).

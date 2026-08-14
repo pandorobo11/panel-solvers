@@ -8,8 +8,8 @@ Phase 8 is complete. ADR 0008 limits the accepted compatibility surface to
 commands, normal launcher-driven GUI operation, documented case files, and
 documented result semantics. Direct Python details below describe the current
 implementation on a best-effort basis rather than a frozen product contract.
-The final evidence is in `PHASE8_EXECUTION_RECORD.md` and
-`PHASE8_FINAL_AUDIT.md`.
+The final evidence is in `../audits/PHASE8_EXECUTION_RECORD.md` and
+`../audits/PHASE8_FINAL_AUDIT.md`.
 
 ## Install or migrate
 
@@ -247,7 +247,7 @@ update all of the following together:
    non-empty `## [<version>] - YYYY-MM-DD` section and retain a fresh
    `[Unreleased]` section.
 3. Update current distribution-version references in `README.md`,
-   `docs/DEVELOPMENT.md`, and this guide. Do not change the independent FMF
+   `docs/development/setup-and-testing.md`, and this guide. Do not change the independent FMF
    `1.3.8` or newtsolver `1.0.3` compatibility versions.
 4. Run the locked full suite, Ruff, build, the version-independent wheel
    reinstall/smoke, both unchanged samples, and both manual macOS GUI smokes.

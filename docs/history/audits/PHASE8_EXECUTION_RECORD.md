@@ -9,7 +9,7 @@ candidate `0674fbb0ad8c20e203624d1be76d52c3b66090cc`. The audit used the policy 
 ADR 0008 and the disposition in `PHASE8_ISSUE_DISPOSITION.md`. It did not treat
 invalid-input accidents or Python implementation identity as product contracts.
 
-The immutable references in `MIGRATION_SOURCES.md` remained clean and
+The immutable references in `../migration/MIGRATION_SOURCES.md` remained clean and
 read-only throughout:
 
 - FMF commit `b62bc844d02a8f5212e62a53dea3238a1414317d`, tree

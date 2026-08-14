@@ -1,81 +1,77 @@
 # panel-solvers
 
-`panel-solvers` is the neutral, shared development repository for the existing
-`fmfsolver` free-molecular-flow solver and `newtsolver` hypersonic panel solver.
-It will provide one geometry/execution/integration platform while keeping the
-Sentman and hypersonic physical models independent.
+`panel-solvers` is a single Python distribution for two STL panel-method
+applications:
 
-The repository has completed **migration Phase 8**, including the independent
-final audit. ADR 0008 defines the accepted supported-domain compatibility
-policy.
-Phase 1 freezes both legacy implementations as regression oracles, Phase 2
-defines the immutable central contracts and model registry, and Phase 3 extracts
-resolved-attitude/frame transforms, topology-preserving
-mesh representation, common force/moment integration, component/result assembly,
-semantic VTP/NPZ projection, and compatibility-preserving CSV projection/writing.
-Thin product adapters verify already-computed legacy data through that full path.
-Phase 4 adds the pinned Sentman and hypersonic equations behind independent
-implementations of the common model contract. Phases 5–7 add the common
-execution engine, scheduler, shared GUI/viewer, compatible case I/O and
-artifacts, all six legacy commands, and the frozen Python import surfaces.
+| Command family | Use it for | Physical model |
+|---|---|---|
+| `fmfsolver` | Free-molecular and rarefied-flow surface loads | Sentman |
+| `newtsolver` | Hypersonic pressure loads | Newtonian-family methods |
 
-## Target structure
+Choose FMF when molecular thermal interaction and tangential surface load matter.
+Choose newtsolver for continuum hypersonic pressure estimates using Newtonian,
+modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
+[Choosing a solver](docs/index.md#choosing-a-solver) for the model limits.
 
-```text
-src/
-├── panelsolver/
-│   ├── core/       # model-independent geometry, shielding, integration, execution
-│   ├── models/     # independent Sentman and hypersonic physical models
-│   └── app/        # shared CLI and GUI shell
-├── fmfsolver/      # legacy compatibility frontend only
-└── newtsolver/     # legacy compatibility frontend only
-```
+## Requirements and installation
 
-The shared model boundary returns a per-panel local load vector, not only a
-pressure coefficient. This preserves the tangential contribution of the Sentman
-model while representing Newton-family normal loads through the same API. The
-exact contract is recorded in
-[ADR 0002](docs/adr/0002-panel-load-vector-contract.md).
-
-## Development setup
-
-Python 3.12 or newer and [uv](https://docs.astral.sh/uv/) are required.
+Python 3.12 or newer is required. From a checkout:
 
 ```bash
-uv sync --locked --extra rayaccel
-uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts
-uv build
+python -m pip install .
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) before changing code. The migration
-sequence is tracked in [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md).
-
-## Install and run
-
-One `panel-solvers` wheel installs both compatible command families:
+For the optional accelerated Embree ray backend:
 
 ```bash
-python -m pip install panel_solvers-<version>-py3-none-any.whl
-fmfsolver-cli --input cases.csv
-newtsolver-cli --input cases.csv
+python -m pip install '.[rayaccel]'
+```
+
+The built-in `rtree` backend remains supported. Do not install `panel-solvers`
+beside the legacy `fmfsolver` or `newtsolver` distributions because their package
+and command names overlap. See the [installation guide](docs/getting-started/installation.md).
+
+## Run
+
+Launch either GUI, then select its example case file:
+
+```bash
 fmfsolver-gui
 newtsolver-gui
 ```
 
-The aliases `fmfsolver` and `newtsolver` also launch their respective GUIs.
-Do not install this distribution beside either legacy distribution because the
-top-level packages and commands overlap. The shared distribution version is
-`0.1.0`; the deliberately independent public compatibility versions remain FMF
-`1.3.8` and newtsolver `1.0.3`.
+Run the same examples without the GUI:
 
-See [the Phase 7 user and release guide](docs/PHASE7_USER_GUIDE.md) for input,
-output, environment, known-difference, release, and rollback details. Phase 7
-acceptance evidence is in
-[the execution record](docs/PHASE7_EXECUTION_RECORD.md). Phase 8 evidence is in
-the [execution record](docs/PHASE8_EXECUTION_RECORD.md) and
-[final audit report](docs/PHASE8_FINAL_AUDIT.md); the historical
-[Issue disposition](docs/PHASE8_ISSUE_DISPOSITION.md) records how the audit was
-scoped under ADR 0008.
-Release notes are maintained in [CHANGELOG.md](CHANGELOG.md).
+```bash
+fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
+newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+```
+
+The aliases `fmfsolver` and `newtsolver` also launch their respective GUIs.
+Results are written below each example's `outputs/` directory. The
+[quickstart](docs/getting-started/quickstart.md) explains the files and the main
+CLI options.
+
+## Documentation
+
+- [Documentation home](docs/index.md)
+- [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
+- [Case-file guide](docs/user-guide/case-files.md)
+- [FMF solver](docs/solvers/fmfsolver.md) and
+  [newtsolver](docs/solvers/newtsolver.md)
+- [FMF input](docs/reference/fmfsolver-input.md),
+  [newtsolver input](docs/reference/newtsolver-input.md), and
+  [output reference](docs/reference/output-formats.md)
+- [Development guide](docs/development/setup-and-testing.md)
+- [Migration and audit history](docs/history/README.md)
+
+## Status and compatibility
+
+The FMF/newtsolver integration and Phase 8 audit are complete. One
+`panel-solvers` distribution (currently `0.1.0`) provides all six compatible
+command names. Product-facing compatibility versions remain FMF `1.3.8` and
+newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
+and documented CSV/VTP/NPZ semantics are compatibility surfaces; direct Python
+implementation details are best effort. See the
+[compatibility policy](docs/reference/compatibility.md) and
+[CHANGELOG.md](CHANGELOG.md).

@@ -19,18 +19,18 @@ code.
 
 Before changing code, read:
 
-- `docs/DEVELOPMENT.md`;
-- `docs/ARCHITECTURE.md`;
-- `docs/NUMERICAL_CONVENTIONS.md`;
-- `docs/COMPATIBILITY.md`;
-- `docs/MIGRATION_PLAN.md`;
+- `docs/development/setup-and-testing.md`;
+- `docs/development/architecture.md`;
+- `docs/reference/numerical-conventions.md`;
+- `docs/reference/compatibility.md`;
+- `docs/history/migration/MIGRATION_PLAN.md`;
 - ADRs related to the target area;
 - the current issue or task.
 
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs
-and commits are in `docs/MIGRATION_SOURCES.md`. Local checkouts may live at
+and commits are in `docs/history/migration/MIGRATION_SOURCES.md`. Local checkouts may live at
 `.reference/fmfsolver`, `.reference/newtsolver`, or the workspace sibling paths.
 Do not edit them during migration work. If the implementations differ, report
 both behaviors and their effects. Apply ADR 0008 when deciding whether the

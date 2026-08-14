@@ -208,13 +208,14 @@ one draft PR each. Case readers, execution and serialization adapters, all six
 commands, the complete frozen import inventories, clean-wheel sample runs, and
 both manual macOS GUI smokes are accepted. Every Phase 1 golden and tolerance is
 unchanged. `PHASE7_COMPATIBILITY.md`, `PHASE7_USER_GUIDE.md`, and
-`PHASE7_EXECUTION_RECORD.md` record the contracts and evidence.
+`../audits/PHASE7_EXECUTION_RECORD.md` record the contracts and evidence.
 
 ## Phase 8 — Independent final audit
 
 **Status:** Complete. ADR 0008 established the supported-domain compatibility
 policy. Every remediation and final-candidate audit is accepted; the durable
-evidence is in `PHASE8_EXECUTION_RECORD.md` and `PHASE8_FINAL_AUDIT.md`.
+evidence is in `../audits/PHASE8_EXECUTION_RECORD.md` and
+`../audits/PHASE8_FINAL_AUDIT.md`.
 
 **Scope:** Audit numerical correctness, architecture/dependencies, compatibility,
 parallelism/caching, performance, GUI lifecycle, tests, and installed artifacts.

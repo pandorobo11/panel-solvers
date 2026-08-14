@@ -1,0 +1,60 @@
+# Development setup and testing
+
+## Set up
+
+Python 3.12 or newer and `uv` are required for the repository workflow.
+
+```bash
+uv sync --locked --extra rayaccel
+```
+
+`uv.lock` is authoritative for local development and CI. The `rayaccel` extra
+installs the platform-specific Embree binding; rtree remains a supported backend
+and must stay testable.
+
+## Change discipline
+
+1. Read `AGENTS.md`, the current task, the architecture and compatibility pages,
+   numerical conventions, and relevant ADRs.
+2. Keep one independently reviewable concern per change.
+3. Do not combine a physical-formula change with structural work.
+4. Add focused tests, then run the standard gates.
+5. Inspect the diff for unintended API, schema, artifact, or golden changes.
+6. Report numerical deltas, compatibility impact, risks, and follow-up work.
+
+The Phase 1 legacy repositories and golden captures remain read-only evidence.
+Their exact source commits are in
+[Migration sources](../history/migration/MIGRATION_SOURCES.md). Do not regenerate
+or change expected values merely to make tests pass.
+
+## Standard quality gates
+
+```bash
+uv run python -m unittest discover -s tests -p "test_*.py" -v
+uv run ruff check src tests scripts
+uv build
+```
+
+For installed-interface or packaging changes, install the built wheel into a
+clean environment and test imports plus both CLI `--help` commands outside the
+checkout. For GUI changes, add headless-safe tests where practical and record a
+manual smoke test. For shielding or numerical work, run the applicable golden
+cases with both supported ray paths.
+
+## Test layout
+
+- `tests/unit`: contracts, models, and utilities;
+- `tests/regression`: semantic numerical golden comparisons;
+- `tests/compatibility`: command, Python, case, and artifact compatibility;
+- `tests/gui`: shared GUI/viewer behavior;
+- `tests/fixtures`: compact inputs and generated expectations.
+
+VTP and NPZ regression checks compare named semantic arrays and metadata rather
+than file bytes. Per-quantity tolerances and provenance live in
+[Phase 1 history](../history/migration/phase1/TOLERANCES.md).
+
+## Versions
+
+`pyproject.toml` owns the shared distribution version, currently `0.1.0`. FMF
+`1.3.8` and newtsolver `1.0.3` are independent compatibility values. Release and
+rollback procedures are in [Release and rollback](release-and-rollback.md).

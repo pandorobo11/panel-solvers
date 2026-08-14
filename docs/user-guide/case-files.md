@@ -1,0 +1,55 @@
+# Case files
+
+Both products accept CSV, XLSX, XLSM, and legacy BIFF XLS. Excel input uses the
+first worksheet. Exact columns and defaults are defined in the
+[FMF input reference](../reference/fmfsolver-input.md) and
+[newtsolver input reference](../reference/newtsolver-input.md).
+
+## Paths and components
+
+Relative `stl_path` and `out_dir` values are resolved from the case table's
+directory, not the process working directory. `~` is expanded. Use semicolons to
+list multiple STL components in input order:
+
+```text
+geometry/body.stl;geometry/fin.stl
+```
+
+Every STL is scaled by the common `stl_scale_m_per_unit`. Component IDs are
+zero-based positions in that list. Component rows use the global reference area,
+moment reference point, and reference lengths.
+
+For newtsolver, a surface-equation cell may contain one selector applied to all
+components or exactly one semicolon-separated selector per STL. See
+[newtsolver](../solvers/newtsolver.md).
+
+## Attitude modes
+
+Angles in case files are degrees. `attitude_input` controls the meaning of
+`alpha_deg` and `beta_or_bank_deg`:
+
+| Mode | `alpha_deg` | `beta_or_bank_deg` | Reader domain |
+|---|---|---|---|
+| `beta_tan` | tangent angle of attack | tangent sideslip | both strictly between -90° and 90° |
+| `beta_sin` | tangent angle of attack | sine-definition sideslip | `abs(alpha_deg) < 90°`; second angle finite |
+| `bank` | included angle | bank angle | both finite; bank is periodic |
+
+All modes resolve to a unit STL-frame freestream vector and resolved tangent
+angles before panel calculation. The exact signs and transform are in
+[Numerical conventions](../reference/numerical-conventions.md).
+
+## Common validation
+
+- `case_id` must be a portable Unicode filename: no empty values, path/control
+  characters, Windows reserved names, trailing dot/space, `.` or `..`.
+- Case IDs must be unique after Unicode case-folding.
+- Required numbers must be finite; numeric booleans are rejected.
+- STL scale, reference area, and all three reference lengths must be positive.
+- `shielding_on`, `save_vtp_on`, and `save_npz_on` are `0` or `1`.
+- `ray_backend` is `auto`, `rtree`, or `embree`.
+- Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
+  rejected by the shared strict geometry boundary.
+
+Unknown input columns are preserved after the canonical input columns in the
+summary CSV. A direct Python call may not insert reader defaults; the documented
+file reader is the supported case-file interface.
