@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import email.parser
+import hashlib
 import importlib.metadata
+import json
 import re
 import shutil
 import subprocess
@@ -16,6 +18,9 @@ import zipfile
 from pathlib import Path
 
 _CANONICAL_SEPARATOR = re.compile(r"[-_.]+")
+_COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
+_DIST_MANIFEST_NAME = "panel-solvers.dist-manifest"
+_DIST_MANIFEST_VERSION = 1
 
 
 def canonical_distribution_name(value: str) -> str:
@@ -44,6 +49,14 @@ def wheel_identity(wheel: Path) -> tuple[str, str]:
     return str(metadata["Name"] or ""), str(metadata["Version"] or "")
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
     directory = dist_dir or repository / "dist"
     wheels = sorted(directory.glob("*.whl"))
@@ -68,6 +81,159 @@ def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
             f"project={expected_version!r}"
         )
     return wheel
+
+
+def select_built_sdist(repository: Path, dist_dir: Path | None = None) -> Path:
+    directory = dist_dir or repository / "dist"
+    sdists = sorted(directory.glob("*.tar.gz"))
+    if len(sdists) != 1:
+        raise RuntimeError(
+            f"expected exactly one sdist in {directory}, found {len(sdists)}: "
+            f"{[path.name for path in sdists]}"
+        )
+    return sdists[0]
+
+
+def _validated_commit_sha(value: str) -> str:
+    normalized = value.strip().lower()
+    if _COMMIT_SHA.fullmatch(normalized) is None:
+        raise RuntimeError(f"expected a full 40-character commit SHA, found {value!r}")
+    return normalized
+
+
+def create_dist_manifest(
+    repository: Path,
+    commit_sha: str,
+    output: Path,
+    dist_dir: Path | None = None,
+) -> dict[str, object]:
+    directory = dist_dir or repository / "dist"
+    wheel = select_built_wheel(repository, directory)
+    sdist = select_built_sdist(repository, directory)
+    metadata_name, metadata_version = wheel_identity(wheel)
+    manifest: dict[str, object] = {
+        "schema": {
+            "name": _DIST_MANIFEST_NAME,
+            "version": _DIST_MANIFEST_VERSION,
+        },
+        "github_commit_sha": _validated_commit_sha(commit_sha),
+        "wheel": {
+            "filename": wheel.name,
+            "sha256": sha256_file(wheel),
+            "metadata": {
+                "name": metadata_name,
+                "version": metadata_version,
+            },
+        },
+        "sdist": {
+            "filename": sdist.name,
+            "sha256": sha256_file(sdist),
+        },
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return verify_dist_manifest(repository, output, directory, commit_sha)
+
+
+def _manifest_artifact(
+    value: object,
+    *,
+    field: str,
+    directory: Path,
+) -> tuple[Path, str]:
+    if not isinstance(value, dict):
+        raise TypeError(f"manifest {field} must be an object")
+    filename = value.get("filename")
+    expected_hash = value.get("sha256")
+    if not isinstance(filename, str) or Path(filename).name != filename:
+        raise RuntimeError(f"manifest {field} filename is invalid: {filename!r}")
+    if not isinstance(expected_hash, str) or re.fullmatch(
+        r"[0-9a-f]{64}", expected_hash
+    ) is None:
+        raise RuntimeError(f"manifest {field} SHA-256 is invalid")
+    artifact = directory / filename
+    if not artifact.is_file():
+        raise RuntimeError(f"manifest {field} file is missing: {artifact}")
+    actual_hash = sha256_file(artifact)
+    if actual_hash != expected_hash:
+        raise RuntimeError(
+            f"manifest {field} hash mismatch: expected {expected_hash}, "
+            f"found {actual_hash}"
+        )
+    return artifact, expected_hash
+
+
+def verify_dist_manifest(
+    repository: Path,
+    manifest_path: Path,
+    dist_dir: Path | None = None,
+    expected_commit: str | None = None,
+) -> dict[str, object]:
+    directory = dist_dir or repository / "dist"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"could not read distribution manifest: {error}") from error
+    if not isinstance(manifest, dict):
+        raise TypeError("distribution manifest must be a JSON object")
+    schema = manifest.get("schema")
+    if schema != {
+        "name": _DIST_MANIFEST_NAME,
+        "version": _DIST_MANIFEST_VERSION,
+    }:
+        raise RuntimeError(f"unsupported distribution manifest schema: {schema!r}")
+    commit_sha = manifest.get("github_commit_sha")
+    if not isinstance(commit_sha, str):
+        raise TypeError("manifest github_commit_sha must be a string")
+    commit_sha = _validated_commit_sha(commit_sha)
+    if expected_commit is not None:
+        expected = _validated_commit_sha(expected_commit)
+        if commit_sha != expected:
+            raise RuntimeError(
+                "manifest commit mismatch: "
+                f"manifest={commit_sha}, checkout={expected}"
+            )
+
+    wheel, _wheel_hash = _manifest_artifact(
+        manifest.get("wheel"),
+        field="wheel",
+        directory=directory,
+    )
+    sdist, _sdist_hash = _manifest_artifact(
+        manifest.get("sdist"),
+        field="sdist",
+        directory=directory,
+    )
+    selected_wheel = select_built_wheel(repository, directory)
+    selected_sdist = select_built_sdist(repository, directory)
+    if wheel != selected_wheel or sdist != selected_sdist:
+        raise RuntimeError("manifest does not identify the selected distributions")
+
+    wheel_entry = manifest["wheel"]
+    assert isinstance(wheel_entry, dict)
+    metadata = wheel_entry.get("metadata")
+    if not isinstance(metadata, dict):
+        raise TypeError("manifest wheel metadata must be an object")
+    actual_name, actual_version = wheel_identity(wheel)
+    expected_name, expected_version = project_identity(repository)
+    if metadata.get("name") != actual_name or metadata.get("version") != actual_version:
+        raise RuntimeError(
+            "manifest wheel METADATA mismatch: "
+            f"manifest={metadata!r}, wheel={{'name': {actual_name!r}, "
+            f"'version': {actual_version!r}}}"
+        )
+    if canonical_distribution_name(actual_name) != canonical_distribution_name(
+        expected_name
+    ) or actual_version != expected_version:
+        raise RuntimeError(
+            "wheel METADATA project mismatch: "
+            f"wheel={actual_name!r} {actual_version!r}, "
+            f"project={expected_name!r} {expected_version!r}"
+        )
+    return manifest
 
 
 def verify_lock_version(repository: Path, version: str) -> None:
@@ -268,11 +434,7 @@ def dry_run(repository: Path, version: str | None = None) -> None:
             check=True,
         )
         wheel = select_built_wheel(checkout, dist_dir)
-        archives = sorted(dist_dir.glob("*.tar.gz"))
-        if len(archives) != 1:
-            raise RuntimeError(
-                f"expected exactly one sdist, found {[path.name for path in archives]}"
-            )
+        select_built_sdist(checkout, dist_dir)
 
         venv = root / "venv"
         subprocess.run(
@@ -305,6 +467,16 @@ def _parser() -> argparse.ArgumentParser:
         selected = subparsers.add_parser(command)
         selected.add_argument("repository", type=Path)
         selected.add_argument("--dist-dir", type=Path)
+    create_manifest = subparsers.add_parser("create-manifest")
+    create_manifest.add_argument("repository", type=Path)
+    create_manifest.add_argument("--commit-sha", required=True)
+    create_manifest.add_argument("--output", required=True, type=Path)
+    create_manifest.add_argument("--dist-dir", type=Path)
+    verify_manifest = subparsers.add_parser("verify-manifest")
+    verify_manifest.add_argument("repository", type=Path)
+    verify_manifest.add_argument("--manifest", required=True, type=Path)
+    verify_manifest.add_argument("--dist-dir", type=Path)
+    verify_manifest.add_argument("--expected-commit")
     tag = subparsers.add_parser("verify-tag")
     tag.add_argument("repository", type=Path)
     tag.add_argument("tag")
@@ -325,6 +497,22 @@ def main(argv: list[str] | None = None) -> int:
         print(select_built_wheel(repository, args.dist_dir))
     elif args.command == "reinstall-wheel":
         print(reinstall_built_wheel(repository, args.dist_dir))
+    elif args.command == "create-manifest":
+        manifest = create_dist_manifest(
+            repository,
+            args.commit_sha,
+            args.output,
+            args.dist_dir,
+        )
+        print(json.dumps(manifest, sort_keys=True))
+    elif args.command == "verify-manifest":
+        manifest = verify_dist_manifest(
+            repository,
+            args.manifest,
+            args.dist_dir,
+            args.expected_commit,
+        )
+        print(json.dumps(manifest, sort_keys=True))
     elif args.command == "verify-tag":
         print(verify_release_tag(repository, args.tag, args.expected_commit))
     elif args.command == "release-notes":

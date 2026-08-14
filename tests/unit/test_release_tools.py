@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -7,10 +8,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.release_tools import (
+    create_dist_manifest,
     expected_tag,
     hypothetical_next_version,
     release_notes,
+    select_built_sdist,
     select_built_wheel,
+    verify_dist_manifest,
     verify_lock_version,
     verify_release_tag,
     verify_tag,
@@ -58,6 +62,19 @@ class ReleaseToolTests(unittest.TestCase):
             )
         return wheel
 
+    def write_sdist(
+        self,
+        repository: Path,
+        *,
+        filename: str = "panel_solvers-2.3.4.tar.gz",
+        content: bytes = b"sdist",
+    ) -> Path:
+        dist = repository / "dist"
+        dist.mkdir(exist_ok=True)
+        sdist = dist / filename
+        sdist.write_bytes(content)
+        return sdist
+
     def git(self, repository: Path, *arguments: str) -> str:
         result = subprocess.run(
             ["git", *arguments],
@@ -75,7 +92,11 @@ class ReleaseToolTests(unittest.TestCase):
         self.git(repository, "config", "user.email", "release@example.invalid")
         self.git(repository, "add", ".")
         self.git(repository, "commit", "-m", "release candidate")
+        self.git(repository, "branch", "-M", "main")
         return repository
+
+    def set_origin_main(self, repository: Path, commit: str) -> None:
+        self.git(repository, "update-ref", "refs/remotes/origin/main", commit)
 
     def commit_file(self, repository: Path, path: str, content: str) -> str:
         (repository / path).write_text(content, encoding="utf-8")
@@ -104,6 +125,91 @@ class ReleaseToolTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, f"wheel {field} mismatch"):
                     select_built_wheel(repository)
 
+    def test_manifest_generation_and_verification(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            wheel = self.write_wheel(repository)
+            sdist = self.write_sdist(repository)
+            manifest_path = repository / "dist" / "manifest.json"
+            commit = "a" * 40
+
+            manifest = create_dist_manifest(
+                repository,
+                commit,
+                manifest_path,
+            )
+
+            self.assertEqual(commit, manifest["github_commit_sha"])
+            self.assertEqual(wheel.name, manifest["wheel"]["filename"])
+            self.assertEqual(sdist.name, manifest["sdist"]["filename"])
+            self.assertEqual(
+                manifest,
+                verify_dist_manifest(
+                    repository,
+                    manifest_path,
+                    expected_commit=commit,
+                ),
+            )
+
+    def test_manifest_rejects_distribution_hash_tampering(self) -> None:
+        for field in ("wheel", "sdist"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temp_dir:
+                repository = self.make_repository(Path(temp_dir))
+                wheel = self.write_wheel(repository)
+                sdist = self.write_sdist(repository)
+                manifest_path = repository / "dist" / "manifest.json"
+                create_dist_manifest(repository, "b" * 40, manifest_path)
+
+                target = wheel if field == "wheel" else sdist
+                with target.open("ab") as stream:
+                    stream.write(b"tampered")
+
+                with self.assertRaisesRegex(RuntimeError, rf"{field} hash mismatch"):
+                    verify_dist_manifest(repository, manifest_path)
+
+    def test_manifest_rejects_checkout_commit_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            self.write_wheel(repository)
+            self.write_sdist(repository)
+            manifest_path = repository / "dist" / "manifest.json"
+            create_dist_manifest(repository, "c" * 40, manifest_path)
+
+            with self.assertRaisesRegex(RuntimeError, "manifest commit mismatch"):
+                verify_dist_manifest(
+                    repository,
+                    manifest_path,
+                    expected_commit="d" * 40,
+                )
+
+    def test_manifest_rejects_wheel_metadata_mismatch(self) -> None:
+        for field, value in (("name", "different"), ("version", "9.9.9")):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temp_dir:
+                repository = self.make_repository(Path(temp_dir))
+                self.write_wheel(repository)
+                self.write_sdist(repository)
+                manifest_path = repository / "dist" / "manifest.json"
+                create_dist_manifest(repository, "e" * 40, manifest_path)
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["wheel"]["metadata"][field] = value
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+                with self.assertRaisesRegex(RuntimeError, "wheel METADATA mismatch"):
+                    verify_dist_manifest(repository, manifest_path)
+
+    def test_distribution_selection_requires_exactly_one_wheel_and_sdist(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            self.write_wheel(repository)
+            self.write_sdist(repository)
+            self.assertEqual(
+                "panel_solvers-2.3.4.tar.gz",
+                select_built_sdist(repository).name,
+            )
+            self.write_sdist(repository, filename="duplicate.tar.gz")
+            with self.assertRaisesRegex(RuntimeError, "exactly one sdist"):
+                select_built_sdist(repository)
+
     def test_lock_tag_and_changelog_form_one_release_identity(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
@@ -121,16 +227,25 @@ class ReleaseToolTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_git_repository(Path(temp_dir))
             expected_commit = self.git(repository, "rev-parse", "HEAD")
+            self.set_origin_main(repository, expected_commit)
             self.git(repository, "tag", "-a", "v2.3.4", "-m", "release 2.3.4")
 
             self.assertEqual(
                 expected_commit,
-                verify_release_tag(repository, "v2.3.4", expected_commit),
+                verify_release_tag(
+                    repository,
+                    "v2.3.4",
+                    "refs/remotes/origin/main",
+                ),
             )
             self.git(repository, "checkout", "--detach", "v2.3.4")
             self.assertEqual(
                 expected_commit,
-                verify_release_tag(repository, "v2.3.4"),
+                verify_release_tag(
+                    repository,
+                    "v2.3.4",
+                    "refs/remotes/origin/main",
+                ),
             )
 
     def test_lightweight_tag_is_rejected(self) -> None:
@@ -149,7 +264,7 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "tag/version mismatch"):
                 verify_release_tag(repository, "v2.3.5")
 
-    def test_annotated_tag_on_wrong_commit_is_rejected(self) -> None:
+    def test_annotated_tag_on_old_main_commit_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_git_repository(Path(temp_dir))
             self.git(repository, "tag", "-a", "v2.3.4", "-m", "wrong target")
@@ -158,9 +273,30 @@ class ReleaseToolTests(unittest.TestCase):
                 "candidate.txt",
                 "intended release commit\n",
             )
+            self.set_origin_main(repository, expected_commit)
 
             with self.assertRaisesRegex(RuntimeError, "tag target mismatch"):
-                verify_release_tag(repository, "v2.3.4", expected_commit)
+                verify_release_tag(
+                    repository,
+                    "v2.3.4",
+                    "refs/remotes/origin/main",
+                )
+
+    def test_annotated_tag_on_side_branch_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_git_repository(Path(temp_dir))
+            main_commit = self.git(repository, "rev-parse", "main")
+            self.set_origin_main(repository, main_commit)
+            self.git(repository, "checkout", "-b", "side")
+            self.commit_file(repository, "side.txt", "side branch\n")
+            self.git(repository, "tag", "-a", "v2.3.4", "-m", "side target")
+
+            with self.assertRaisesRegex(RuntimeError, "tag target mismatch"):
+                verify_release_tag(
+                    repository,
+                    "v2.3.4",
+                    "refs/remotes/origin/main",
+                )
 
     def test_release_tag_requires_nonempty_changelog_section(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

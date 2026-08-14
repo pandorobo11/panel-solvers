@@ -1,11 +1,13 @@
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
 from scripts.probe_legacy_rollback import (
     LEGACY_SPECS,
     _archive_commit,
+    _prepare_panel_wheel,
     sha256_file,
 )
 
@@ -45,6 +47,34 @@ class LegacyRollbackProbeTests(unittest.TestCase):
                 spec,
                 Path(temp_dir) / "archive",
             )
+
+    def test_supplied_panel_wheel_is_copied_exactly_without_rebuild(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repository = root / "repository"
+            repository.mkdir()
+            (repository / "pyproject.toml").write_text(
+                '[project]\nname = "panel-solvers"\nversion = "2.3.4"\n',
+                encoding="utf-8",
+            )
+            supplied = root / "download" / "panel_solvers-2.3.4-py3-none-any.whl"
+            supplied.parent.mkdir()
+            with zipfile.ZipFile(supplied, "w") as archive:
+                archive.writestr(
+                    "panel_solvers-2.3.4.dist-info/METADATA",
+                    "Metadata-Version: 2.4\nName: panel-solvers\nVersion: 2.3.4\n",
+                )
+
+            with patch("scripts.probe_legacy_rollback._run") as run:
+                selected = _prepare_panel_wheel(
+                    repository,
+                    root / "artifacts" / "panel-solvers",
+                    supplied,
+                )
+
+            run.assert_not_called()
+            self.assertEqual(supplied.name, selected.name)
+            self.assertEqual(sha256_file(supplied), sha256_file(selected))
 
 
 if __name__ == "__main__":
