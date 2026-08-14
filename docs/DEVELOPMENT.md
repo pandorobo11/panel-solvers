@@ -73,9 +73,12 @@ quantity limits are in `docs/phase1/TOLERANCES.md`.
 ## Versioning and releases
 
 The unified distribution is `panel-solvers`; its version is currently `0.1.0`.
-A tag must be `v<project.version>`. The CI release job publishes one wheel and
-source distribution only after the complete Ubuntu, Windows, macOS, installed-
-wheel, and artifact gates pass. FMF `1.3.8` and newtsolver `1.0.3` are frozen
+A tag must be `v<project.version>` and must be annotated at the protected
+`origin/main` HEAD observed by the tag workflow. The artifact job builds one
+wheel and source distribution and records their hashes and metadata; the CI
+release job publishes those exact tested files only after the complete Ubuntu,
+Windows, macOS, installed-wheel, and artifact gates pass. FMF `1.3.8` and
+newtsolver `1.0.3` are frozen
 product-facing compatibility values, not distribution versions. ADR 0007 and
 `PHASE7_USER_GUIDE.md` define the release and rollback order. `CHANGELOG.md` is
 the source of truth for release notes; GitHub-generated notes do not replace it.

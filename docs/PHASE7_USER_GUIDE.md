@@ -245,18 +245,25 @@ update all of the following together:
    reinstall/smoke, both unchanged samples, and both manual macOS GUI smokes.
    `python scripts/release_tools.py dry-run . --version <hypothetical-version>`
    exercises a temporary copy and must also pass without changing the checkout.
-5. Require successful Ubuntu, Windows, macOS, and artifact CI. On the verified
-   release commit, run
-   `python scripts/release_tools.py verify-tag . v<version>`; this checks the
-   project, lock, tag, and changelog section together.
-6. Record the verified commit SHA, then create an annotated tag at that exact
-   commit: `git tag -a v<version> <verified-commit-sha> -m "panel-solvers
-   v<version>"`. Verify `git rev-parse v<version>^{}` equals the recorded SHA
-   before `git push origin v<version>`.
-7. The tag workflow rebuilds exactly one wheel and one source distribution,
-   revalidates the tag and artifact metadata, and publishes the matching
-   `CHANGELOG.md` section in one GitHub Release. Both products always ship
-   together.
+5. Require successful Ubuntu, Windows, macOS, and artifact CI. Fetch protected
+   `origin/main` immediately before tagging and record its HEAD commit. The
+   release policy does not publish an older main commit or a side-branch commit.
+6. Create an annotated tag at that exact protected `origin/main` HEAD:
+   `git tag -a v<version> <origin-main-head-sha> -m "panel-solvers v<version>"`.
+   Verify `git rev-parse v<version>^{}` equals
+   `git rev-parse refs/remotes/origin/main^{commit}` before
+   `git push origin v<version>`. The tag workflow independently fetches
+   `origin/main` and repeats this target check together with the project, lock,
+   tag, and changelog checks. If main advances after tagging, the workflow fails
+   instead of publishing the older candidate.
+7. The tag workflow's `artifact` job builds exactly one wheel and one source
+   distribution, records their filenames, SHA-256 values, wheel METADATA, and
+   commit SHA in a machine-readable manifest, and verifies that manifest. The
+   three OS jobs, installed-wheel smoke, rollback/return probe, artifact audit,
+   and release job download and reuse those exact files; none rebuilds the
+   candidate distributions. The GitHub Release publishes the same verified
+   wheel, sdist, manifest, and matching `CHANGELOG.md` section. Both products
+   always ship together.
 
 No Phase 7 acceptance tag is created automatically by the migration PR.
 

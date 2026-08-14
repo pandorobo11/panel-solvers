@@ -6,6 +6,7 @@ on:
 
 jobs:
   test:
+    needs: artifact
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +33,18 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --extra rayaccel
 
+      - name: Download verified distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: panel-solvers-dist-${{ github.run_id }}
+          path: dist
+
+      - name: Verify downloaded distribution manifest
+        run: >-
+          uv run --no-sync python scripts/release_tools.py verify-manifest .
+          --manifest dist/manifest.json --dist-dir dist
+          --expected-commit "${{ github.sha }}"
+
       - name: Verify Embree backend availability
         run: >-
           uv run python -c "import trimesh; from trimesh import ray;
@@ -53,28 +66,21 @@ jobs:
       - name: Static checks
         run: uv run ruff check src tests scripts
 
-      - name: Build and reinstall wheel
-        run: |
-          uv build
+      - name: Reinstall exact verified wheel
+        run: >-
           uv run --no-sync python scripts/release_tools.py reinstall-wheel .
+          --dist-dir dist
 
       - name: Smoke installed commands outside repository
         run: uv run --no-sync python scripts/smoke_installed_wheel.py .
-
-      - name: Verify tag matches version
-        if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          EXPECTED_COMMIT="$(git rev-parse HEAD)"
-          uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG" \
-            --expected-commit "$EXPECTED_COMMIT"
 
   artifact:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v9.0.0
@@ -90,15 +96,34 @@ jobs:
       - name: Build distributions
         run: uv build
 
+      - name: Create and verify distribution manifest
+        run: >-
+          uv run --no-sync python scripts/release_tools.py create-manifest .
+          --commit-sha "${{ github.sha }}" --output dist/manifest.json
+          --dist-dir dist
+
+      - name: Verify release tag against protected main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          git fetch origin main --tags --force
+          TAG="${GITHUB_REF#refs/tags/}"
+          EXPECTED_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
+          uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG" \
+            --expected-commit "$EXPECTED_COMMIT"
+
       - name: Dry-run a hypothetical release version
         run: >-
           uv run --no-sync python scripts/release_tools.py dry-run .
 
       - name: Probe exact pinned legacy rollback and return
         timeout-minutes: 15
-        run: >-
-          uv run --no-sync python scripts/probe_legacy_rollback.py .
-          --artifact-dir "${RUNNER_TEMP}/rollback-artifacts"
+        shell: bash
+        run: |
+          PANEL_WHEEL="$(uv run --no-sync python scripts/release_tools.py verify-wheel .)"
+          uv run --no-sync python scripts/probe_legacy_rollback.py . \
+            --artifact-dir "${RUNNER_TEMP}/rollback-artifacts" \
+            --panel-wheel "$PANEL_WHEEL"
 
       - name: Reinstall built wheel
         run: >-
@@ -142,6 +167,13 @@ jobs:
       - name: Smoke installed commands outside repository
         run: uv run --no-sync python scripts/smoke_installed_wheel.py .
 
+      - name: Upload verified distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: panel-solvers-dist-${{ github.run_id }}
+          path: dist
+          if-no-files-found: error
+
   release:
     needs: [test, artifact]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -159,16 +191,24 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build distribution
+      - name: Download verified distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: panel-solvers-dist-${{ github.run_id }}
+          path: dist
+
+      - name: Validate release target and distributions
         shell: bash
         run: |
+          git fetch origin main --tags --force
           TAG="${GITHUB_REF#refs/tags/}"
-          EXPECTED_COMMIT="$(git rev-parse HEAD)"
+          EXPECTED_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
           python scripts/release_tools.py verify-tag . "$TAG" \
             --expected-commit "$EXPECTED_COMMIT"
+          python scripts/release_tools.py verify-manifest . \
+            --manifest dist/manifest.json --dist-dir dist \
+            --expected-commit "${{ github.sha }}"
           python scripts/release_tools.py release-notes . --output release-notes.md
-          uv build
-          python scripts/release_tools.py verify-wheel .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -177,3 +217,4 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
+            dist/manifest.json

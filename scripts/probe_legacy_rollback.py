@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -20,6 +20,7 @@ try:
         canonical_distribution_name,
         project_identity,
         select_built_wheel,
+        sha256_file,
         wheel_identity,
     )
     from smoke_installed_wheel import (
@@ -31,6 +32,7 @@ except ModuleNotFoundError:
         canonical_distribution_name,
         project_identity,
         select_built_wheel,
+        sha256_file,
         wheel_identity,
     )
     from scripts.smoke_installed_wheel import (
@@ -67,14 +69,6 @@ LEGACY_SPECS = (
         sample_case="satellite_baseline_newtonian",
     ),
 )
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def _run(
@@ -286,10 +280,30 @@ def _uninstall(python: Path, *names: str) -> None:
     _run(["uv", "pip", "uninstall", "--python", python, *names])
 
 
+def _prepare_panel_wheel(
+    repository: Path,
+    panel_dist: Path,
+    supplied_wheel: Path | None,
+) -> Path:
+    panel_dist.mkdir(parents=True)
+    if supplied_wheel is None:
+        _run(["uv", "build", "--out-dir", panel_dist], cwd=repository)
+    else:
+        candidate = supplied_wheel.resolve()
+        if not candidate.is_file():
+            raise RuntimeError(f"panel-solvers candidate wheel is missing: {candidate}")
+        copied = panel_dist / candidate.name
+        shutil.copy2(candidate, copied)
+        if sha256_file(copied) != sha256_file(candidate):
+            raise RuntimeError("copied panel-solvers candidate wheel hash mismatch")
+    return select_built_wheel(repository, panel_dist)
+
+
 def probe(
     repository: Path,
     artifact_dir: Path,
     sources: dict[str, str],
+    panel_wheel: Path | None = None,
 ) -> dict[str, object]:
     artifact_dir.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix="panel_rollback_probe_") as temp_dir:
@@ -311,9 +325,7 @@ def probe(
             legacy_records[spec.name] = record
 
         panel_dist = artifact_dir / "panel-solvers"
-        panel_dist.mkdir()
-        _run(["uv", "build", "--out-dir", panel_dist], cwd=repository)
-        panel_wheel = select_built_wheel(repository, panel_dist)
+        panel_wheel = _prepare_panel_wheel(repository, panel_dist, panel_wheel)
         panel_name, panel_version = wheel_identity(panel_wheel)
         expected_panel_name, expected_panel_version = project_identity(repository)
         if (panel_name, panel_version) != (
@@ -404,6 +416,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-dir", required=True, type=Path)
     parser.add_argument("--fmf-source", default=LEGACY_SPECS[0].repository)
     parser.add_argument("--newt-source", default=LEGACY_SPECS[1].repository)
+    parser.add_argument("--panel-wheel", type=Path)
     return parser
 
 
@@ -418,6 +431,7 @@ def main(argv: list[str] | None = None) -> int:
             "fmfsolver": args.fmf_source,
             "newtsolver": args.newt_source,
         },
+        args.panel_wheel,
     )
     record_path = artifact_dir / "rollback-record.json"
     record_path.write_text(
