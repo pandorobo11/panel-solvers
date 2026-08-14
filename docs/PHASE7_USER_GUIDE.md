@@ -77,9 +77,15 @@ requires `abs(alpha_deg) < 90`. Bank is a finite periodic angle.
 The summary CSV preserves each product's exact columns, order, total/component
 rows, and blanks. Both products reject a summary path that collides with the
 input table, any STL, or any planned VTP/NPZ, even when artifact save flags are
-off. CSV snapshots use same-directory temporary files, flush, `fsync`, and
-atomic replace. `save_vtp_on` and `save_npz_on` select per-case artifacts under
-`out_dir`; the directory side effect is retained even when both flags are off.
+off. The complete planned artifact set is checked before execution. Collision
+checks conservatively compare absolute, non-strictly resolved path components
+after Unicode NFC normalization and `casefold()`, and use filesystem identity
+for existing symlink or hardlink aliases. This can intentionally reject paths
+that are distinct on a case-sensitive filesystem so the same case remains safe
+when moved to common Windows or macOS filesystems. CSV snapshots use
+same-directory temporary files, flush, `fsync`, and atomic replace.
+`save_vtp_on` and `save_npz_on` select per-case artifacts under `out_dir`; the
+directory side effect is retained even when both flags are off.
 
 VTP stores geometry, panel scalars, shielding, case identity/signature, resolved
 attitude, backend, compatibility version, and product-only metadata. NPZ stores
