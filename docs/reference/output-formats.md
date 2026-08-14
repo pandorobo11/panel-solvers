@@ -66,8 +66,13 @@ normals_out_stl, ray_backend_used, shielded, stl_paths, vertices, Cp_n
 
 FMF additionally stores `S`, `Ti_K`, and `Tw_K`. NPZ does not store case ID,
 case signature, compatibility version, `C_face_stl`, `theta_deg`, or newtsolver
-equation metadata. `stl_paths` is a compatibility object array and requires
-trusted `allow_pickle=True` loading.
+equation metadata. Current solver-generated `panel-solvers` output stores
+`stl_paths` as a NumPy Unicode or byte-string array, so the complete NPZ can be
+loaded with `allow_pickle=False`.
+
+NPZ files written by the pinned legacy distributions may instead contain an
+object-dtype `stl_paths` array. Load such a file with `allow_pickle=True` only
+when the file is trusted; this exception is not required for current output.
 
 ## Coefficient and path semantics
 

@@ -31,6 +31,8 @@ arrays and scalar values. Their contents overlap but are not identical; CSV is
 the only output with component summary rows.
 
 Compare artifacts semantically by field name, shape, metadata, and appropriate
-numeric tolerance—not by file bytes. NPZ `stl_paths` is an object array inherited
-from the compatibility format; load only trusted files when using
-`allow_pickle=True`.
+numeric tolerance—not by file bytes. Current solver-generated NPZ output,
+including its Unicode/byte-string `stl_paths` array, can be loaded with
+`allow_pickle=False`. Pinned legacy NPZ files may contain an object-dtype
+`stl_paths` array; use `allow_pickle=True` for those files only when they are
+trusted.

@@ -20,13 +20,13 @@ INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
 
 
-def _backend_hint(product: str, *, embree: bool) -> str:
+def _backend_hint(*, embree: bool) -> str:
     if embree:
         return "[INFO] Ray backend: Embree (ray_pyembree)."
     return (
         "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
         "available: uv sync --extra rayaccel (or pip install "
-        f'"{product}[rayaccel]").'
+        '"panel-solvers[rayaccel]").'
     )
 
 
@@ -86,7 +86,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                         empty = run_many(pd.DataFrame(), empty_logs.append)
                         self.assertTrue(empty.empty)
                         self.assertEqual(
-                            [_backend_hint(product, embree=True)],
+                            [_backend_hint(embree=True)],
                             empty_logs,
                         )
                         self.assertEqual({product}, hinted)
@@ -200,7 +200,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     run_many(frame, cold_logs.append, workers=1)
                     self.assertEqual(
                         [
-                            _backend_hint(product, embree=False),
+                            _backend_hint(embree=False),
                             f"[RUN] (1/1) case_id={row['case_id']}",
                             MESH_WARNING,
                         ],
@@ -282,7 +282,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
 
                     retry_logs: list[str] = []
                     self.assertTrue(run_many(pd.DataFrame(), retry_logs.append).empty)
-                    self.assertEqual([_backend_hint(product, embree=True)], retry_logs)
+                    self.assertEqual([_backend_hint(embree=True)], retry_logs)
                     self.assertEqual({product}, hinted)
 
     def test_empty_required_logger_failure_does_not_consume_hint(self) -> None:
@@ -319,7 +319,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
             for product, _reader, _run_one, run_many, _filename in products:
                 logs: list[str] = []
                 self.assertTrue(run_many(pd.DataFrame(), logs.append).empty)
-                self.assertEqual([_backend_hint(product, embree=True)], logs)
+                self.assertEqual([_backend_hint(embree=True)], logs)
             self.assertEqual({"fmfsolver", "newtsolver"}, hinted)
             for product, _reader, _run_one, run_many, _filename in products:
                 with self.subTest(product=product, point="hot"):
@@ -357,6 +357,25 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                                 )
                         self.assertEqual([], logs)
                         self.assertEqual(set(), hinted)
+
+    def test_rtree_hint_uses_distribution_name_for_both_products(self) -> None:
+        hinted: set[str] = set()
+        with (
+            mock.patch.object(
+                runtime_module,
+                "_RAY_ACCEL_HINTED_PRODUCTS",
+                hinted,
+            ),
+            mock.patch.object(runtime_module.trimesh_ray, "has_embree", False),
+        ):
+            for product, _reader, _run_one, run_many, _filename in self.products():
+                with self.subTest(product=product):
+                    logs: list[str] = []
+                    self.assertTrue(run_many(pd.DataFrame(), logs.append).empty)
+                    self.assertEqual([_backend_hint(embree=False)], logs)
+                    self.assertIn("panel-solvers[rayaccel]", logs[0])
+                    self.assertNotIn("fmfsolver[rayaccel]", logs[0])
+                    self.assertNotIn("newtsolver[rayaccel]", logs[0])
 
 
 def traceback_names(exc: BaseException) -> list[str]:

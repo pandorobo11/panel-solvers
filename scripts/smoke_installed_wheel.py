@@ -118,13 +118,13 @@ def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
     return environment
 
 
-def _expected_backend_hint(product: str, *, embree: bool) -> str:
+def _expected_backend_hint(*, embree: bool) -> str:
     if embree:
         return "[INFO] Ray backend: Embree (ray_pyembree)."
     return (
         "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
         "available: uv sync --extra rayaccel (or pip install "
-        f'"{product}[rayaccel]").'
+        '"panel-solvers[rayaccel]").'
     )
 
 
@@ -256,7 +256,6 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         if not empty.empty or tuple(empty.shape) != (0, 0):
             raise RuntimeError(f"{product} empty direct batch result changed")
         expected_hint = _expected_backend_hint(
-            product,
             embree=bool(runtime.trimesh_ray.has_embree),
         )
         if empty_logs != [expected_hint]:

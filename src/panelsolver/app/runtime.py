@@ -45,6 +45,7 @@ type ProjectionAdditionsBuilder = Callable[
 ]
 
 _RAY_ACCEL_HINTED_PRODUCTS: set[str] = set()
+_RAY_ACCEL_INSTALL_TARGET = "panel-solvers[rayaccel]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,7 +314,7 @@ def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) 
         logfn(
             "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
             "available: uv sync --extra rayaccel (or pip install "
-            f'"{policy.product_id}[rayaccel]").'
+            f'"{_RAY_ACCEL_INSTALL_TARGET}").'
         )
     _RAY_ACCEL_HINTED_PRODUCTS.add(policy.product_id)
 
