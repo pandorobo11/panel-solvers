@@ -36,4 +36,5 @@ cone, and Prandtl–Meyer require `Mach > 1`.
 
 Every required numeric field must be finite, and numeric booleans are rejected.
 Common rules are in [Case files](../user-guide/case-files.md); physical
-interpretation is in [newtsolver](../solvers/newtsolver.md).
+interpretation is in the newtsolver
+[pressure-model equations](../solvers/newtsolver.md#pressure-model-equations).
