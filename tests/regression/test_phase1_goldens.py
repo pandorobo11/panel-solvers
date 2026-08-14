@@ -109,7 +109,11 @@ def _numeric_leaf_paths(value: object, path: tuple[str, ...] = ()) -> list[str]:
 class Phase1ManifestTests(unittest.TestCase):
     def test_pinned_sources_match_migration_sources(self) -> None:
         migration_sources = (
-            REPOSITORY_ROOT / "docs" / "MIGRATION_SOURCES.md"
+            REPOSITORY_ROOT
+            / "docs"
+            / "history"
+            / "migration"
+            / "MIGRATION_SOURCES.md"
         ).read_text(encoding="utf-8")
         for source in MANIFEST["sources"].values():
             self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")

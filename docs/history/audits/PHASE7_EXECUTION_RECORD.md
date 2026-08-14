@@ -6,7 +6,7 @@ Phase 7 started from Phase 6-complete `origin/main` commit
 `a8266681f0405328a3fbf079ccca9ba6287571c5`. AGENTS.md, DEVELOPMENT,
 MIGRATION_PLAN, ARCHITECTURE, COMPATIBILITY, NUMERICAL_CONVENTIONS, the Phase 6
 execution record, related ADRs, and both pinned legacy implementations were read
-before editing. The references matched `MIGRATION_SOURCES.md` and remained
+before editing. The references matched `../migration/MIGRATION_SOURCES.md` and remained
 read-only and clean:
 
 - FMF: `b62bc844d02a8f5212e62a53dea3238a1414317d`;

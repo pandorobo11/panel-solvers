@@ -294,5 +294,5 @@ architecture, performance, and lifecycle audit reserved for Phase 8.
 
 **Status:** Complete. Issues #47–#52 and their dependent draft PRs passed the
 listed gates and merged serially. `PHASE7_USER_GUIDE.md` is the user/release
-handoff and `PHASE7_EXECUTION_RECORD.md` records the exact CI, installed-wheel,
+handoff and `../audits/PHASE7_EXECUTION_RECORD.md` records the exact CI, installed-wheel,
 numerical, and manual GUI evidence. Phase 8 is now in progress under ADR 0008.

@@ -12,7 +12,7 @@ differ, both remain authoritative until a later compatibility decision; see
 | `fmfsolver` | `b62bc844d02a8f5212e62a53dea3238a1414317d` | 1.3.8 | 75 tests | pass |
 | `newtsolver` | `dc1357d0d50bbedfdc8b3429cab37e6b98b56c70` | 1.0.3 | 90 tests | pass |
 
-Both local checkouts matched `docs/MIGRATION_SOURCES.md`, their `origin` URLs,
+Both local checkouts matched `docs/history/migration/MIGRATION_SOURCES.md`, their `origin` URLs,
 and clean tracked status.  Suites and fixtures ran from `git archive` copies, not
 from the checkouts.  The baseline environment was Python 3.12, NumPy 2.4.1,
 SciPy 1.17.0, pandas 3.0.0, trimesh 4.11.1, rtree 1.4.1, PyVista 0.46.5, and VTK
