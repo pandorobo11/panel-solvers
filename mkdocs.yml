@@ -1,0 +1,69 @@
+site_name: panel-solvers Documentation
+site_description: Offline documentation for the panel-solvers distribution.
+docs_dir: docs
+use_directory_urls: false
+theme:
+  name: readthedocs
+  highlightjs: false
+plugins: []
+markdown_extensions:
+  - tables
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Solvers:
+      - FMF solver: solvers/fmfsolver.md
+      - newtsolver: solvers/newtsolver.md
+  - User Guide:
+      - GUI: user-guide/gui.md
+      - CLI: user-guide/cli.md
+      - Case files: user-guide/case-files.md
+      - Outputs: user-guide/outputs.md
+      - Shielding and parallel execution: user-guide/shielding-and-parallel.md
+      - Troubleshooting: user-guide/troubleshooting.md
+  - Reference:
+      - FMF input: reference/fmfsolver-input.md
+      - newtsolver input: reference/newtsolver-input.md
+      - Output formats: reference/output-formats.md
+      - Environment variables: reference/environment-variables.md
+      - Numerical conventions: reference/numerical-conventions.md
+      - Compatibility: reference/compatibility.md
+      - Python API: reference/python-api.md
+  - Development:
+      - Architecture: development/architecture.md
+      - Setup and testing: development/setup-and-testing.md
+      - Release and rollback: development/release-and-rollback.md
+      - Release-readiness audit: development/release-readiness-audit.md
+  - Architecture Decisions:
+      - Index: adr/README.md
+      - ADR 0001: adr/0001-single-repository.md
+      - ADR 0002: adr/0002-panel-load-vector-contract.md
+      - ADR 0003: adr/0003-dependency-direction.md
+      - ADR 0004: adr/0004-compatibility-frontends.md
+      - ADR 0005: adr/0005-case-signature-versioning.md
+      - ADR 0006: adr/0006-mesh-loading-and-fingerprints.md
+      - ADR 0007: adr/0007-single-distribution-compatibility-versions.md
+      - ADR 0008: adr/0008-supported-domain-compatibility.md
+  - History:
+      - Overview: history/README.md
+      - Migration:
+          - Plan: history/migration/MIGRATION_PLAN.md
+          - Sources: history/migration/MIGRATION_SOURCES.md
+          - Phase 3 adapters: history/migration/PHASE3_ADAPTERS.md
+          - Phase 4 models: history/migration/PHASE4_MODELS.md
+          - Phase 5 execution: history/migration/PHASE5_EXECUTION.md
+          - Phase 6 GUI: history/migration/PHASE6_GUI.md
+          - Phase 7 compatibility: history/migration/PHASE7_COMPATIBILITY.md
+          - Phase 7 user guide: history/migration/PHASE7_USER_GUIDE.md
+          - Phase 1:
+              - Behavioral inventory: history/migration/phase1/BEHAVIORAL_INVENTORY.md
+              - Golden baselines: history/migration/phase1/GOLDEN_BASELINES.md
+              - Legacy differences: history/migration/phase1/LEGACY_DIFFERENCES.md
+              - Tolerances: history/migration/phase1/TOLERANCES.md
+      - Audits:
+          - Phase 7 execution: history/audits/PHASE7_EXECUTION_RECORD.md
+          - Phase 8 execution: history/audits/PHASE8_EXECUTION_RECORD.md
+          - Phase 8 final audit: history/audits/PHASE8_FINAL_AUDIT.md
+          - Phase 8 issue disposition: history/audits/PHASE8_ISSUE_DISPOSITION.md

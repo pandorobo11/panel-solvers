@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import importlib
 import importlib.metadata
@@ -13,6 +14,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -403,9 +406,144 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
             raise RuntimeError(f"{product} parallel missing STL succeeded")
 
 
-def main() -> int:
-    repository = Path(sys.argv[1]).resolve()
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("repository", type=Path)
+    parser.add_argument("--dist-dir", type=Path)
+    return parser.parse_args(argv)
+
+
+def _smoke_packaged_documentation() -> None:
+    from panelsolver.docs_site import DocumentationSite
+
+    with DocumentationSite() as site:
+        for page in (
+            "index.html",
+            "solvers/fmfsolver.html",
+            "solvers/newtsolver.html",
+        ):
+            if not site.resolve(page).is_file():
+                raise RuntimeError(f"installed documentation page is missing: {page}")
+
+
+def _smoke_offscreen_gui() -> None:
+    from PySide6 import QtCore, QtWidgets
+
+    from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
+    from newtsolver.gui_spec import solver_spec as newt_solver_spec
+    from panelsolver.app.main_window import MainWindow
+
+    class SmokeCasesPanel(QtWidgets.QWidget):
+        vtp_loaded = QtCore.Signal(object)
+        viewer_clear_requested = QtCore.Signal()
+        cases_updated = QtCore.Signal(object)
+        run_finished = QtCore.Signal()
+
+        def logln(self, _message: str) -> None:
+            pass
+
+        def is_running(self) -> bool:
+            return False
+
+        def selected_case_rows(self) -> tuple[()]:
+            return ()
+
+    class SmokeViewerPanel(QtWidgets.QWidget):
+        log_message = QtCore.Signal(str)
+        save_selected_images_requested = QtCore.Signal()
+
+        def load_vtp(self, *_args: object) -> None:
+            pass
+
+        def clear_view(self) -> None:
+            pass
+
+        def set_case_rows(self, _rows: object) -> None:
+            pass
+
+        def save_images_for_case_rows(self, _rows: object) -> None:
+            pass
+
+    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    for spec_factory in (fmf_solver_spec, newt_solver_spec):
+        window = MainWindow(
+            spec_factory(),
+            cases_panel=SmokeCasesPanel(),
+            viewer_panel=SmokeViewerPanel(),
+        )
+        if [action.text() for action in window.menuBar().actions()].count("Help") != 1:
+            raise RuntimeError("installed GUI has no Help menu")
+        labels = [action.text() for action in window.help_menu.actions()]
+        for label in (
+            "Documentation Home",
+            "This Solver",
+            "About panel-solvers",
+        ):
+            if label not in labels:
+                raise RuntimeError(f"installed GUI Help menu is missing {label!r}")
+        window.close()
+        application.processEvents()
+
+
+def _extract_release_archives(
+    repository: Path,
+    dist_dir: Path,
+    staging: Path,
+) -> Path:
+    with (repository / "pyproject.toml").open("rb") as stream:
+        version = str(tomllib.load(stream)["project"]["version"])
+    docs_zip = dist_dir / f"panel-solvers-docs-v{version}.zip"
+    examples_zip = dist_dir / f"panel-solvers-examples-v{version}.zip"
+    docs = staging / "offline-docs"
+    examples = staging / "release-examples"
+    with zipfile.ZipFile(docs_zip) as archive:
+        archive.extractall(docs)
+    with zipfile.ZipFile(examples_zip) as archive:
+        archive.extractall(examples)
+    if not (docs / "index.html").is_file():
+        raise RuntimeError("docs ZIP does not extract with index.html at its root")
+    return examples
+
+
+def _cli_input_for_available_backends(
+    source: Path,
+    *,
+    product: str,
+) -> tuple[Path, set[str]]:
+    runtime = importlib.import_module("panelsolver.app.runtime")
+    if runtime.trimesh_ray.has_embree:
+        return source, set()
+    with source.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream)
+        rows = list(reader)
+        fieldnames = list(reader.fieldnames or ())
+    excluded = {
+        str(row.get("case_id", ""))
+        for row in rows
+        if str(row.get("ray_backend", "")).strip().lower() == "embree"
+    }
+    selected = [row for row in rows if str(row.get("case_id", "")) not in excluded]
+    filtered = source.with_name(f"{product}_installed_supported.csv")
+    with filtered.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(selected)
+    return filtered, excluded
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    repository = args.repository.resolve()
+    dist_dir = args.dist_dir.resolve() if args.dist_dir is not None else None
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
+    expected_distribution_version = tomllib.loads(
+        (repository / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]["version"]
+    if importlib.metadata.version("panel-solvers") != expected_distribution_version:
+        raise RuntimeError("installed distribution version does not match project.version")
+    requirements = importlib.metadata.requires("panel-solvers") or []
+    if any(requirement.lower().startswith("mkdocs") for requirement in requirements):
+        raise RuntimeError("MkDocs leaked into installed runtime dependencies")
     installed = {
         entry.name: entry.value
         for entry in importlib.metadata.distribution("panel-solvers").entry_points
@@ -449,8 +587,19 @@ def main() -> int:
         )
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
+        _smoke_packaged_documentation()
+        _smoke_offscreen_gui()
+        release_examples = (
+            _extract_release_archives(repository, dist_dir, staging)
+            if dist_dir is not None
+            else None
+        )
         for product in ("fmfsolver", "newtsolver"):
             command = _command_path(f"{product}-cli")
+            cli_input, excluded_cases = _cli_input_for_available_backends(
+                inputs / f"{product}_cases.csv",
+                product=product,
+            )
             help_result = subprocess.run(
                 [command, "--help"],
                 cwd=staging,
@@ -488,7 +637,7 @@ def main() -> int:
                 [
                     command,
                     "--input",
-                    inputs / f"{product}_cases.csv",
+                    cli_input,
                     "--output",
                     output,
                     "--workers",
@@ -514,8 +663,35 @@ def main() -> int:
             if columns != contract["result_csv_columns"]:
                 raise RuntimeError(f"{product} result columns changed")
             case_order = [row["case_id"] for row in rows if row["scope"] == "total"]
-            if case_order != contract["case_order"]:
+            expected_case_order = [
+                case_id
+                for case_id in contract["case_order"]
+                if case_id not in excluded_cases
+            ]
+            if case_order != expected_case_order:
                 raise RuntimeError(f"{product} case order changed: {case_order}")
+            if release_examples is not None:
+                example_result = subprocess.run(
+                    [
+                        command,
+                        "--input",
+                        release_examples / "examples" / product / "basic.csv",
+                        "--workers",
+                        "1",
+                        "--flush-every-cases",
+                        "0",
+                    ],
+                    cwd=release_examples,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env=subprocess_environment,
+                )
+                if example_result.returncode != 0:
+                    raise RuntimeError(
+                        f"{product} release example failed:\n"
+                        f"{example_result.stdout}\n{example_result.stderr}"
+                    )
     return 0
 
 

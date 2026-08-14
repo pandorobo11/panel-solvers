@@ -18,8 +18,10 @@ product differences.
 
 ## Distribution and product versions
 
-The single distribution is `panel-solvers`, currently version `0.1.0`. It owns
-all three top-level packages. Product-facing compatibility versions remain:
+The single distribution is `panel-solvers`. Its version is defined by
+`project.version` in `pyproject.toml` and can be inspected after installation
+with `importlib.metadata.version("panel-solvers")`. It owns all three top-level
+packages. Product-facing compatibility versions remain:
 
 | Frontend | Compatibility version |
 |---|---:|

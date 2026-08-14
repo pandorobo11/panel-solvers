@@ -54,6 +54,11 @@ CLI options.
 
 ## Documentation
 
+Each wheel includes an offline HTML site. In either GUI, use **Help →
+Documentation Home** or **Help → This Solver** to open it in the default
+browser. Releases also provide a documentation ZIP whose root `index.html` can
+be opened directly with no server or network connection.
+
 - [Documentation home](docs/index.md)
 - [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
 - [Case-file guide](docs/user-guide/case-files.md)
@@ -68,8 +73,10 @@ CLI options.
 ## Status and compatibility
 
 The FMF/newtsolver integration and Phase 8 audit are complete. One
-`panel-solvers` distribution (currently `0.1.0`) provides all six compatible
-command names. Product-facing compatibility versions remain FMF `1.3.8` and
+`panel-solvers` distribution provides all six compatible command names. Inspect
+the installed distribution version with
+`importlib.metadata.version("panel-solvers")`. Product-facing compatibility
+versions remain FMF `1.3.8` and
 newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
 and documented CSV/VTP/NPZ semantics are compatibility surfaces; direct Python
 implementation details are best effort. See the

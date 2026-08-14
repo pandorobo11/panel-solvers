@@ -12,6 +12,12 @@ uv sync --locked --extra rayaccel
 installs the platform-specific Embree binding; rtree remains a supported backend
 and must stay testable.
 
+The default development group includes MkDocs. Build the offline site with:
+
+```bash
+uv run mkdocs build --strict
+```
+
 ## Documentation plots
 
 Install the documentation-only plotting dependency, regenerate the committed
@@ -45,7 +51,7 @@ or change expected values merely to make tests pass.
 
 ```bash
 uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts
+uv run ruff check src tests scripts hatch_build.py
 uv build
 ```
 
@@ -69,6 +75,6 @@ than file bytes. Per-quantity tolerances and provenance live in
 
 ## Versions
 
-`pyproject.toml` owns the shared distribution version, currently `0.1.0`. FMF
-`1.3.8` and newtsolver `1.0.3` are independent compatibility values. Release and
-rollback procedures are in [Release and rollback](release-and-rollback.md).
+`pyproject.toml` owns the shared distribution version. FMF `1.3.8` and
+newtsolver `1.0.3` are independent compatibility values. Release and rollback
+procedures are in [Release and rollback](release-and-rollback.md).

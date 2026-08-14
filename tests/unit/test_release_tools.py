@@ -9,11 +9,13 @@ from unittest.mock import patch
 
 from scripts.release_tools import (
     create_dist_manifest,
+    create_release_archives,
     expected_tag,
     hypothetical_next_version,
     release_notes,
     select_built_sdist,
     select_built_wheel,
+    sha256_file,
     verify_dist_manifest,
     verify_lock_version,
     verify_release_tag,
@@ -41,7 +43,33 @@ class ReleaseToolTests(unittest.TestCase):
             f"## [{version}] - 2026-08-14\n\n- Released safely.\n",
             encoding="utf-8",
         )
+        examples = repository / "examples"
+        for relative, content in (
+            ("README.md", "# Examples\n\nRun both command examples.\n"),
+            ("fmfsolver/basic.csv", "case_id,stl_path\nf,../geometry/plate.stl\n"),
+            ("newtsolver/basic.csv", "case_id,stl_path\nn,../geometry/plate.stl\n"),
+            ("geometry/plate.stl", "solid plate\nendsolid plate\n"),
+        ):
+            path = examples / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        docs_site = repository / ".hatch-build" / "panel-solvers-docs-site"
+        (docs_site / "solvers").mkdir(parents=True)
+        for relative in (
+            "index.html",
+            "solvers/fmfsolver.html",
+            "solvers/newtsolver.html",
+        ):
+            (docs_site / relative).write_text(relative, encoding="utf-8")
         return repository
+
+    def write_release_archives(self, repository: Path) -> tuple[Path, Path]:
+        return create_release_archives(
+            repository,
+            docs_site_dir=(
+                repository / ".hatch-build" / "panel-solvers-docs-site"
+            ),
+        )
 
     def write_wheel(
         self,
@@ -60,6 +88,18 @@ class ReleaseToolTests(unittest.TestCase):
                 metadata_path,
                 f"Metadata-Version: 2.4\nName: {name}\nVersion: {version}\n",
             )
+            docs_site = (
+                repository / ".hatch-build" / "panel-solvers-docs-site"
+            )
+            for page in (
+                "index.html",
+                "solvers/fmfsolver.html",
+                "solvers/newtsolver.html",
+            ):
+                archive.writestr(
+                    f"panelsolver/_docs_site/{page}",
+                    (docs_site / page).read_bytes(),
+                )
         return wheel
 
     def write_sdist(
@@ -130,6 +170,7 @@ class ReleaseToolTests(unittest.TestCase):
             repository = self.make_repository(Path(temp_dir))
             wheel = self.write_wheel(repository)
             sdist = self.write_sdist(repository)
+            self.write_release_archives(repository)
             manifest_path = repository / "dist" / "manifest.json"
             commit = "a" * 40
 
@@ -140,8 +181,10 @@ class ReleaseToolTests(unittest.TestCase):
             )
 
             self.assertEqual(commit, manifest["github_commit_sha"])
-            self.assertEqual(wheel.name, manifest["wheel"]["filename"])
-            self.assertEqual(sdist.name, manifest["sdist"]["filename"])
+            artifacts = {item["kind"]: item for item in manifest["artifacts"]}
+            self.assertEqual(wheel.name, artifacts["wheel"]["filename"])
+            self.assertEqual(sdist.name, artifacts["sdist"]["filename"])
+            self.assertEqual(2, manifest["schema"]["version"])
             self.assertEqual(
                 manifest,
                 verify_dist_manifest(
@@ -152,15 +195,21 @@ class ReleaseToolTests(unittest.TestCase):
             )
 
     def test_manifest_rejects_distribution_hash_tampering(self) -> None:
-        for field in ("wheel", "sdist"):
+        for field in ("wheel", "sdist", "docs_zip", "examples_zip"):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temp_dir:
                 repository = self.make_repository(Path(temp_dir))
                 wheel = self.write_wheel(repository)
                 sdist = self.write_sdist(repository)
+                docs_zip, examples_zip = self.write_release_archives(repository)
                 manifest_path = repository / "dist" / "manifest.json"
                 create_dist_manifest(repository, "b" * 40, manifest_path)
 
-                target = wheel if field == "wheel" else sdist
+                target = {
+                    "wheel": wheel,
+                    "sdist": sdist,
+                    "docs_zip": docs_zip,
+                    "examples_zip": examples_zip,
+                }[field]
                 with target.open("ab") as stream:
                     stream.write(b"tampered")
 
@@ -172,6 +221,7 @@ class ReleaseToolTests(unittest.TestCase):
             repository = self.make_repository(Path(temp_dir))
             self.write_wheel(repository)
             self.write_sdist(repository)
+            self.write_release_archives(repository)
             manifest_path = repository / "dist" / "manifest.json"
             create_dist_manifest(repository, "c" * 40, manifest_path)
 
@@ -188,13 +238,61 @@ class ReleaseToolTests(unittest.TestCase):
                 repository = self.make_repository(Path(temp_dir))
                 self.write_wheel(repository)
                 self.write_sdist(repository)
+                self.write_release_archives(repository)
                 manifest_path = repository / "dist" / "manifest.json"
                 create_dist_manifest(repository, "e" * 40, manifest_path)
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                manifest["wheel"]["metadata"][field] = value
+                manifest["artifacts"][0]["metadata"][field] = value
                 manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
                 with self.assertRaisesRegex(RuntimeError, "wheel METADATA mismatch"):
+                    verify_dist_manifest(repository, manifest_path)
+
+    def test_release_archives_are_deterministic_and_have_expected_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            outputs = repository / "examples" / "fmfsolver" / "outputs"
+            outputs.mkdir()
+            (outputs / "ignored.csv").write_text("generated", encoding="utf-8")
+            first_docs, first_examples = self.write_release_archives(repository)
+            first_hashes = (sha256_file(first_docs), sha256_file(first_examples))
+            second_docs, second_examples = self.write_release_archives(repository)
+            self.assertEqual(
+                first_hashes,
+                (sha256_file(second_docs), sha256_file(second_examples)),
+            )
+            with zipfile.ZipFile(second_docs) as archive:
+                self.assertIn("index.html", archive.namelist())
+            with zipfile.ZipFile(second_examples) as archive:
+                names = archive.namelist()
+                self.assertIn("examples/README.md", names)
+                self.assertIn("examples/fmfsolver/basic.csv", names)
+                self.assertIn("examples/newtsolver/basic.csv", names)
+                self.assertIn("examples/geometry/plate.stl", names)
+                self.assertFalse(any("outputs" in name for name in names))
+
+    def test_manifest_rejects_missing_extra_duplicate_and_filename_tampering(self) -> None:
+        scenarios = ("missing", "extra", "duplicate", "filename")
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as temp_dir:
+                repository = self.make_repository(Path(temp_dir))
+                self.write_wheel(repository)
+                self.write_sdist(repository)
+                self.write_release_archives(repository)
+                manifest_path = repository / "dist" / "manifest.json"
+                create_dist_manifest(repository, "f" * 40, manifest_path)
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if scenario == "missing":
+                    (repository / "dist" / manifest["artifacts"][2]["filename"]).unlink()
+                elif scenario == "extra":
+                    (repository / "dist" / "unexpected.bin").write_bytes(b"extra")
+                elif scenario == "duplicate":
+                    manifest["artifacts"][3] = dict(manifest["artifacts"][2])
+                    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                else:
+                    manifest["artifacts"][2]["filename"] = "renamed-docs.zip"
+                    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaises(RuntimeError):
                     verify_dist_manifest(repository, manifest_path)
 
     def test_distribution_selection_requires_exactly_one_wheel_and_sdist(self) -> None:

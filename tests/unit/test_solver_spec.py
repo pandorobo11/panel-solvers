@@ -22,6 +22,9 @@ def _valid_spec(**changes) -> SolverSpec:
         "product_id": "synthetic",
         "model_id": "model",
         "window_title": "Synthetic GUI",
+        "product_name": "Synthetic solver",
+        "compatibility_version": "1.2.3",
+        "documentation_page": "solvers/synthetic.html",
         "case_columns": ("case_id", "value"),
         "preferred_scalars": ("Cp_n", "area_m2"),
         "format_case": _format,
@@ -54,7 +57,13 @@ class SolverSpecTests(unittest.TestCase):
             GuiRunResult(first_case_row=object())
 
     def test_validates_identity_names_and_callbacks(self) -> None:
-        for field in ("product_id", "model_id", "window_title"):
+        for field in (
+            "product_id",
+            "model_id",
+            "window_title",
+            "product_name",
+            "compatibility_version",
+        ):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 _valid_spec(**{field: " "})
         with self.assertRaises(ValueError):
@@ -67,6 +76,19 @@ class SolverSpecTests(unittest.TestCase):
             _valid_spec(format_case=None)
         with self.assertRaises(TypeError):
             _valid_spec(adapters=object())
+        for page in (
+            "",
+            " ",
+            "/index.html",
+            "C:/index.html",
+            "../index.html",
+            "solvers/../index.html",
+            "solvers\\index.html",
+            "solvers/fmfsolver.md",
+            "solvers//fmfsolver.html",
+        ):
+            with self.subTest(page=page), self.assertRaises(ValueError):
+                _valid_spec(documentation_page=page)
 
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
@@ -91,10 +113,16 @@ class SolverSpecTests(unittest.TestCase):
         newt = newt_solver_spec()
         self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
         self.assertEqual("sentman", fmf.model_id)
+        self.assertEqual("FMF solver", fmf.product_name)
+        self.assertEqual("1.3.8", fmf.compatibility_version)
+        self.assertEqual("solvers/fmfsolver.html", fmf.documentation_page)
         self.assertIn("S", fmf.case_columns)
         self.assertNotIn("gamma", fmf.case_columns)
         self.assertEqual("newtsolver (GUI)", newt.window_title)
         self.assertEqual("hypersonic", newt.model_id)
+        self.assertEqual("newtsolver", newt.product_name)
+        self.assertEqual("1.0.3", newt.compatibility_version)
+        self.assertEqual("solvers/newtsolver.html", newt.documentation_page)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
         self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)

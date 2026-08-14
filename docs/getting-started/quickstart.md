@@ -2,6 +2,9 @@
 
 The repository includes one small, runnable case for each solver. Both use the
 shared mesh at `examples/geometry/plate.stl`; they are not regression fixtures.
+The same `examples/` tree is distributed in
+`panel-solvers-examples-v<version>.zip`; run the commands below from the
+directory containing the extracted `examples/` folder.
 
 ## Run FMF
 

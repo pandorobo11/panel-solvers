@@ -1,5 +1,14 @@
 # GUI guide
 
+## Offline help
+
+Both launchers use the shared **Help** menu. **Documentation Home** opens the
+root of the static site bundled in the installed wheel, while **This Solver**
+opens the FMF or newtsolver page selected by the launcher's `SolverSpec`.
+**About panel-solvers** shows the installed distribution version, the active
+frontend compatibility version, and the product/model identity. If a packaged
+page is unavailable, the GUI reports an error instead of terminating.
+
 Launch the GUI for the physical model you intend to use:
 
 ```bash

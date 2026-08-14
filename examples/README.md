@@ -10,5 +10,6 @@ newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-c
 
 Both tables reference `geometry/plate.stl` through a path relative to the table.
 Generated summary CSV and VTP files go into the solver example's `outputs/`
-directory. See the [quickstart](../docs/getting-started/quickstart.md) before
-extending a case.
+directory. The release examples ZIP intentionally excludes generated `outputs/`.
+Open the separately distributed offline documentation ZIP's `index.html`, or use
+the GUI **Help → Documentation Home**, before extending a case.

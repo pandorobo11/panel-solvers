@@ -5,6 +5,9 @@ compatibility versions are tracked separately under ADR 0007.
 
 ## [Unreleased]
 
+- Add strict offline MkDocs generation, wheel-bundled GUI documentation,
+  deterministic documentation/examples release archives, manifest v2 artifact
+  provenance, and clean dependency-install verification.
 - Correct the optional ray-acceleration install hint to use the shared
   `panel-solvers[rayaccel]` distribution extra, and document that current
   solver-generated NPZ outputs can be loaded with pickle disabled.

@@ -33,12 +33,15 @@ newtsolver-gui = "newtsolver.app.gui_app:main"
 newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
-dev = ["ruff"]
+dev = ["mkdocs", "ruff"]
 docs = ["matplotlib"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "mkdocs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/panelsolver", "src/fmfsolver", "src/newtsolver"]

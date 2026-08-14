@@ -43,5 +43,6 @@ geometry before interpreting coefficients.
 - [Architecture](development/architecture.md)
 - [Setup and testing](development/setup-and-testing.md)
 - [Release and rollback](development/release-and-rollback.md)
+- [Release-readiness audit](development/release-readiness-audit.md)
 - [ADRs](adr/README.md)
 - [Migration and audit history](history/README.md)

@@ -12,15 +12,18 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import tomllib
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 _CANONICAL_SEPARATOR = re.compile(r"[-_.]+")
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 _DIST_MANIFEST_NAME = "panel-solvers.dist-manifest"
-_DIST_MANIFEST_VERSION = 1
+_DIST_MANIFEST_VERSION = 2
+_ARTIFACT_KINDS = ("wheel", "sdist", "docs_zip", "examples_zip")
+_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
 def canonical_distribution_name(value: str) -> str:
@@ -80,6 +83,15 @@ def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
             f"wheel version mismatch: metadata={actual_version!r}, "
             f"project={expected_version!r}"
         )
+    expected_filename = (
+        f"{canonical_distribution_name(expected_name).replace('-', '_')}-"
+        f"{expected_version}-py3-none-any.whl"
+    )
+    if wheel.name != expected_filename:
+        raise RuntimeError(
+            f"wheel filename mismatch: found={wheel.name!r}, "
+            f"expected={expected_filename!r}"
+        )
     return wheel
 
 
@@ -91,7 +103,178 @@ def select_built_sdist(repository: Path, dist_dir: Path | None = None) -> Path:
             f"expected exactly one sdist in {directory}, found {len(sdists)}: "
             f"{[path.name for path in sdists]}"
         )
-    return sdists[0]
+    sdist = sdists[0]
+    expected_name, expected_version = project_identity(repository)
+    expected_filename = (
+        f"{canonical_distribution_name(expected_name).replace('-', '_')}-"
+        f"{expected_version}.tar.gz"
+    )
+    if sdist.name != expected_filename:
+        raise RuntimeError(
+            f"sdist filename mismatch: found={sdist.name!r}, "
+            f"expected={expected_filename!r}"
+        )
+    return sdist
+
+
+def _release_archive_path(repository: Path, kind: str, directory: Path) -> Path:
+    _name, version = project_identity(repository)
+    names = {
+        "docs_zip": f"panel-solvers-docs-v{version}.zip",
+        "examples_zip": f"panel-solvers-examples-v{version}.zip",
+    }
+    try:
+        return directory / names[kind]
+    except KeyError as exc:
+        raise ValueError(f"unsupported release archive kind: {kind}") from exc
+
+
+def _zip_entries(root: Path, *, prefix: str = "") -> list[tuple[str, Path]]:
+    entries: list[tuple[str, Path]] = []
+    for path in sorted(root.rglob("*"), key=lambda item: item.as_posix()):
+        if path.is_symlink():
+            raise RuntimeError(f"release archive input must not be a symlink: {path}")
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root).as_posix()
+        if any(part in {".DS_Store", "outputs"} for part in Path(relative).parts):
+            continue
+        entries.append((f"{prefix}{relative}", path))
+    return entries
+
+
+def write_deterministic_zip(
+    output: Path,
+    entries: list[tuple[str, Path]],
+) -> Path:
+    """Write a platform-neutral ZIP with stable order, metadata, and bytes."""
+    names = [name for name, _path in entries]
+    if names != sorted(names) or len(names) != len(set(names)):
+        raise RuntimeError("deterministic ZIP entries must be sorted and unique")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
+        for name, path in entries:
+            if Path(name).is_absolute() or ".." in Path(name).parts:
+                raise RuntimeError(f"unsafe ZIP member name: {name!r}")
+            info = zipfile.ZipInfo(name, date_time=_ZIP_TIMESTAMP)
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            info.compress_type = zipfile.ZIP_STORED
+            archive.writestr(info, path.read_bytes())
+    return output
+
+
+def create_release_archives(
+    repository: Path,
+    dist_dir: Path | None = None,
+    docs_site_dir: Path | None = None,
+) -> tuple[Path, Path]:
+    """Create deterministic offline-docs and runnable-examples release ZIPs."""
+    directory = dist_dir or repository / "dist"
+    examples = repository / "examples"
+    required_examples = (
+        examples / "README.md",
+        examples / "fmfsolver" / "basic.csv",
+        examples / "newtsolver" / "basic.csv",
+        examples / "geometry" / "plate.stl",
+    )
+    missing = [str(path) for path in required_examples if not path.is_file()]
+    if missing:
+        raise RuntimeError(f"required example files are missing: {missing}")
+    if docs_site_dir is None:
+        with tempfile.TemporaryDirectory(prefix="panel-wheel-docs-") as temporary:
+            docs_site = Path(temporary) / "site"
+            _extract_wheel_documentation(
+                select_built_wheel(repository, directory),
+                docs_site,
+            )
+            docs_zip = write_deterministic_zip(
+                _release_archive_path(repository, "docs_zip", directory),
+                _zip_entries(docs_site),
+            )
+    else:
+        docs_site = docs_site_dir
+        if not (docs_site / "index.html").is_file():
+            raise RuntimeError(f"documentation site index is missing: {docs_site}")
+        docs_zip = write_deterministic_zip(
+            _release_archive_path(repository, "docs_zip", directory),
+            _zip_entries(docs_site),
+        )
+    examples_zip = write_deterministic_zip(
+        _release_archive_path(repository, "examples_zip", directory),
+        _zip_entries(examples, prefix="examples/"),
+    )
+    _verify_release_zip("docs_zip", docs_zip)
+    _verify_release_zip("examples_zip", examples_zip)
+    return docs_zip, examples_zip
+
+
+def _extract_wheel_documentation(wheel: Path, destination: Path) -> None:
+    prefix = "panelsolver/_docs_site/"
+    with zipfile.ZipFile(wheel) as archive:
+        members = sorted(
+            name
+            for name in archive.namelist()
+            if name.startswith(prefix) and not name.endswith("/")
+        )
+        if not members:
+            raise RuntimeError("wheel contains no bundled documentation site")
+        for member in members:
+            relative = PurePosixPath(member.removeprefix(prefix))
+            if relative.is_absolute() or ".." in relative.parts:
+                raise RuntimeError(f"wheel documentation path is unsafe: {member}")
+            target = destination.joinpath(*relative.parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(archive.read(member))
+    if not (destination / "index.html").is_file():
+        raise RuntimeError("wheel documentation site has no index.html")
+
+
+def _verify_release_zip(kind: str, archive_path: Path) -> None:
+    with zipfile.ZipFile(archive_path) as archive:
+        names = archive.namelist()
+        if names != sorted(names) or len(names) != len(set(names)):
+            raise RuntimeError(f"{kind} members must be sorted and unique")
+        if any(
+            Path(name).is_absolute() or ".." in Path(name).parts
+            for name in names
+        ):
+            raise RuntimeError(f"{kind} contains an unsafe member")
+        if kind == "docs_zip":
+            required = {"index.html"}
+        elif kind == "examples_zip":
+            required = {
+                "examples/README.md",
+                "examples/fmfsolver/basic.csv",
+                "examples/newtsolver/basic.csv",
+                "examples/geometry/plate.stl",
+            }
+            if any("outputs" in Path(name).parts for name in names):
+                raise RuntimeError("examples_zip contains generated outputs")
+        else:
+            raise ValueError(f"unsupported release archive kind: {kind}")
+        missing = required - set(names)
+        if missing:
+            raise RuntimeError(f"{kind} is missing required members: {sorted(missing)}")
+
+
+def _verify_docs_zip_matches_wheel(wheel: Path, docs_zip: Path) -> None:
+    prefix = "panelsolver/_docs_site/"
+    with zipfile.ZipFile(wheel) as wheel_archive, zipfile.ZipFile(
+        docs_zip
+    ) as docs_archive:
+        wheel_members = {
+            name.removeprefix(prefix): wheel_archive.read(name)
+            for name in wheel_archive.namelist()
+            if name.startswith(prefix) and not name.endswith("/")
+        }
+        docs_members = {
+            name: docs_archive.read(name)
+            for name in docs_archive.namelist()
+            if not name.endswith("/")
+        }
+    if wheel_members != docs_members:
+        raise RuntimeError("docs_zip content does not exactly match wheel documentation")
 
 
 def _validated_commit_sha(value: str) -> str:
@@ -110,6 +293,10 @@ def create_dist_manifest(
     directory = dist_dir or repository / "dist"
     wheel = select_built_wheel(repository, directory)
     sdist = select_built_sdist(repository, directory)
+    docs_zip = _release_archive_path(repository, "docs_zip", directory)
+    examples_zip = _release_archive_path(repository, "examples_zip", directory)
+    _verify_release_zip("docs_zip", docs_zip)
+    _verify_release_zip("examples_zip", examples_zip)
     metadata_name, metadata_version = wheel_identity(wheel)
     manifest: dict[str, object] = {
         "schema": {
@@ -117,18 +304,32 @@ def create_dist_manifest(
             "version": _DIST_MANIFEST_VERSION,
         },
         "github_commit_sha": _validated_commit_sha(commit_sha),
-        "wheel": {
-            "filename": wheel.name,
-            "sha256": sha256_file(wheel),
-            "metadata": {
-                "name": metadata_name,
-                "version": metadata_version,
+        "artifacts": [
+            {
+                "kind": "wheel",
+                "filename": wheel.name,
+                "sha256": sha256_file(wheel),
+                "metadata": {
+                    "name": metadata_name,
+                    "version": metadata_version,
+                },
             },
-        },
-        "sdist": {
-            "filename": sdist.name,
-            "sha256": sha256_file(sdist),
-        },
+            {
+                "kind": "sdist",
+                "filename": sdist.name,
+                "sha256": sha256_file(sdist),
+            },
+            {
+                "kind": "docs_zip",
+                "filename": docs_zip.name,
+                "sha256": sha256_file(docs_zip),
+            },
+            {
+                "kind": "examples_zip",
+                "filename": examples_zip.name,
+                "sha256": sha256_file(examples_zip),
+            },
+        ],
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -143,9 +344,21 @@ def _manifest_artifact(
     *,
     field: str,
     directory: Path,
-) -> tuple[Path, str]:
+    expected_kind: str,
+) -> tuple[Path, str, dict[str, object]]:
     if not isinstance(value, dict):
         raise TypeError(f"manifest {field} must be an object")
+    allowed_keys = {"kind", "filename", "sha256"}
+    if expected_kind == "wheel":
+        allowed_keys.add("metadata")
+    if set(value) != allowed_keys:
+        raise RuntimeError(
+            f"manifest {field} fields are invalid: {sorted(value)}"
+        )
+    if value.get("kind") != expected_kind:
+        raise RuntimeError(
+            f"manifest {field} kind mismatch: {value.get('kind')!r}"
+        )
     filename = value.get("filename")
     expected_hash = value.get("sha256")
     if not isinstance(filename, str) or Path(filename).name != filename:
@@ -163,7 +376,7 @@ def _manifest_artifact(
             f"manifest {field} hash mismatch: expected {expected_hash}, "
             f"found {actual_hash}"
         )
-    return artifact, expected_hash
+    return artifact, expected_hash, value
 
 
 def verify_dist_manifest(
@@ -179,6 +392,8 @@ def verify_dist_manifest(
         raise RuntimeError(f"could not read distribution manifest: {error}") from error
     if not isinstance(manifest, dict):
         raise TypeError("distribution manifest must be a JSON object")
+    if set(manifest) != {"schema", "github_commit_sha", "artifacts"}:
+        raise RuntimeError("distribution manifest has unexpected or missing fields")
     schema = manifest.get("schema")
     if schema != {
         "name": _DIST_MANIFEST_NAME,
@@ -197,23 +412,66 @@ def verify_dist_manifest(
                 f"manifest={commit_sha}, checkout={expected}"
             )
 
-    wheel, _wheel_hash = _manifest_artifact(
-        manifest.get("wheel"),
-        field="wheel",
-        directory=directory,
-    )
-    sdist, _sdist_hash = _manifest_artifact(
-        manifest.get("sdist"),
-        field="sdist",
-        directory=directory,
-    )
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        raise TypeError("manifest artifacts must be an array")
+    if len(artifacts) != len(_ARTIFACT_KINDS):
+        raise RuntimeError(
+            f"manifest must contain exactly {len(_ARTIFACT_KINDS)} artifacts"
+        )
+    kinds = [
+        item.get("kind") if isinstance(item, dict) else None
+        for item in artifacts
+    ]
+    if kinds != list(_ARTIFACT_KINDS):
+        raise RuntimeError(
+            f"manifest artifact kinds/order mismatch: found={kinds}, "
+            f"expected={list(_ARTIFACT_KINDS)}"
+        )
+    entries: dict[str, tuple[Path, str, dict[str, object]]] = {}
+    for kind, value in zip(_ARTIFACT_KINDS, artifacts, strict=True):
+        entries[kind] = _manifest_artifact(
+            value,
+            field=kind,
+            directory=directory,
+            expected_kind=kind,
+        )
+    filenames = [entry[0].name for entry in entries.values()]
+    if len(filenames) != len(set(filenames)):
+        raise RuntimeError("manifest artifact filenames must be unique")
+
+    wheel = entries["wheel"][0]
+    sdist = entries["sdist"][0]
     selected_wheel = select_built_wheel(repository, directory)
     selected_sdist = select_built_sdist(repository, directory)
     if wheel != selected_wheel or sdist != selected_sdist:
         raise RuntimeError("manifest does not identify the selected distributions")
 
-    wheel_entry = manifest["wheel"]
-    assert isinstance(wheel_entry, dict)
+    for kind in ("docs_zip", "examples_zip"):
+        artifact = entries[kind][0]
+        if artifact != _release_archive_path(repository, kind, directory):
+            raise RuntimeError(f"manifest {kind} filename does not match project version")
+        _verify_release_zip(kind, artifact)
+    _verify_docs_zip_matches_wheel(wheel, entries["docs_zip"][0])
+
+    expected_files = set(filenames)
+    if manifest_path.resolve().parent == directory.resolve():
+        expected_files.add(manifest_path.name)
+    # uv may place this VCS sentinel in an output directory; it is not uploaded
+    # by Actions and is not a release artifact.
+    actual_files = {
+        path.name
+        for path in directory.iterdir()
+        if path.is_file() and path.name != ".gitignore"
+    }
+    if actual_files != expected_files:
+        missing = sorted(expected_files - actual_files)
+        extra = sorted(actual_files - expected_files)
+        raise RuntimeError(
+            f"distribution artifact set mismatch: missing={missing}, extra={extra}"
+        )
+
+    wheel_entry = entries["wheel"][2]
     metadata = wheel_entry.get("metadata")
     if not isinstance(metadata, dict):
         raise TypeError("manifest wheel metadata must be an object")
@@ -362,6 +620,92 @@ def reinstall_built_wheel(repository: Path, dist_dir: Path | None = None) -> Pat
     return wheel
 
 
+def verify_wheel_contents(repository: Path, wheel: Path) -> None:
+    """Verify offline docs are packaged and MkDocs is not a runtime dependency."""
+    with zipfile.ZipFile(wheel) as archive:
+        names = set(archive.namelist())
+        required = {
+            "panelsolver/_docs_site/index.html",
+            "panelsolver/_docs_site/solvers/fmfsolver.html",
+            "panelsolver/_docs_site/solvers/newtsolver.html",
+        }
+        missing = required - names
+        if missing:
+            raise RuntimeError(
+                f"wheel is missing packaged documentation: {sorted(missing)}"
+            )
+        metadata_files = [
+            name for name in names if name.endswith(".dist-info/METADATA")
+        ]
+        if len(metadata_files) != 1:
+            raise RuntimeError("wheel must contain exactly one METADATA file")
+        metadata = email.parser.BytesParser().parsebytes(
+            archive.read(metadata_files[0])
+        )
+        runtime_requirements = metadata.get_all("Requires-Dist", [])
+        if any(
+            re.match(r"^\s*mkdocs\b", requirement, re.IGNORECASE) is not None
+            for requirement in runtime_requirements
+        ):
+            raise RuntimeError("MkDocs must not be a wheel runtime dependency")
+        expected_name, expected_version = project_identity(repository)
+        if (
+            canonical_distribution_name(str(metadata["Name"] or ""))
+            != canonical_distribution_name(expected_name)
+            or str(metadata["Version"] or "") != expected_version
+        ):
+            raise RuntimeError("wheel METADATA does not match project identity")
+
+
+def verify_sdist_contents(repository: Path, sdist: Path) -> None:
+    """Verify source inputs needed to rebuild the documentation-bearing wheel."""
+    with tarfile.open(sdist, "r:gz") as archive:
+        names = archive.getnames()
+    roots = {name.split("/", 1)[0] for name in names if name}
+    if len(roots) != 1:
+        raise RuntimeError(f"sdist must have one archive root, found {sorted(roots)}")
+    root = next(iter(roots))
+    required = {
+        f"{root}/pyproject.toml",
+        f"{root}/mkdocs.yml",
+        f"{root}/hatch_build.py",
+        f"{root}/docs/index.md",
+        f"{root}/src/panelsolver/docs_site.py",
+        f"{root}/examples/README.md",
+    }
+    missing = required - set(names)
+    if missing:
+        raise RuntimeError(f"sdist is missing required source files: {sorted(missing)}")
+
+
+def verify_built_distributions(
+    repository: Path,
+    dist_dir: Path | None = None,
+) -> None:
+    """Inspect wheel/sdist and rebuild a documentation-bearing wheel from sdist."""
+    directory = dist_dir or repository / "dist"
+    wheel = select_built_wheel(repository, directory)
+    sdist = select_built_sdist(repository, directory)
+    verify_wheel_contents(repository, wheel)
+    verify_sdist_contents(repository, sdist)
+    with tempfile.TemporaryDirectory(prefix="panel-sdist-rebuild-") as temporary:
+        rebuilt_dir = Path(temporary) / "dist"
+        subprocess.run(
+            [
+                "uv",
+                "build",
+                "--wheel",
+                "--out-dir",
+                str(rebuilt_dir),
+                str(sdist.resolve()),
+            ],
+            cwd=Path(temporary),
+            check=True,
+        )
+        rebuilt_wheel = select_built_wheel(repository, rebuilt_dir)
+        verify_wheel_contents(repository, rebuilt_wheel)
+
+
 def _replace_version(repository: Path, old: str, new: str) -> None:
     pyproject = repository / "pyproject.toml"
     text = pyproject.read_text(encoding="utf-8")
@@ -415,11 +759,13 @@ def dry_run(repository: Path, version: str | None = None) -> None:
             checkout,
             ignore=shutil.ignore_patterns(
                 ".git",
+                ".hatch-build",
                 ".venv",
                 ".reference",
                 "__pycache__",
                 "dist",
                 "outputs",
+                "site",
             ),
         )
         _replace_version(checkout, current_version, version)
@@ -434,7 +780,9 @@ def dry_run(repository: Path, version: str | None = None) -> None:
             check=True,
         )
         wheel = select_built_wheel(checkout, dist_dir)
-        select_built_sdist(checkout, dist_dir)
+        sdist = select_built_sdist(checkout, dist_dir)
+        verify_wheel_contents(checkout, wheel)
+        verify_sdist_contents(checkout, sdist)
 
         venv = root / "venv"
         subprocess.run(
@@ -477,6 +825,13 @@ def _parser() -> argparse.ArgumentParser:
     verify_manifest.add_argument("--manifest", required=True, type=Path)
     verify_manifest.add_argument("--dist-dir", type=Path)
     verify_manifest.add_argument("--expected-commit")
+    archives = subparsers.add_parser("create-release-archives")
+    archives.add_argument("repository", type=Path)
+    archives.add_argument("--dist-dir", type=Path)
+    archives.add_argument("--docs-site-dir", type=Path)
+    distributions = subparsers.add_parser("verify-distributions")
+    distributions.add_argument("repository", type=Path)
+    distributions.add_argument("--dist-dir", type=Path)
     tag = subparsers.add_parser("verify-tag")
     tag.add_argument("repository", type=Path)
     tag.add_argument("tag")
@@ -513,6 +868,19 @@ def main(argv: list[str] | None = None) -> int:
             args.expected_commit,
         )
         print(json.dumps(manifest, sort_keys=True))
+    elif args.command == "create-release-archives":
+        print(
+            "\n".join(
+                str(path)
+                for path in create_release_archives(
+                    repository,
+                    args.dist_dir,
+                    args.docs_site_dir,
+                )
+            )
+        )
+    elif args.command == "verify-distributions":
+        verify_built_distributions(repository, args.dist_dir)
     elif args.command == "verify-tag":
         print(verify_release_tag(repository, args.tag, args.expected_commit))
     elif args.command == "release-notes":

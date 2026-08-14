@@ -37,9 +37,9 @@ newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'
 ```
 
-The distribution version is currently `0.1.0`. The values exposed by
-`fmfsolver.__version__` (`1.3.8`) and `newtsolver.__version__` (`1.0.3`) are
-separate compatibility versions.
+The command above reports the installed distribution version dynamically. The
+values exposed by `fmfsolver.__version__` (`1.3.8`) and
+`newtsolver.__version__` (`1.0.3`) are separate compatibility versions.
 
 ## Legacy-distribution coexistence
 

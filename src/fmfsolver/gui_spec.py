@@ -6,6 +6,7 @@ from collections.abc import Mapping
 
 from panelsolver.app import SolverGuiAdapters, SolverSpec
 
+from ._version import FMFSOLVER_COMPATIBILITY_VERSION
 from .csv_adapter import CSV_PROJECTION_POLICY
 
 _PREFERRED_SCALARS = (
@@ -87,6 +88,9 @@ def solver_spec(
         product_id="fmfsolver",
         model_id="sentman",
         window_title="Sentman FMF Solver (GUI)",
+        product_name="FMF solver",
+        compatibility_version=FMFSOLVER_COMPATIBILITY_VERSION,
+        documentation_page="solvers/fmfsolver.html",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,

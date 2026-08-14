@@ -6,6 +6,7 @@ from collections.abc import Mapping
 
 from panelsolver.app import SolverGuiAdapters, SolverSpec
 
+from ._version import NEWTSOLVER_COMPATIBILITY_VERSION
 from .csv_adapter import CSV_PROJECTION_POLICY
 
 _PREFERRED_SCALARS = (
@@ -80,6 +81,9 @@ def solver_spec(
         product_id="newtsolver",
         model_id="hypersonic",
         window_title="newtsolver (GUI)",
+        product_name="newtsolver",
+        compatibility_version=NEWTSOLVER_COMPATIBILITY_VERSION,
+        documentation_page="solvers/newtsolver.html",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,
