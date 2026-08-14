@@ -623,6 +623,9 @@ rayaccel = [
 dev = [
     { name = "ruff" },
 ]
+docs = [
+    { name = "matplotlib" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -644,6 +647,7 @@ provides-extras = ["rayaccel"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff" }]
+docs = [{ name = "matplotlib" }]
 
 [[package]]
 name = "pillow"

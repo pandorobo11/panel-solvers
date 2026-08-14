@@ -131,6 +131,50 @@ current model returns the local traction numerator, and the common integrator
 applies $A_j/A_{\mathrm{ref}}$ exactly once before summing whole-vehicle forces
 and moments.
 
+### Representative angular response
+
+For this illustrative angular response, the flow direction is fixed at
+$\hat{\boldsymbol V}=[1,0,0]$ and the panel normal varies as
+$\boldsymbol n_{\mathrm{in}}=[\sin\delta,\cos\delta,0]$. Thus
+$\mu=\boldsymbol n_{\mathrm{in}}\mathbin{\boldsymbol\cdot}
+\hat{\boldsymbol V}=\sin\delta$, where $\delta=-90^\circ$ faces directly away
+from the flow, $\delta=0^\circ$ is grazing incidence, and $\delta=+90^\circ$
+faces directly into the flow. The output angle is related by
+$\delta=\mathtt{theta\_deg}-90^\circ$. The plotted Mode A case uses
+$T_i=1000\ \mathrm{K}$ and $T_w=180.625\ \mathrm{K}$ to provide the stated
+representative temperature ratio.
+
+![Sentman local normal and tangential traction versus local panel angle at S=7](../assets/plots/sentman-local-traction-vs-angle.svg)
+
+*Representative local response at $S=7$ and
+$\sqrt{T_w/T_i}=0.425$, using complete diffuse reflection, complete thermal
+accommodation with $T_r=T_w$, and no ray shielding. The vertical line at
+$\delta=0^\circ$ marks grazing incidence; finite load there results from random
+thermal motion. These curves show the local response of one isolated,
+unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
+whole-vehicle aerodynamic polars.*
+
+The plotted normal component is the local normal traction coefficient
+$C_n=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{in}}$,
+which equals the model's `Cp_n` scalar but is not described here as a pressure
+coefficient. The tangential component is
+
+$$
+\hat{\boldsymbol t}
+=
+\frac{\hat{\boldsymbol V}-\mu\boldsymbol n_{\mathrm{in}}}
+{\sqrt{1-\mu^2}},
+\qquad
+C_t=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}.
+$$
+
+At the directly facing endpoint, where the in-plane direction is not unique,
+the graph uses the continuous limit $C_t=0$. At grazing incidence the load is
+not exactly zero, Sentman retains tangential traction, and a negative local
+angle does not make the response immediately vanish because random molecular
+thermal motion remains. Geometrically occluded faces are handled separately:
+ray shielding sets their complete traction to exact zero.
+
 ### Assumptions and implementation scope
 
 Sentman's Eq. (21) applies within kinetic theory, free-molecular flow, and
