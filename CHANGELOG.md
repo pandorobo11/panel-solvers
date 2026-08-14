@@ -5,4 +5,5 @@ compatibility versions are tracked separately under ADR 0007.
 
 ## [Unreleased]
 
-- Phase 8 supported-domain compatibility and final-candidate audit work.
+- Completed Phase 8 supported-domain compatibility remediation, final-candidate
+  audit, release/rollback hardening, and durable acceptance reporting.

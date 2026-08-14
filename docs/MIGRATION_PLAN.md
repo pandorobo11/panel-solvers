@@ -212,8 +212,9 @@ unchanged. `PHASE7_COMPATIBILITY.md`, `PHASE7_USER_GUIDE.md`, and
 
 ## Phase 8 — Independent final audit
 
-**Status:** In progress. ADR 0008 establishes the supported-domain compatibility
-policy and the remaining Issue disposition before further remediation.
+**Status:** Complete. ADR 0008 established the supported-domain compatibility
+policy. Every remediation and final-candidate audit is accepted; the durable
+evidence is in `PHASE8_EXECUTION_RECORD.md` and `PHASE8_FINAL_AUDIT.md`.
 
 **Scope:** Audit numerical correctness, architecture/dependencies, compatibility,
 parallelism/caching, performance, GUI lifecycle, tests, and installed artifacts.
@@ -225,6 +226,14 @@ compatibility exceptions have an accepted record and user path; shared
 invalid-input safety and infrastructure conform to ADR 0008; performance
 regressions are understood and accepted or fixed; release/rollback instructions
 are complete. Only then may the legacy repositories be marked read-only.
+
+**Outcome:** Accepted at audited product commit
+`0674fbb0ad8c20e203624d1be76d52c3b66090cc`. Source, installed wheel, extracted
+sdist, numerical/artifact semantics, performance/RSS, both macOS GUI lifecycles,
+Ubuntu/Windows/macOS/artifact CI, single-build release provenance, annotated-tag
+target safety, and exact pinned rollback/return all passed. No golden or
+tolerance changed. The legacy repositories remain unarchived read-only
+references; no release or tag was created by the audit.
 
 ## Decision and risk log
 
