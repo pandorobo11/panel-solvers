@@ -1,7 +1,10 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
+from panelsolver.app import write_npz_projection
 from panelsolver.core import (
     ArtifactProjectionPolicy,
     CommonCasePayload,
@@ -87,6 +90,31 @@ class ArtifactProjectionTests(unittest.TestCase):
         self.assertEqual("plate.stl", npz.arrays["stl_paths"][0])
         self.assertFalse(vtp.cell_data["C_face_stl"].flags.writeable)
         self.assertFalse(npz.arrays["vertices"].flags.writeable)
+
+    def test_written_npz_is_pickle_free_and_preserves_projection_arrays(self) -> None:
+        mesh, results = fixture()
+        projection = project_npz_artifact(
+            mesh,
+            results,
+            ArtifactProjectionPolicy(
+                "beta_tan",
+                "signature",
+                "not_used",
+                "1.0",
+                npz_arrays={"S": 5.0},
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = write_npz_projection(Path(temp_dir) / "current.npz", projection)
+            with np.load(path, allow_pickle=False) as archive:
+                self.assertEqual(list(projection.arrays), archive.files)
+                self.assertNotEqual("O", archive["stl_paths"].dtype.kind)
+                for name, expected in projection.arrays.items():
+                    actual = archive[name]
+                    self.assertEqual(expected.shape, actual.shape, name)
+                    self.assertEqual(expected.dtype, actual.dtype, name)
+                    np.testing.assert_array_equal(expected, actual, err_msg=name)
 
     def test_policy_additions_cannot_override_common_fields(self) -> None:
         mesh, results = fixture()
