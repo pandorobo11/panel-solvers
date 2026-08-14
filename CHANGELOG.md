@@ -5,5 +5,7 @@ compatibility versions are tracked separately under ADR 0007.
 
 ## [Unreleased]
 
+- Reject portable summary and planned-artifact path collisions after Unicode NFC
+  normalization and casefolding, including existing symlink and hardlink aliases.
 - Completed Phase 8 supported-domain compatibility remediation, final-candidate
   audit, release/rollback hardening, and durable acceptance reporting.

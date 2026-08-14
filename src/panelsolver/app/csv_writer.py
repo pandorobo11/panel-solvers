@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import errno
 import os
 import tempfile
+import unicodedata
 import uuid
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
@@ -48,6 +50,123 @@ DURABLE_CSV_WRITE_POLICY = AtomicCsvWritePolicy(
     temp_name_style=TempNameStyle.NAMED_RANDOM,
     fsync_before_replace=True,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _CollisionPath:
+    path: Path
+    role: str
+    case_id: str | None = None
+    is_output: bool = False
+
+
+def _resolved_path(path: str | Path) -> Path:
+    return Path(path).expanduser().resolve(strict=False)
+
+
+def _portable_component(component: str) -> str:
+    return unicodedata.normalize("NFC", component).casefold()
+
+
+def _portable_key_from_resolved(path: Path) -> tuple[str, tuple[str, ...]]:
+    anchor = path.anchor
+    parts = path.parts
+    if anchor and parts and parts[0] == anchor:
+        parts = parts[1:]
+    return (
+        _portable_component(anchor),
+        tuple(_portable_component(part) for part in parts),
+    )
+
+
+def portable_path_key(path: str | Path) -> tuple[str, tuple[str, ...]]:
+    """Return a conservative casefolded NFC key with structural components."""
+    return _portable_key_from_resolved(_resolved_path(path))
+
+
+def _same_existing_file(first: Path, second: Path) -> bool:
+    try:
+        return os.path.samefile(first, second)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        if exc.errno in {errno.ENOENT, errno.ENOTDIR}:
+            return False
+        raise
+
+
+def paths_collide(first: str | Path, second: str | Path) -> bool:
+    """Return whether paths collide portably or alias one existing file."""
+    first_resolved = _resolved_path(first)
+    second_resolved = _resolved_path(second)
+    if _portable_key_from_resolved(first_resolved) == _portable_key_from_resolved(
+        second_resolved
+    ):
+        return True
+    return _same_existing_file(first_resolved, second_resolved)
+
+
+def _existing_file_identity(path: Path) -> tuple[int, int] | None:
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        if exc.errno in {errno.ENOENT, errno.ENOTDIR}:
+            return None
+        raise
+    return stat.st_dev, stat.st_ino
+
+
+def _describe_collision_path(candidate: _CollisionPath) -> str:
+    case = f" (case_id={candidate.case_id!r})" if candidate.case_id else ""
+    return f"{candidate.role} path '{candidate.path}'{case}"
+
+
+def _raise_output_collision(first: _CollisionPath, second: _CollisionPath) -> None:
+    raise ValueError(
+        "Output path collision with protected path: "
+        f"{_describe_collision_path(first)} collides with "
+        f"{_describe_collision_path(second)}. Change one of these paths."
+    )
+
+
+def _validate_no_output_collisions(candidates: Iterable[_CollisionPath]) -> None:
+    portable_seen: dict[tuple[str, tuple[str, ...]], _CollisionPath] = {}
+    portable_outputs: dict[tuple[str, tuple[str, ...]], _CollisionPath] = {}
+    identity_seen: dict[tuple[int, int], tuple[_CollisionPath, Path]] = {}
+    identity_outputs: dict[tuple[int, int], tuple[_CollisionPath, Path]] = {}
+
+    for candidate in candidates:
+        resolved = _resolved_path(candidate.path)
+        key = _portable_key_from_resolved(resolved)
+        portable_match = (
+            portable_seen.get(key)
+            if candidate.is_output
+            else portable_outputs.get(key)
+        )
+        if portable_match is not None:
+            _raise_output_collision(portable_match, candidate)
+
+        identity = _existing_file_identity(resolved)
+        if identity is not None:
+            identity_match = (
+                identity_seen.get(identity)
+                if candidate.is_output
+                else identity_outputs.get(identity)
+            )
+            if identity_match is not None:
+                previous, previous_resolved = identity_match
+                if _same_existing_file(previous_resolved, resolved):
+                    _raise_output_collision(previous, candidate)
+
+        portable_seen.setdefault(key, candidate)
+        if candidate.is_output:
+            portable_outputs.setdefault(key, candidate)
+        if identity is not None:
+            identity_seen.setdefault(identity, (candidate, resolved))
+            if candidate.is_output:
+                identity_outputs.setdefault(identity, (candidate, resolved))
 
 
 def write_csv_atomic(
@@ -106,11 +225,17 @@ def validate_csv_output_path(
     protected_paths: Iterable[str | Path],
 ) -> Path:
     """Resolve and reject an output path against an adapter-defined protected set."""
-    out = Path(out_path).expanduser().resolve()
-    protected = {Path(path).expanduser().resolve() for path in protected_paths}
-    if out in protected:
-        raise ValueError(f"Result CSV path would overwrite a protected path: {out}")
-    return out
+    out = Path(out_path)
+    _validate_no_output_collisions(
+        (
+            _CollisionPath(out, "output", is_output=True),
+            *(
+                _CollisionPath(Path(path), "protected")
+                for path in protected_paths
+            ),
+        )
+    )
+    return _resolved_path(out)
 
 
 def validate_summary_output_path(
@@ -119,16 +244,37 @@ def validate_summary_output_path(
     case_rows: Iterable[Mapping[str, object]],
 ) -> Path:
     """Reject a summary path that could destroy any input or planned artifact."""
-    protected: list[str | Path] = [input_path]
+    candidates = [
+        _CollisionPath(Path(out_path), "summary", is_output=True),
+        _CollisionPath(Path(input_path), "input"),
+    ]
     for row in case_rows:
+        case_id = str(row.get("case_id", "")).strip()
         for raw_stl in str(row.get("stl_path", "")).split(";"):
             if raw_stl.strip():
-                protected.append(raw_stl.strip())
-        out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser().resolve()
-        case_id = str(row.get("case_id", "")).strip()
+                candidates.append(
+                    _CollisionPath(Path(raw_stl.strip()), "STL", case_id=case_id)
+                )
+        out_dir = Path(str(row.get("out_dir", "outputs")))
         if case_id:
-            protected.extend((out_dir / f"{case_id}.vtp", out_dir / f"{case_id}.npz"))
-    return validate_csv_output_path(out_path, protected)
+            candidates.extend(
+                (
+                    _CollisionPath(
+                        out_dir / f"{case_id}.vtp",
+                        "planned VTP",
+                        case_id=case_id,
+                        is_output=True,
+                    ),
+                    _CollisionPath(
+                        out_dir / f"{case_id}.npz",
+                        "planned NPZ",
+                        case_id=case_id,
+                        is_output=True,
+                    ),
+                )
+            )
+    _validate_no_output_collisions(candidates)
+    return _resolved_path(out_path)
 
 
 def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
@@ -141,6 +287,8 @@ __all__ = (
     "DURABLE_CSV_WRITE_POLICY",
     "AtomicCsvWritePolicy",
     "TempNameStyle",
+    "paths_collide",
+    "portable_path_key",
     "validate_csv_output_path",
     "validate_summary_output_path",
     "write_csv_atomic",
