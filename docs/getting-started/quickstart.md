@@ -44,3 +44,12 @@ By default, the CLI writes:
 
 See [Outputs](../user-guide/outputs.md) for semantics and
 [Case files](../user-guide/case-files.md) before editing the examples.
+
+## Try the feature examples next
+
+After the basic run, try `flow_modes.csv`, `shielding.csv`, `components.csv`,
+or `attitude_modes.csv` under `examples/fmfsolver/`. The matching newtsolver
+directory provides `pressure_models.csv`, `shielding.csv`, `components.csv`,
+and `attitude_modes.csv`. Run each with the same CLI command pattern, replacing
+the input path. Commands, expected relationships, GUI files, and output
+locations are collected in the repository-level `examples/README.md`.
