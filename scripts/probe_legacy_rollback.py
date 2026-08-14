@@ -25,6 +25,7 @@ try:
     )
     from smoke_installed_wheel import (
         EXPECTED_ENTRY_POINTS,
+        _prepare_current_inputs,
         _smoke_subprocess_environment,
     )
 except ModuleNotFoundError:
@@ -37,6 +38,7 @@ except ModuleNotFoundError:
     )
     from scripts.smoke_installed_wheel import (
         EXPECTED_ENTRY_POINTS,
+        _prepare_current_inputs,
         _smoke_subprocess_environment,
     )
 
@@ -299,6 +301,15 @@ def _prepare_panel_wheel(
     return select_built_wheel(repository, panel_dist)
 
 
+def _stage_current_panel_inputs(repository: Path, work: Path) -> Path:
+    """Copy historical samples and adapt only the disposable current input."""
+    source = repository / "tests" / "fixtures" / "phase1" / "inputs"
+    staged = work / "panel-inputs"
+    shutil.copytree(source, staged)
+    _prepare_current_inputs(staged)
+    return staged
+
+
 def probe(
     repository: Path,
     artifact_dir: Path,
@@ -369,7 +380,7 @@ def probe(
         _install(python, panel_wheel, no_deps=True)
         _assert_distribution(python, "panel-solvers", panel_version)
         returned_commands = _assert_commands(python)
-        panel_inputs = repository / "tests" / "fixtures" / "phase1" / "inputs"
+        panel_inputs = _stage_current_panel_inputs(repository, work)
         returned_samples = {
             "fmfsolver": _run_sample(
                 python,
