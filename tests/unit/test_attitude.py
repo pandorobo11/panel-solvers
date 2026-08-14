@@ -23,6 +23,14 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
         self.assertEqual(-20.0, attitude.beta_t_deg)
         self.assertEqual("beta_tan", attitude.input_mode)
 
+    def test_direct_construction_accepts_integer_vector(self) -> None:
+        attitude = ResolvedAttitude([1, 0, 0], 0.0, 0.0, "beta_tan")
+
+        np.testing.assert_array_equal(attitude.velocity_hat_stl, [1.0, 0.0, 0.0])
+        self.assertEqual(np.dtype(np.float64), attitude.velocity_hat_stl.dtype)
+        self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
+        self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
+
     def test_direct_construction_normalizes_extreme_finite_vectors(self) -> None:
         maximum = np.finfo(np.float64).max
         vectors = (
@@ -73,13 +81,21 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
 
     def test_direct_construction_rejects_invalid_vectors(self) -> None:
         invalid = (
+            [True, False, False],
+            np.array([True, False, False], dtype=np.bool_),
+            np.array([1.0, 0.0, 0.0], dtype=np.complex128),
+            np.array([1.0, 0.0, 0.0], dtype=object),
+            np.array(["1", "0", "0"]),
+            [[1.0], [0.0, 0.0]],
             [0.0, 0.0, 0.0],
             [1.0, 0.0],
             [np.nan, 0.0, 0.0],
             [np.inf, 0.0, 0.0],
         )
         for velocity in invalid:
-            with self.subTest(velocity=velocity), self.assertRaises(ValueError):
+            with self.subTest(velocity=repr(velocity)), self.assertRaisesRegex(
+                ValueError, "velocity_hat_stl"
+            ):
                 ResolvedAttitude(velocity, 0.0, 0.0, "beta_tan")
 
     def test_resolve_attitude_rejects_boolean_angles_before_float_conversion(

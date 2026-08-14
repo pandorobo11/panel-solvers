@@ -21,8 +21,23 @@ class ResolvedAttitude:
     input_mode: str
 
     def __post_init__(self) -> None:
-        velocity = np.asarray(self.velocity_hat_stl, dtype=np.float64)
-        if velocity.shape != (3,) or not np.isfinite(velocity).all():
+        try:
+            raw_velocity = np.asarray(self.velocity_hat_stl)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "velocity_hat_stl must be a real numeric vector with shape (3,)"
+            ) from exc
+        if raw_velocity.shape != (3,) or raw_velocity.dtype.kind not in "iuf":
+            raise ValueError(
+                "velocity_hat_stl must be a real numeric vector with shape (3,)"
+            )
+        try:
+            velocity = np.asarray(raw_velocity, dtype=np.float64)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                "velocity_hat_stl must be a real numeric vector with shape (3,)"
+            ) from exc
+        if not np.isfinite(velocity).all():
             raise ValueError("velocity_hat_stl must be a finite vector with shape (3,)")
         scale = float(np.max(np.abs(velocity)))
         if scale < _ZERO_DIRECTION_ATOL:
