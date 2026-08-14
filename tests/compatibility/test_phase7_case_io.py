@@ -7,7 +7,10 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import xlrd
 
+import fmfsolver.io.io_cases as fmf_case_module
+import newtsolver.io.io_cases as newt_case_module
 from fmfsolver.case_adapter import (
     FMFSOLVER_COMPATIBILITY_VERSION,
 )
@@ -29,12 +32,64 @@ from newtsolver.case_adapter import (
 )
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.core import MeshValidationPolicy, ResultCache, execute_case
+from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+_CURRENT_INPUTS = Path(__file__).parents[1] / "fixtures" / "current"
 _GOLDEN = Path(__file__).parents[1] / "fixtures" / "phase1" / "golden"
 
 
 class ProductCaseReaderTests(unittest.TestCase):
+    def test_removed_npz_field_is_absent_from_current_schemas_and_defaults(self) -> None:
+        for module in (fmf_case_module, newt_case_module):
+            with self.subTest(product=module.__name__):
+                self.assertNotIn("save_npz_on", module.INPUT_COLUMN_ORDER)
+                self.assertNotIn("save_npz_on", module.DEFAULTS)
+
+    def test_csv_and_excel_reject_removed_npz_field_for_any_value(self) -> None:
+        products = (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for reader, filename in products:
+                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                for value in (0, 1):
+                    for suffix in (".csv", ".xlsx"):
+                        with self.subTest(filename=filename, value=value, suffix=suffix):
+                            frame = base.copy()
+                            frame["save_npz_on"] = value
+                            path = root / f"{Path(filename).stem}-{value}{suffix}"
+                            if suffix == ".csv":
+                                frame.to_csv(path, index=False)
+                            else:
+                                frame.to_excel(path, index=False, engine="openpyxl")
+                            with self.assertRaises(Exception) as caught:
+                                reader(path)
+                            error = caught.exception
+                            self.assertEqual("InputValidationError", type(error).__name__)
+                            self.assertEqual(
+                                ["save_npz_on"],
+                                [issue.field for issue in error.issues],
+                            )
+                            self.assertIn("has been removed", str(error))
+                            self.assertIn("Delete this field", str(error))
+                            self.assertIn("no longer writes NPZ files", str(error))
+
+    def test_other_unknown_columns_remain_preserved(self) -> None:
+        for reader, filename in (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        ):
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
+                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                frame["user_note"] = "preserved"
+                path = Path(td) / filename
+                frame.to_csv(path, index=False)
+                actual = reader(path)
+                self.assertEqual("preserved", actual.iloc[0]["user_note"])
+
     def test_valid_phase1_tables_preserve_rows_columns_defaults_and_paths(self) -> None:
         products = (
             ("fmfsolver", read_fmf_cases, "fmfsolver_cases.csv", 6),
@@ -42,15 +97,18 @@ class ProductCaseReaderTests(unittest.TestCase):
         )
         for product, reader, filename, row_count in products:
             with self.subTest(product=product):
-                frame = reader(_INPUTS / filename)
+                frame = read_current_cases(reader, _INPUTS / filename)
                 contract = json.loads(
                     (_GOLDEN / product / "contracts.json").read_text()
                 )
-                expected_columns = contract["cli_run"]["result_csv_columns"][
-                    : len(frame.columns)
-                ]
+                expected_columns = [
+                    name
+                    for name in contract["cli_run"]["result_csv_columns"]
+                    if name != "save_npz_on"
+                ][: len(frame.columns)]
                 self.assertEqual(row_count, len(frame))
                 self.assertEqual(expected_columns, list(frame.columns))
+                self.assertNotIn("save_npz_on", frame.columns)
                 self.assertTrue(frame["stl_path"].map(Path).map(Path.is_absolute).all())
                 self.assertTrue(frame["out_dir"].map(Path).map(Path.is_absolute).all())
 
@@ -82,7 +140,7 @@ class ProductCaseReaderTests(unittest.TestCase):
             (read_fmf_cases, "fmfsolver_cases.csv"),
             (read_newt_cases, "newtsolver_cases.csv"),
         ):
-            frame = reader(_INPUTS / filename)
+            frame = read_current_cases(reader, _INPUTS / filename)
             for suffix, engine in (
                 (".xls", "xlrd"),
                 (".xlsx", "openpyxl"),
@@ -99,11 +157,26 @@ class ProductCaseReaderTests(unittest.TestCase):
                     )
 
     def test_csv_xlsx_xlsm_and_biff_xls_preserve_valid_rows(self) -> None:
-        for reader, stem, row_count in (
-            (read_fmf_cases, "fmfsolver_cases", 6),
-            (read_newt_cases, "newtsolver_cases", 9),
+        for reader, stem, case_id, major_values in (
+            (
+                read_fmf_cases,
+                "fmfsolver_cases",
+                "fmf_current_biff",
+                {"S": 5.0, "Ti_K": 300.0, "Tw_K": 300.0},
+            ),
+            (
+                read_newt_cases,
+                "newtsolver_cases",
+                "newt_current_biff",
+                {
+                    "Mach": 6.0,
+                    "gamma": 1.4,
+                    "windward_eq": "newtonian",
+                    "leeward_eq": "shield",
+                },
+            ),
         ):
-            csv_frame = reader(_INPUTS / f"{stem}.csv")
+            csv_frame = reader(_CURRENT_INPUTS / f"{stem}.csv")
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp = Path(temp_dir)
                 xlsx = temp / f"{stem}.xlsx"
@@ -111,18 +184,54 @@ class ProductCaseReaderTests(unittest.TestCase):
                 csv_frame.to_excel(xlsx, index=False, engine="openpyxl")
                 xlsm.write_bytes(xlsx.read_bytes())
                 for path in (
-                    _INPUTS / f"{stem}.csv",
-                    _INPUTS / f"{stem}.xls",
+                    _CURRENT_INPUTS / f"{stem}.csv",
                     xlsx,
                     xlsm,
+                    _CURRENT_INPUTS / f"{stem}.xls",
                 ):
                     with self.subTest(stem=stem, suffix=path.suffix):
-                        actual = reader(path)
-                        self.assertEqual(row_count, len(actual))
-                        self.assertEqual(
-                            csv_frame["case_id"].tolist(), actual["case_id"].tolist()
-                        )
+                        if path.suffix == ".xls":
+                            workbook = xlrd.open_workbook(path)
+                            self.assertEqual(80, workbook.biff_version)
+                            self.assertEqual(2, workbook.sheet_by_index(0).nrows)
+                            with patch(
+                                "panelsolver.app.case_io.pd.read_excel",
+                                wraps=pd.read_excel,
+                            ) as read_excel:
+                                actual = reader(path)
+                            self.assertEqual(
+                                "xlrd", read_excel.call_args.kwargs["engine"]
+                            )
+                        else:
+                            actual = reader(path)
+                        self.assertEqual(1, len(actual))
+                        self.assertEqual([case_id], actual["case_id"].tolist())
                         self.assertEqual(list(csv_frame.columns), list(actual.columns))
+                        for name, expected in major_values.items():
+                            self.assertEqual(expected, actual.iloc[0][name])
+                        self.assertEqual(
+                            (
+                                _CURRENT_INPUTS
+                                / "../phase1/inputs/stl/plate.stl"
+                            ).resolve(),
+                            Path(actual.iloc[0]["stl_path"]),
+                        )
+                        self.assertEqual(
+                            (
+                                _CURRENT_INPUTS
+                                / f"outputs/{stem.removesuffix('_cases')}"
+                            ).resolve(),
+                            Path(actual.iloc[0]["out_dir"]),
+                        )
+
+                with self.assertRaises(Exception) as caught:
+                    reader(_INPUTS / f"{stem}.xls")
+                self.assertEqual("InputValidationError", type(caught.exception).__name__)
+                self.assertEqual(
+                    ["save_npz_on"],
+                    [issue.field for issue in caught.exception.issues],
+                )
+                self.assertIn("Delete this field", str(caught.exception))
 
     def test_case_ids_use_one_portable_unicode_and_casefold_policy(self) -> None:
         products = (
@@ -132,7 +241,7 @@ class ProductCaseReaderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
             for reader, filename in products:
-                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 path = temp / filename
                 for accepted in ("日本語", "Straße-ケース"):
                     with self.subTest(filename=filename, accepted=accepted):
@@ -194,9 +303,8 @@ class ProductCaseReaderTests(unittest.TestCase):
                 distinct.to_csv(path, index=False)
                 normalized = reader(path)["case_id"].tolist()
                 self.assertEqual(["é-a", "é-b"], normalized)
-                for suffix in (".vtp", ".npz"):
-                    paths = {temp / f"{case_id}{suffix}" for case_id in normalized}
-                    self.assertEqual(2, len(paths))
+                paths = {temp / f"{case_id}.vtp" for case_id in normalized}
+                self.assertEqual(2, len(paths))
 
     def test_attitude_domains_are_common_and_mode_specific(self) -> None:
         products = (
@@ -219,7 +327,7 @@ class ProductCaseReaderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
             for reader, filename in products:
-                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 base[["alpha_deg", "beta_or_bank_deg"]] = base[
                     ["alpha_deg", "beta_or_bank_deg"]
                 ].astype(float)
@@ -248,8 +356,12 @@ class ProductCaseReaderTests(unittest.TestCase):
 
 class ProductCaseAdapterTests(unittest.TestCase):
     def test_rows_bind_independent_models_mesh_policies_and_environment_prefixes(self) -> None:
-        fmf_row = read_fmf_cases(_INPUTS / "fmfsolver_cases.csv").iloc[0].to_dict()
-        newt_row = read_newt_cases(_INPUTS / "newtsolver_cases.csv").iloc[0].to_dict()
+        fmf_row = read_current_cases(
+            read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
+        ).iloc[0].to_dict()
+        newt_row = read_current_cases(
+            read_newt_cases, _INPUTS / "newtsolver_cases.csv"
+        ).iloc[0].to_dict()
         fmf = adapt_fmf_row(fmf_row)
         newt = adapt_newt_row(newt_row)
         self.assertEqual("sentman", fmf.request.model_case.model_id)
@@ -264,12 +376,16 @@ class ProductCaseAdapterTests(unittest.TestCase):
     def test_prepared_primary_signature_is_exactly_the_execution_signature(self) -> None:
         cases = (
             (
-                read_fmf_cases(_INPUTS / "fmfsolver_cases.csv").iloc[0].to_dict(),
+                read_current_cases(
+                    read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
+                ).iloc[0].to_dict(),
                 adapt_fmf_row,
                 build_fmf_signatures,
             ),
             (
-                read_newt_cases(_INPUTS / "newtsolver_cases.csv").iloc[0].to_dict(),
+                read_current_cases(
+                    read_newt_cases, _INPUTS / "newtsolver_cases.csv"
+                ).iloc[0].to_dict(),
                 adapt_newt_row,
                 build_newt_signatures,
             ),
@@ -284,11 +400,11 @@ class ProductCaseAdapterTests(unittest.TestCase):
     def test_direct_and_default_normalized_legacy_candidates_stay_ordered(self) -> None:
         for frame, builder in (
             (
-                read_fmf_cases(_INPUTS / "fmfsolver_cases.csv"),
+                read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"),
                 build_fmf_signatures,
             ),
             (
-                read_newt_cases(_INPUTS / "newtsolver_cases.csv"),
+                read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv"),
                 build_newt_signatures,
             ),
         ):
@@ -300,7 +416,7 @@ class ProductCaseAdapterTests(unittest.TestCase):
                 self.assertNotEqual(*candidates.legacy_signatures)
 
     def test_equivalent_attitude_modes_keep_exact_cache_entries_separate(self) -> None:
-        frame = read_newt_cases(_INPUTS / "newtsolver_cases.csv")
+        frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
         beta_sin = frame.loc[
             frame["case_id"] == "newt_beta_sin_boundary"
         ].iloc[0].to_dict()

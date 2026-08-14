@@ -71,7 +71,7 @@ The FMF/newtsolver integration and Phase 8 audit are complete. One
 `panel-solvers` distribution (currently `0.1.0`) provides all six compatible
 command names. Product-facing compatibility versions remain FMF `1.3.8` and
 newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
-and documented CSV/VTP/NPZ semantics are compatibility surfaces; direct Python
+and documented Summary CSV/VTP semantics are compatibility surfaces; direct Python
 implementation details are best effort. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md).

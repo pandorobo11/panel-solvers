@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import importlib
 import importlib.metadata
+import importlib.util
 import inspect
 import json
 import os
@@ -65,7 +66,6 @@ EXPECTED_EXPORTER_SIGNATURES = {
         "(out_path: 'str', vertices: 'np.ndarray', faces: 'np.ndarray', "
         "cell_data: 'dict', field_data: 'dict | None' = None)"
     ),
-    "export_npz": "(out_path: 'str', **arrays)",
 }
 EXPECTED_DIRECT_COMPONENT_KEYS = [
     "scope",
@@ -82,7 +82,6 @@ EXPECTED_DIRECT_COMPONENT_KEYS = [
     "faces",
     "shielded_faces",
     "vtp_path",
-    "npz_path",
 ]
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
 EXPECTED_CLI_DESCRIPTIONS = {
@@ -134,6 +133,29 @@ def _command_path(name: str) -> Path:
     return scripts / f"{name}{suffix}"
 
 
+def _prepare_current_inputs(inputs: Path) -> None:
+    """Remove the retired column from staged historical sample evidence."""
+    for path in (inputs / "fmfsolver_cases.csv", inputs / "newtsolver_cases.csv"):
+        with path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream)
+            rows = list(reader)
+            columns = [name for name in (reader.fieldnames or ()) if name != "save_npz_on"]
+        with path.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows({name: row[name] for name in columns} for row in rows)
+
+
+def _load_phase1_comparator(repository: Path):
+    script = repository / "scripts" / "generate_phase1_goldens.py"
+    spec = importlib.util.spec_from_file_location("installed_wheel_comparator", script)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load Phase 1 semantic comparator")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _validate_cli_help(product: str, help_text: str) -> None:
     required = (
         f"usage: {product}-cli",
@@ -157,14 +179,12 @@ def _smoke_direct_exporters(staging: Path) -> None:
     faces = np.array([[0, 1, 2]], dtype=np.int32)
     cell_data = {"Cp_n": np.array([1.25], dtype=np.float32)}
     field_data = {"case_id": "installed-direct"}
-    npz_arrays = {
-        "panel_id": np.array([7], dtype=np.int16),
-        "loads": np.array([[1.25, -0.5, 0.0]], dtype=np.float32),
-    }
-
     for product in ("fmfsolver", "newtsolver"):
         module_name = f"{product}.io.exporters"
         module = importlib.import_module(module_name)
+        io_module = importlib.import_module(f"{product}.io")
+        if hasattr(module, "export_npz") or hasattr(io_module, "export_npz"):
+            raise RuntimeError(f"{product} still exports removed NPZ API")
         for name, expected_signature in EXPECTED_EXPORTER_SIGNATURES.items():
             function = getattr(module, name)
             if str(inspect.signature(function)) != expected_signature:
@@ -196,19 +216,6 @@ def _smoke_direct_exporters(staging: Path) -> None:
         if not np.array_equal(poly.field_data["case_id"], expected_case_id):
             raise RuntimeError(f"{module_name}.export_vtp metadata changed")
 
-        npz_path = output / "direct.npz"
-        result = module.export_npz(out_path=npz_path, **npz_arrays)
-        if result is not None:
-            raise RuntimeError(f"{module_name}.export_npz must return None")
-        with np.load(npz_path) as archive:
-            if archive.files != list(npz_arrays):
-                raise RuntimeError(f"{module_name}.export_npz names changed")
-            for name, expected in npz_arrays.items():
-                if not np.array_equal(archive[name], expected):
-                    raise RuntimeError(f"{module_name}.export_npz {name} changed")
-                if archive[name].dtype != expected.dtype:
-                    raise RuntimeError(f"{module_name}.export_npz {name} dtype changed")
-
 
 def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
     products = (
@@ -222,7 +229,7 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         source = reader(inputs / filename)
         row = source.iloc[multi_index].to_dict()
         output = staging / "direct-solvers" / product
-        row.update(out_dir=str(output), save_vtp_on=0, save_npz_on=0)
+        row.update(out_dir=str(output), save_vtp_on=0)
 
         runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(product)
         direct_logs: list[str] = []
@@ -286,7 +293,6 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
             int,
             int,
             str,
-            str,
         )
         if any(
             tuple(type(value) for value in item.values()) != expected_types
@@ -300,7 +306,7 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
             or type(result["component_stl_path"]) is not str
         ):
             raise RuntimeError(f"{product} total component_stl_path changed")
-        if result["vtp_path"] != "" or result["npz_path"] != "":
+        if result["vtp_path"] != "" or "npz_path" in result:
             raise RuntimeError(f"{product} disabled total artifact paths changed")
         if [item["component_id"] for item in components] != [0, 1] or not all(
             type(item["component_id"]) is int for item in components
@@ -308,9 +314,7 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
             raise RuntimeError(f"{product} component IDs changed")
         if [item["component_stl_path"] for item in components] != expected_sources:
             raise RuntimeError(f"{product} component STL order changed")
-        if any(item["vtp_path"] != "" for item in components) or any(
-            item["npz_path"] != "" for item in components
-        ):
+        if any(item["vtp_path"] != "" for item in components):
             raise RuntimeError(f"{product} component artifact paths changed")
 
 
@@ -361,7 +365,6 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
             stl_path=str(missing),
             out_dir=str(staging / "direct-errors" / product / "serial"),
             save_vtp_on=1,
-            save_npz_on=1,
         )
         try:
             solver.run_case(row, lambda _message: None)
@@ -384,7 +387,6 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
             str(staging / "direct-errors" / product / "parallel-1"),
         ]
         parallel["save_vtp_on"] = 1
-        parallel["save_npz_on"] = 1
         try:
             solver.run_cases(parallel, lambda _message: None, workers=2)
         except BaseException as exc:
@@ -420,6 +422,12 @@ def main() -> int:
         )
         for product in ("fmfsolver", "newtsolver")
     }
+    comparator = _load_phase1_comparator(repository)
+    manifest = json.loads(
+        (repository / "tests" / "fixtures" / "phase1" / "manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
     for product, version in (("fmfsolver", "1.3.8"), ("newtsolver", "1.0.3")):
         package = importlib.import_module(product)
         if package.__all__ != []:
@@ -435,6 +443,15 @@ def main() -> int:
         raise RuntimeError("newtsolver.core.panel_core.__all__ changed")
     if pressure_models.__all__ != EXPECTED_PRESSURE_MODELS_ALL:
         raise RuntimeError("newtsolver.core.pressure_models.__all__ changed")
+    neutral_core = importlib.import_module("panelsolver.core")
+    neutral_app = importlib.import_module("panelsolver.app")
+    for module, names in (
+        (neutral_core, ("NpzProjection", "project_npz_artifact")),
+        (neutral_app, ("write_npz_projection",)),
+    ):
+        present = [name for name in names if hasattr(module, name)]
+        if present:
+            raise RuntimeError(f"removed neutral NPZ API remains: {present}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)
@@ -447,6 +464,7 @@ def main() -> int:
             repository / "tests" / "fixtures" / "phase1" / "inputs",
             inputs,
         )
+        _prepare_current_inputs(inputs)
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
         for product in ("fmfsolver", "newtsolver"):
@@ -511,11 +529,72 @@ def main() -> int:
                 rows = list(reader)
                 columns = list(reader.fieldnames or ())
             contract = contract_data[product]["cli_run"]
-            if columns != contract["result_csv_columns"]:
+            expected_columns = [
+                name
+                for name in contract["result_csv_columns"]
+                if name not in {"save_npz_on", "npz_path"}
+            ]
+            if columns != expected_columns:
                 raise RuntimeError(f"{product} result columns changed")
+            if "save_npz_on" in columns or "npz_path" in columns:
+                raise RuntimeError(f"{product} summary retains removed NPZ columns")
             case_order = [row["case_id"] for row in rows if row["scope"] == "total"]
             if case_order != contract["case_order"]:
                 raise RuntimeError(f"{product} case order changed: {case_order}")
+            semantic_csv = comparator._read_semantic_csv(
+                output,
+                roots={inputs.resolve(): "<fixture-root>"},
+            )
+            for case_id in case_order:
+                vtp_path = inputs / "outputs" / f"{case_id}.vtp"
+                if not vtp_path.is_file():
+                    raise RuntimeError(f"{product} did not write VTP for {case_id}")
+                golden = json.loads(
+                    (contracts / product / f"{case_id}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                expected = {
+                    "csv": {
+                        "columns": expected_columns,
+                        "rows": [
+                            {
+                                name: value
+                                for name, value in row.items()
+                                if name not in {"save_npz_on", "npz_path"}
+                            }
+                            for row in golden["csv"]["rows"]
+                        ],
+                    },
+                    "vtp": golden["vtp"],
+                }
+                actual = {
+                    "csv": {
+                        "columns": semantic_csv["columns"],
+                        "rows": [
+                            row
+                            for row in semantic_csv["rows"]
+                            if row["case_id"] == case_id
+                        ],
+                    },
+                    "vtp": comparator._read_vtp(
+                        vtp_path,
+                        roots={inputs.resolve(): "<fixture-root>"},
+                    ),
+                }
+                differences = comparator._compare_values(
+                    expected,
+                    actual,
+                    manifest=manifest,
+                    profile_name=golden["provenance"]["tolerance_profile"],
+                )
+                if differences:
+                    raise RuntimeError(
+                        f"{product} installed semantics differ for {case_id}: "
+                        f"{differences[:5]}"
+                    )
+            if list(inputs.rglob("*.npz")):
+                raise RuntimeError(f"{product} unexpectedly wrote NPZ output")
     return 0
 
 

@@ -4,6 +4,6 @@ Repository maintenance and reproducible fixture-generation scripts belong here.
 Scripts must not become an alternate implementation of production logic.
 
 `generate_phase1_goldens.py` archives and runs the pinned read-only legacy
-sources, then captures CSV/VTP/NPZ meaning into reviewable JSON. Use `--check` for
+sources, then captures historical artifact meaning into reviewable JSON. Use `--check` for
 a non-mutating clean regeneration. `compare_phase1_goldens.py` compares two
 already generated capture trees with the manifest's case/quantity tolerances.

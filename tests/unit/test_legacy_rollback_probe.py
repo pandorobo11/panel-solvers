@@ -1,3 +1,4 @@
+import csv
 import tempfile
 import unittest
 import zipfile
@@ -8,6 +9,7 @@ from scripts.probe_legacy_rollback import (
     LEGACY_SPECS,
     _archive_commit,
     _prepare_panel_wheel,
+    _stage_current_panel_inputs,
     sha256_file,
 )
 
@@ -75,6 +77,26 @@ class LegacyRollbackProbeTests(unittest.TestCase):
             run.assert_not_called()
             self.assertEqual(supplied.name, selected.name)
             self.assertEqual(sha256_file(supplied), sha256_file(selected))
+
+    def test_current_panel_inputs_are_staged_without_mutating_history(self) -> None:
+        source = ROOT / "tests" / "fixtures" / "phase1" / "inputs"
+        source_csv = source / "fmfsolver_cases.csv"
+        with source_csv.open(encoding="utf-8", newline="") as stream:
+            self.assertIn("save_npz_on", csv.DictReader(stream).fieldnames or ())
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staged = _stage_current_panel_inputs(ROOT, Path(temp_dir))
+            with (staged / "fmfsolver_cases.csv").open(
+                encoding="utf-8", newline=""
+            ) as stream:
+                self.assertNotIn(
+                    "save_npz_on",
+                    csv.DictReader(stream).fieldnames or (),
+                )
+            self.assertTrue((staged / "stl" / "plate.stl").is_file())
+
+        with source_csv.open(encoding="utf-8", newline="") as stream:
+            self.assertIn("save_npz_on", csv.DictReader(stream).fieldnames or ())
 
 
 if __name__ == "__main__":

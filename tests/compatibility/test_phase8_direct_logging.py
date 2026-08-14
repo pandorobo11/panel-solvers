@@ -15,6 +15,7 @@ from newtsolver.core.solver import run_case as run_newt_case
 from newtsolver.core.solver import run_cases as run_newt_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.core import clear_mesh_cache
+from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
@@ -63,11 +64,10 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     ),
                 ):
                     clear_mesh_cache()
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         out_dir=str(Path(temp_dir) / "direct"),
                         save_vtp_on=1,
-                        save_npz_on=1,
                     )
                     logs: list[str] = []
                     result = run_one(row, logs.append)
@@ -75,7 +75,6 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     self.assertEqual([MESH_WARNING], logs)
                     self.assertEqual(set(), hinted)
                     self.assertTrue(Path(result["vtp_path"]).is_file())
-                    self.assertTrue(Path(result["npz_path"]).is_file())
 
                     with mock.patch.object(
                         runtime_module.trimesh_ray,
@@ -109,12 +108,11 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                 ):
                     clear_mesh_cache()
                     root = Path(temp_dir)
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         stl_path=str(root / "missing.stl"),
                         out_dir=str(root / "out"),
                         save_vtp_on=0,
-                        save_npz_on=0,
                     )
                     logs: list[str] = []
                     with self.assertRaises(FileNotFoundError):
@@ -136,11 +134,10 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                         hinted,
                     ),
                 ):
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         out_dir=str(Path(temp_dir) / "direct"),
                         save_vtp_on=0,
-                        save_npz_on=0,
                     )
                     clear_mesh_cache()
                     run_one(row, lambda _message: None)
@@ -189,11 +186,10 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     mock.patch.object(runtime_module.trimesh_ray, "has_embree", False),
                 ):
                     clear_mesh_cache()
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         out_dir=str(Path(temp_dir) / "serial"),
                         save_vtp_on=0,
-                        save_npz_on=0,
                     )
                     frame = pd.DataFrame([row])
                     cold_logs: list[str] = []
@@ -230,11 +226,10 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                         hinted,
                     ),
                 ):
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         out_dir=str(Path(temp_dir) / "serial"),
                         save_vtp_on=0,
-                        save_npz_on=0,
                     )
                     frame = pd.DataFrame([row])
                     with self.assertRaises(TypeError) as cold:

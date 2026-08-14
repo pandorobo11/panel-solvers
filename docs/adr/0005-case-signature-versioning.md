@@ -3,6 +3,10 @@
 - Status: Accepted (exact Phase 5 schema adopted)
 - Date: 2026-08-12
 
+The NPZ serialization portion of this decision is superseded by
+[ADR 0009](0009-remove-npz-output.md). Its CSV, VTP, numerical-signature, and
+cache-identity decisions remain in force.
+
 ## Context
 
 Both legacy applications use case signatures for cached results and VTP matching,

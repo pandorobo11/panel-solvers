@@ -39,6 +39,7 @@ from panelsolver.core import (
     WorkerStartupError,
     WorkerUnexpectedExitError,
 )
+from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 _ORIGINAL_WORKER_PROCESS_ENTRY = scheduler_module._worker_process_entry
@@ -92,7 +93,7 @@ def _post_yield_success_prepared_case(prepared, _logfn):
         ("case_id", "scope"),
         ({"case_id": case_id, "scope": "total"},),
     )
-    return runtime_module.ProductCaseRunResult(projection, "", "")
+    return runtime_module.ProductCaseRunResult(projection, "")
 
 
 def _resource_state() -> tuple[tuple[int, ...], tuple[int, ...]]:
@@ -206,11 +207,10 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                 logs: list[str] = []
                 with tempfile.TemporaryDirectory() as temp_dir:
                     out_dir = Path(temp_dir) / "not-created"
-                    row = reader(INPUTS / filename).iloc[0].to_dict()
+                    row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     row.update(
                         out_dir=str(out_dir),
                         save_vtp_on=1,
-                        save_npz_on=1,
                     )
 
                     def initial_cancel() -> bool:
@@ -264,7 +264,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                 before = _resource_state()
                 with tempfile.TemporaryDirectory() as temp_dir:
                     root = Path(temp_dir)
-                    base = reader(INPUTS / filename).iloc[0].to_dict()
+                    base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     rows = []
                     for index in range(2):
                         row = dict(base)
@@ -274,7 +274,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                             shielding_on=0,
                             ray_backend="rtree",
                             save_vtp_on=1,
-                            save_npz_on=1,
                         )
                         rows.append(row)
                     calls = 0
@@ -330,9 +329,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     self.assertTrue(
                         (root / "out-0" / f"{rows[0]['case_id']}.vtp").is_file()
                     )
-                    self.assertTrue(
-                        (root / "out-0" / f"{rows[0]['case_id']}.npz").is_file()
-                    )
                     self.assertFalse((root / "out-1").exists())
                 self.assert_resources_released(before)
 
@@ -344,7 +340,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     root = Path(temp_dir)
                     marker_dir = root / "markers"
                     marker_dir.mkdir()
-                    base = reader(INPUTS / filename).iloc[0].to_dict()
+                    base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     rows = []
                     for index in range(2):
                         row = dict(base)
@@ -353,7 +349,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                             out_dir=str(root / f"out-{index}"),
                             shielding_on=0,
                             save_vtp_on=1,
-                            save_npz_on=1,
                             phase8_cancel_marker_dir=str(marker_dir),
                         )
                         rows.append(row)
@@ -408,12 +403,11 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                         missing = root / "missing.stl"
                         expected = _missing_error(missing)
                         out_dir = root / "out"
-                        row = reader(INPUTS / filename).iloc[0].to_dict()
+                        row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                         row.update(
                             stl_path=str(missing),
                             out_dir=str(out_dir),
                             save_vtp_on=1,
-                            save_npz_on=1,
                         )
                         with self.assertRaises(BaseException) as caught:
                             if api == "run_case":
@@ -444,7 +438,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     root = Path(temp_dir)
                     missing = root / "missing.stl"
                     expected = _missing_error(missing)
-                    base = reader(INPUTS / filename).iloc[0].to_dict()
+                    base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     rows = []
                     for index in range(2):
                         row = dict(base)
@@ -455,7 +449,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                             shielding_on=1,
                             ray_backend="rtree",
                             save_vtp_on=1,
-                            save_npz_on=1,
                         )
                         rows.append(row)
                     progress: list[tuple[int, int]] = []
@@ -628,7 +621,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     before = _resource_state()
                     with tempfile.TemporaryDirectory() as temp_dir:
                         root = Path(temp_dir)
-                        base = reader(INPUTS / filename).iloc[0].to_dict()
+                        base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                         rows = []
                         for index in range(2):
                             row = dict(base)
@@ -637,7 +630,6 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                                 out_dir=str(root / f"out-{index}"),
                                 shielding_on=0,
                                 save_vtp_on=0,
-                                save_npz_on=0,
                             )
                             rows.append(row)
 
@@ -755,7 +747,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
     def test_serial_post_result_callback_needs_no_worker_cleanup(self) -> None:
         for product, reader, _run_one, run_many, filename in self.products():
             with self.subTest(product=product):
-                row = reader(INPUTS / filename).iloc[0].to_dict()
+                row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                 owned = SchedulerError(f"serial callback failure for {product}")
 
                 def fail_progress(

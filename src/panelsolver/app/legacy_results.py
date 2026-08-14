@@ -40,7 +40,6 @@ _LEGACY_COMPONENT_RESULT_COLUMNS = (
     "faces",
     "shielded_faces",
     "vtp_path",
-    "npz_path",
 )
 
 
@@ -58,13 +57,13 @@ def legacy_result_frame(
             for name in ("component_id", "component_stl_path"):
                 if name in normalized:
                     normalized[name] = ""
-            for name in ("vtp_path", "npz_path"):
+            for name in ("vtp_path",):
                 if name in normalized and normalized[name] is None:
                     normalized[name] = ""
         elif row.get("scope") == "component":
             if "component_id" in normalized:
                 normalized["component_id"] = int(normalized["component_id"])
-            for name in ("vtp_path", "npz_path"):
+            for name in ("vtp_path",):
                 if name in normalized:
                     normalized[name] = ""
         rows.append(normalized)

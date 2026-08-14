@@ -16,7 +16,11 @@ from .attitude import ATTITUDE_INPUT_VALUES
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
 
-FLAG_COLUMNS = ("shielding_on", "save_vtp_on", "save_npz_on")
+FLAG_COLUMNS = ("shielding_on", "save_vtp_on")
+_REMOVED_NPZ_MESSAGE = (
+    "save_npz_on has been removed. Delete this field; "
+    "panel-solvers no longer writes NPZ files."
+)
 RAY_BACKEND_VALUES = frozenset({"auto", "rtree", "embree"})
 _INVALID_CASE_ID_CHARS = frozenset('/\\<>:"|?*')
 _WINDOWS_RESERVED_NAMES = {
@@ -440,6 +444,18 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
         )
     else:
         raise ValueError(f"Unsupported input format: {input_path.suffix}")
+
+    if "save_npz_on" in frame.columns:
+        raise InputValidationError(
+            [
+                ValidationIssue(
+                    row_number=1,
+                    case_id=None,
+                    field="save_npz_on",
+                    message=_REMOVED_NPZ_MESSAGE,
+                )
+            ]
+        )
 
     missing = [
         column for column in policy.required_columns if column not in frame.columns

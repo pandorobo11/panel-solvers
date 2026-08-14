@@ -1,4 +1,4 @@
-"""Semantic, model-neutral VTP and NPZ artifact projection."""
+"""Semantic, model-neutral VTP artifact projection."""
 
 from __future__ import annotations
 
@@ -30,8 +30,6 @@ class ArtifactProjectionPolicy:
     ray_backend_used: str
     solver_version: str
     vtp_field_data: Mapping[str, object] = field(default_factory=dict)
-    npz_arrays: Mapping[str, object] = field(default_factory=dict)
-    npz_cell_scalars: tuple[str, ...] = ("Cp_n",)
 
     def __post_init__(self) -> None:
         for name in (
@@ -54,34 +52,6 @@ class ArtifactProjectionPolicy:
                 field_arrays=True,
             ),
         )
-        object.__setattr__(
-            self,
-            "npz_arrays",
-            _freeze_named_arrays(
-                self.npz_arrays,
-                field="ArtifactProjectionPolicy.npz_arrays",
-            ),
-        )
-        try:
-            scalar_names = tuple(self.npz_cell_scalars)
-        except TypeError as exc:
-            raise ContractValueError(
-                "ArtifactProjectionPolicy.npz_cell_scalars",
-                "must be an iterable of scalar names",
-            ) from exc
-        validated_names = tuple(
-            nonempty_text(
-                name,
-                field="ArtifactProjectionPolicy.npz_cell_scalars item",
-            )
-            for name in scalar_names
-        )
-        if len(validated_names) != len(set(validated_names)):
-            raise ContractValueError(
-                "ArtifactProjectionPolicy.npz_cell_scalars",
-                "must contain unique names",
-            )
-        object.__setattr__(self, "npz_cell_scalars", validated_names)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -142,22 +112,6 @@ class VtpProjection:
         object.__setattr__(self, "field_data", field_data)
 
 
-@dataclass(frozen=True, slots=True, eq=False)
-class NpzProjection:
-    """In-memory semantic NPZ named-array projection."""
-
-    arrays: Mapping[str, np.ndarray]
-
-    def __post_init__(self) -> None:
-        arrays = _freeze_named_arrays(self.arrays, field="NpzProjection.arrays")
-        if not arrays:
-            raise ContractValueError(
-                "NpzProjection.arrays",
-                "must contain at least one named array",
-            )
-        object.__setattr__(self, "arrays", arrays)
-
-
 def project_vtp_artifact(
     mesh: PanelMesh,
     results: CommonResults,
@@ -172,7 +126,7 @@ def project_vtp_artifact(
         "center_x_stl_m": results.geometry.centers_stl_m[:, 0],
         "center_y_stl_m": results.geometry.centers_stl_m[:, 1],
         "center_z_stl_m": results.geometry.centers_stl_m[:, 2],
-        # VTK stores this legacy mask as an unsigned byte; NPZ retains bool.
+        # VTK stores this mask as an unsigned byte.
         "shielded": results.flow_state.shielded.astype(np.uint8),
         "stl_index": results.geometry.component_ids.astype(np.int32),
     }
@@ -203,57 +157,6 @@ def project_vtp_artifact(
         (np.full(mesh.n_faces, 3, dtype=np.int64), mesh.faces)
     ).reshape(-1)
     return VtpProjection(mesh.vertices_stl_m, vtp_faces, cell_data, field_data)
-
-
-def project_npz_artifact(
-    mesh: PanelMesh,
-    results: CommonResults,
-    policy: ArtifactProjectionPolicy,
-) -> NpzProjection:
-    """Project common results and policy additions into NPZ semantics."""
-    _validate_projection_inputs(mesh, results, policy)
-    total = results.total
-    arrays: dict[str, object] = {
-        "Aref_m2": results.case.Aref_m2,
-        "CA": total.CA,
-        "CD": total.CD,
-        "CL": total.CL,
-        "CN": total.CN,
-        "CY": total.CY,
-        "C_M_body": total.moment_area_coeff_body_m,
-        "C_force_body": total.force_coeff_body,
-        "C_force_stl": total.force_coeff_stl,
-        "Cl": total.Cl,
-        "Cm": total.Cm,
-        "Cn": total.Cn,
-        "Vhat_stl": results.flow_state.velocity_hat_stl,
-        "alpha_t_deg_resolved": results.case.alpha_t_deg,
-        "areas_m2": results.geometry.areas_m2,
-        "attitude_input": policy.attitude_input_used,
-        "beta_t_deg_resolved": results.case.beta_t_deg,
-        "centers_stl_m": results.geometry.centers_stl_m,
-        "face_stl_index": results.geometry.component_ids.astype(np.int32),
-        "faces": mesh.faces,
-        "normals_out_stl": results.geometry.normals_out_stl,
-        "ray_backend_used": policy.ray_backend_used,
-        "shielded": results.flow_state.shielded,
-        "stl_paths": [component.source for component in mesh.components],
-        "vertices": mesh.vertices_stl_m,
-    }
-    for name in policy.npz_cell_scalars:
-        try:
-            arrays[name] = results.local_loads.cell_scalars[name]
-        except KeyError as exc:
-            raise ContractValueError(
-                "ArtifactProjectionPolicy.npz_cell_scalars",
-                f"LocalLoads does not contain {name!r}",
-            ) from exc
-    _add_without_collision(
-        arrays,
-        policy.npz_arrays,
-        field="ArtifactProjectionPolicy.npz_arrays",
-    )
-    return NpzProjection(arrays)
 
 
 def _validate_projection_inputs(
@@ -337,17 +240,12 @@ def _semantic_array(value: object, *, field: str) -> np.ndarray:
     array = np.array(raw, copy=True, order="C")
     if array.dtype.kind == "f" and not np.isfinite(array).all():
         raise NonFiniteError(field)
-    # ``np.ascontiguousarray`` (used by the shared Phase 2 helper) promotes a
-    # zero-dimensional array to shape ``(1,)``.  NPZ scalar semantics require
-    # preserving shape ``()``, so restore the source shape in this projection
-    # layer without changing the established helper contract.
+    # Preserve the source shape while still returning an immutable array.
     return _read_only_array(array).reshape(array.shape)
 
 
 __all__ = (
     "ArtifactProjectionPolicy",
-    "NpzProjection",
     "VtpProjection",
-    "project_npz_artifact",
     "project_vtp_artifact",
 )

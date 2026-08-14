@@ -63,7 +63,7 @@ cases with both supported ray paths.
 - `tests/gui`: shared GUI/viewer behavior;
 - `tests/fixtures`: compact inputs and generated expectations.
 
-VTP and NPZ regression checks compare named semantic arrays and metadata rather
+Artifact regression checks compare named semantic arrays and metadata rather
 than file bytes. Per-quantity tolerances and provenance live in
 [Phase 1 history](../history/migration/phase1/TOLERANCES.md).
 

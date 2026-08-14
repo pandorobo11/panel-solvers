@@ -32,7 +32,7 @@ _CALCULATED_RESULT_COLUMNS = frozenset(
         "shielded_faces",
     }
 )
-_TOTAL_ONLY_PATH_COLUMNS = ("vtp_path", "npz_path")
+_TOTAL_ONLY_PATH_COLUMNS = ("vtp_path",)
 
 
 @dataclass(frozen=True, slots=True)

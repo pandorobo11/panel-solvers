@@ -74,12 +74,6 @@ def _semantic_projection(bundle) -> dict:
                 for name, array in bundle.vtp.field_data.items()
             },
         },
-        "npz": {
-            "arrays": {
-                name: _array_record(array)
-                for name, array in bundle.npz.arrays.items()
-            }
-        },
     }
 
 
@@ -108,7 +102,6 @@ class Phase3LegacyAdapterGoldenTests(unittest.TestCase):
                 golden = json.loads(path.read_text(encoding="utf-8"))
                 normalized = golden["normalized_input"]
                 field_data = golden["vtp"]["field_data"]
-                npz_records = golden["npz"]["arrays"]
                 total_row = golden["csv"]["rows"][0]
                 areas = _npz_array(golden, "areas_m2")
                 face_force = _record_array(
@@ -158,13 +151,16 @@ class Phase3LegacyAdapterGoldenTests(unittest.TestCase):
                     run_finished_at_utc=total_row["run_finished_at_utc"],
                     run_elapsed_s=total_row["run_elapsed_s"],
                     vtp_path=total_row["vtp_path"],
-                    npz_path=total_row["npz_path"],
                 )
                 common_arguments = {
                     "case": case,
                     "model_case": ModelCasePayload(path.parent.name, normalized),
                     "snapshot": snapshot,
-                    "input_row": normalized,
+                    "input_row": {
+                        name: value
+                        for name, value in normalized.items()
+                        if name != "save_npz_on"
+                    },
                     "run": run,
                 }
                 if path.parent.name == "fmfsolver":
@@ -173,7 +169,6 @@ class Phase3LegacyAdapterGoldenTests(unittest.TestCase):
                         mode=total_row["mode"],
                         speed_ratio=total_row["out_S"],
                         translational_temperature_k=total_row["out_Ti_K"],
-                        wall_temperature_k=_scalar(npz_records["Tw_K"]),
                     )
                 else:
                     bundle = newt_adapter.project_case(
@@ -187,9 +182,22 @@ class Phase3LegacyAdapterGoldenTests(unittest.TestCase):
                     )
 
                 expected = {
-                    "csv": golden["csv"],
+                    "csv": {
+                        "columns": [
+                            name
+                            for name in golden["csv"]["columns"]
+                            if name not in {"save_npz_on", "npz_path"}
+                        ],
+                        "rows": [
+                            {
+                                name: value
+                                for name, value in row.items()
+                                if name not in {"save_npz_on", "npz_path"}
+                            }
+                            for row in golden["csv"]["rows"]
+                        ],
+                    },
                     "vtp": golden["vtp"],
-                    "npz": golden["npz"],
                 }
                 differences = self.comparator._compare_values(
                     expected,

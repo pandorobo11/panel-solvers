@@ -17,6 +17,7 @@ from newtsolver.case_adapter import build_signatures as build_newt_signatures
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
 from panelsolver.app import run_and_write_product_cases
+from tests.current_case_fixtures import read_current_cases
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
@@ -39,7 +40,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.comparator = _load_comparator_module()
 
-    def test_all_cases_serialize_to_frozen_csv_vtp_and_npz_semantics(self) -> None:
+    def test_all_cases_serialize_to_current_csv_and_frozen_vtp_semantics(self) -> None:
         products = (
             (
                 "fmfsolver",
@@ -65,7 +66,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
 
             for product, filename, reader, signatures, policy, count in products:
                 with self.subTest(product=product):
-                    frame = reader(staged / filename)
+                    frame = read_current_cases(reader, staged / filename)
                     rows = tuple(frame.to_dict(orient="records"))
                     output = staged / "outputs" / f"{product}_result.csv"
                     result = run_and_write_product_cases(
@@ -103,13 +104,24 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                                 staged / "outputs" / f"{case_id}.vtp",
                                 roots=roots,
                             ),
-                            "npz": self.comparator._read_npz(
-                                staged / "outputs" / f"{case_id}.npz",
-                                roots=roots,
-                            ),
                         }
                         expected = {
-                            name: golden[name] for name in ("csv", "vtp", "npz")
+                            "csv": {
+                                "columns": [
+                                    name
+                                    for name in golden["csv"]["columns"]
+                                    if name not in {"save_npz_on", "npz_path"}
+                                ],
+                                "rows": [
+                                    {
+                                        name: value
+                                        for name, value in expected_row.items()
+                                        if name not in {"save_npz_on", "npz_path"}
+                                    }
+                                    for expected_row in golden["csv"]["rows"]
+                                ],
+                            },
+                            "vtp": golden["vtp"],
                         }
                         differences = self.comparator._compare_values(
                             expected,
@@ -118,6 +130,9 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                             profile_name=golden["provenance"]["tolerance_profile"],
                         )
                         self.assertEqual([], differences)
+                        self.assertFalse(
+                            (staged / "outputs" / f"{case_id}.npz").exists()
+                        )
 
                         raw_total = next(
                             csv_row

@@ -25,13 +25,12 @@ from panelsolver.core import (
     case_execution_bucket_keys,
     execute_case,
     iter_case_results_parallel,
-    project_npz_artifact,
     project_summary_csv,
     project_vtp_artifact,
 )
 from panelsolver.models import ModelRegistry
 
-from .artifact_io import write_npz_projection, write_vtp_projection
+from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 
@@ -54,10 +53,9 @@ class ProductProjectionAdditions:
 
     csv_values: Mapping[str, CsvCell] = field(default_factory=dict)
     vtp_field_data: Mapping[str, object] = field(default_factory=dict)
-    npz_arrays: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for name in ("csv_values", "vtp_field_data", "npz_arrays"):
+        for name in ("csv_values", "vtp_field_data"):
             value = getattr(self, name)
             if not isinstance(value, Mapping):
                 raise TypeError(f"ProductProjectionAdditions.{name} must be a mapping")
@@ -117,13 +115,11 @@ class ProductCaseRunResult:
 
     csv: CsvProjection
     vtp_path: str
-    npz_path: str
 
     def __post_init__(self) -> None:
         if not isinstance(self.csv, CsvProjection):
             raise TypeError("csv must be a CsvProjection")
         object.__setattr__(self, "vtp_path", str(self.vtp_path))
-        object.__setattr__(self, "npz_path", str(self.npz_path))
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +154,11 @@ def prepare_product_cases(
         raise ValueError("rows must not be empty")
     if any(not isinstance(row, Mapping) for row in records):
         raise TypeError("rows must contain mappings")
+    if any("save_npz_on" in row for row in records):
+        raise ValueError(
+            "save_npz_on has been removed. Delete this field; "
+            "panel-solvers no longer writes NPZ files."
+        )
     if registry is None:
         from .execution import default_model_registry
 
@@ -221,9 +222,7 @@ def _run_prepared_product_case(
     out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     vtp_file = out_dir / f"{case_id}.vtp"
-    npz_file = out_dir / f"{case_id}.npz"
     save_vtp = bool(int(row.get("save_vtp_on", 1)))
-    save_npz = bool(int(row.get("save_npz_on", 0)))
 
     execution = execute_case(
         prepared.adapted.request,
@@ -240,19 +239,12 @@ def _run_prepared_product_case(
         ray_backend_used=execution.shielding.config.effective_backend,
         solver_version=prepared.policy.case_policy.compatibility_version,
         vtp_field_data=additions.vtp_field_data,
-        npz_arrays=additions.npz_arrays,
     )
     if save_vtp:
         write_vtp_projection(
             vtp_file,
             project_vtp_artifact(execution.mesh, execution.results, artifact_policy),
         )
-    if save_npz:
-        write_npz_projection(
-            npz_file,
-            project_npz_artifact(execution.mesh, execution.results, artifact_policy),
-        )
-
     finished_at = _utc_now()
     run_values: dict[str, CsvCell] = {
         "solver_version": prepared.policy.case_policy.compatibility_version,
@@ -263,7 +255,6 @@ def _run_prepared_product_case(
         "out_attitude_input": prepared.adapted.attitude.input_mode,
         "ray_backend_used": execution.shielding.config.effective_backend,
         "vtp_path": str(vtp_file) if save_vtp else "",
-        "npz_path": str(npz_file) if save_npz else "",
         **additions.csv_values,
     }
     component_sources = {
@@ -280,7 +271,6 @@ def _run_prepared_product_case(
     return ProductCaseRunResult(
         csv_projection,
         str(vtp_file) if save_vtp else "",
-        str(npz_file) if save_npz else "",
     )
 
 

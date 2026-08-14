@@ -80,10 +80,10 @@ integration.
 ## Regression and compatibility
 
 Do not update expected coefficients, panel loads, shielding masks, CSV columns,
-VTP/NPZ fields, or case signatures without documenting the intended change,
-evidence, effect, and tolerance. Compare VTP/NPZ semantic arrays and metadata, not
+VTP fields, or case signatures without documenting the intended change,
+evidence, effect, and tolerance. Compare VTP semantic arrays and metadata, not
 file bytes. ADR 0008 defines the supported compatibility surface: commands,
-normal GUI operation, documented case files, and documented CSV/VTP/NPZ
+normal GUI operation, documented case files, and documented CSV/VTP
 semantics. Direct Python keyword names, GUI methods, object identity, module or
 qualname, pickle globals, cache internals, and exact exception details are not
 contracts unless another ADR explicitly promotes a neutral API.

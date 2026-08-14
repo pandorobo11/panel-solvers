@@ -192,9 +192,8 @@ panel's load to zero; see
 
 ## Outputs and scope
 
-FMF VTP/NPZ data includes `Cp_n` and `theta_deg`; NPZ additionally includes the
-resolved `S`, `Ti_K`, and `Tw_K`. Summary CSV includes resolved mode, `out_S`, and
-`out_Ti_K`.
+FMF VTP data includes `Cp_n` and `theta_deg`. Summary CSV includes resolved
+`mode`, `out_S`, and `out_Ti_K`; `Tw_K` remains an input column.
 
 Use this model only when the free-molecular/Sentman assumptions are appropriate
 for the intended regime and surface interaction. Mode B is tied to the bundled,

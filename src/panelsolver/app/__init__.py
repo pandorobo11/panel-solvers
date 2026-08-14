@@ -1,6 +1,6 @@
 """Shared command-line and graphical application layer."""
 
-from .artifact_io import write_npz_projection, write_vtp_projection
+from .artifact_io import write_vtp_projection
 from .attitude import ATTITUDE_INPUT_VALUES, ResolvedAttitude, resolve_attitude
 from .case_adapter import (
     AdaptedCase,
@@ -110,6 +110,5 @@ __all__ = (
     "validate_csv_output_path",
     "validate_summary_output_path",
     "write_csv_atomic",
-    "write_npz_projection",
     "write_vtp_projection",
 )

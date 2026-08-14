@@ -14,9 +14,13 @@ import pandas as pd
 import pyvista as pv
 
 import fmfsolver
+import fmfsolver.io
 import fmfsolver.io.exporters as fmf_exporters
 import newtsolver
+import newtsolver.io
 import newtsolver.io.exporters as newt_exporters
+import panelsolver.app
+import panelsolver.core
 from fmfsolver.core.case_signature import build_case_signature as build_fmf_signature
 from fmfsolver.core.parallel_scheduler import (
     iter_case_results_parallel as iter_fmf_case_results_parallel,
@@ -38,6 +42,7 @@ from newtsolver.io.csv_out import write_results_csv as write_newt_results_csv
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.legacy_results import legacy_result_frame
 from panelsolver.core import CsvProjection
+from tests.current_case_fixtures import read_current_cases
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "phase1"
@@ -58,7 +63,6 @@ DIRECT_COMPONENT_KEYS = [
     "faces",
     "shielded_faces",
     "vtp_path",
-    "npz_path",
 ]
 
 PANEL_CORE_ALL = [
@@ -145,6 +149,28 @@ class Phase7PublicImportTests(unittest.TestCase):
 
 
 class Phase7PublicBehaviorTests(unittest.TestCase):
+    def test_direct_rows_reject_removed_npz_field_before_output_creation(self) -> None:
+        products = (
+            (read_fmf_cases, run_fmf_case, "fmfsolver_cases.csv"),
+            (read_newt_cases, run_newt_case, "newtsolver_cases.csv"),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for reader, runner, filename in products:
+                base = read_current_cases(
+                    reader, FIXTURES / "inputs" / filename
+                ).iloc[0].to_dict()
+                for value in (0, 1):
+                    out_dir = root / Path(filename).stem / str(value)
+                    row = dict(base, out_dir=str(out_dir), save_npz_on=value)
+                    with self.subTest(filename=filename, value=value):
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "save_npz_on has been removed",
+                        ):
+                            runner(row, lambda _message: None)
+                        self.assertFalse(out_dir.exists())
+
     def test_public_parallel_wrappers_preserve_failed_chunk_policies(self) -> None:
         frame = pd.DataFrame(
             {
@@ -231,8 +257,10 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
             ),
         )
         for reader, runner, signature, filename, expected_ca in products:
-            row = reader(FIXTURES / "inputs" / filename).iloc[0].to_dict()
-            row.update(save_vtp_on=0, save_npz_on=0)
+            row = read_current_cases(
+                reader, FIXTURES / "inputs" / filename
+            ).iloc[0].to_dict()
+            row.update(save_vtp_on=0)
             result = runner(row, lambda _message: None)
             with self.subTest(case_id=row["case_id"]):
                 self.assertEqual(result["case_signature"], signature(row))
@@ -262,7 +290,7 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
             ),
         )
         for product, reader, run_one, run_many, filename, single_index, multi_index in products:
-            cases = reader(FIXTURES / "inputs" / filename)
+            cases = read_current_cases(reader, FIXTURES / "inputs" / filename)
             for api, runner in (("run_case", run_one), ("run_cases", run_many)):
                 for kind, index, save_artifacts in (
                     ("single", single_index, False),
@@ -275,7 +303,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                             row.update(
                                 out_dir=str(output),
                                 save_vtp_on=int(save_artifacts),
-                                save_npz_on=int(save_artifacts),
                             )
                             if api == "run_case":
                                 total = runner(row, lambda _message: None)
@@ -303,7 +330,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                                             "faces": int,
                                             "shielded_faces": int,
                                             "vtp_path": str,
-                                            "npz_path": str,
                                         },
                                         {
                                             name: type(value)
@@ -353,27 +379,15 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                                 if save_artifacts
                                 else ""
                             )
-                            expected_npz = (
-                                str(output / f"{row['case_id']}.npz")
-                                if save_artifacts
-                                else ""
-                            )
                             self.assertEqual(expected_vtp, rows[0]["vtp_path"])
-                            self.assertEqual(expected_npz, rows[0]["npz_path"])
                             self.assertTrue(
                                 all(item["vtp_path"] == "" for item in component_rows)
-                            )
-                            self.assertTrue(
-                                all(item["npz_path"] == "" for item in component_rows)
                             )
                             self.assertEqual(
                                 save_artifacts,
                                 (output / f"{row['case_id']}.vtp").is_file(),
                             )
-                            self.assertEqual(
-                                save_artifacts,
-                                (output / f"{row['case_id']}.npz").is_file(),
-                            )
+                            self.assertEqual([], list(output.glob("*.npz")))
 
     def test_public_result_writers_keep_legacy_blank_and_integer_lexemes(self) -> None:
         inputs = pd.DataFrame([{"case_id": "lexical"}])
@@ -385,7 +399,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": "",
                     "component_stl_path": "",
                     "vtp_path": "",
-                    "npz_path": "",
                 },
                 {
                     "case_id": "lexical",
@@ -393,7 +406,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": 0,
                     "component_stl_path": "left.stl",
                     "vtp_path": "",
-                    "npz_path": "",
                 },
                 {
                     "case_id": "lexical",
@@ -401,7 +413,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": 1,
                     "component_stl_path": "right.stl",
                     "vtp_path": "",
-                    "npz_path": "",
                 },
             )
         )
@@ -420,7 +431,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     [r["component_stl_path"] for r in rows],
                 )
                 self.assertEqual(["", "", ""], [r["vtp_path"] for r in rows])
-                self.assertEqual(["", "", ""], [r["npz_path"] for r in rows])
 
     def test_direct_result_normalization_does_not_mutate_neutral_projection(self) -> None:
         projection = CsvProjection(
@@ -430,7 +440,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                 "component_id",
                 "component_stl_path",
                 "vtp_path",
-                "npz_path",
                 "CA",
             ),
             (
@@ -440,7 +449,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": None,
                     "component_stl_path": None,
                     "vtp_path": None,
-                    "npz_path": None,
                     "CA": 1.25,
                 },
                 {
@@ -449,7 +457,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": 0,
                     "component_stl_path": "component.stl",
                     "vtp_path": None,
-                    "npz_path": None,
                     "CA": 0.25,
                 },
             ),
@@ -465,17 +472,15 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     "component_id": "",
                     "component_stl_path": "",
                     "vtp_path": "",
-                    "npz_path": "",
                 },
                 {
                     "component_id": 0,
                     "component_stl_path": "component.stl",
                     "vtp_path": "",
-                    "npz_path": "",
                 },
             ],
             frame[
-                ["component_id", "component_stl_path", "vtp_path", "npz_path"]
+                ["component_id", "component_stl_path", "vtp_path"]
             ].to_dict(orient="records"),
         )
         self.assertIs(type(frame.iloc[1]["component_id"]), int)
@@ -497,7 +502,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                 "(out_path: 'str', vertices: 'np.ndarray', faces: 'np.ndarray', "
                 "cell_data: 'dict', field_data: 'dict | None' = None)"
             ),
-            "export_npz": "(out_path: 'str', **arrays)",
         }
         for module in EXPORTER_MODULES:
             for name, signature in signatures.items():
@@ -508,7 +512,15 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                     self.assertEqual(function.__module__, module.__name__)
                     self.assertNotIn("return", function.__annotations__)
         self.assertIsNot(fmf_exporters.export_vtp, newt_exporters.export_vtp)
-        self.assertIsNot(fmf_exporters.export_npz, newt_exporters.export_npz)
+
+    def test_npz_public_symbols_are_absent(self) -> None:
+        self.assertFalse(hasattr(fmfsolver.io, "export_npz"))
+        self.assertFalse(hasattr(newtsolver.io, "export_npz"))
+        self.assertFalse(hasattr(fmf_exporters, "export_npz"))
+        self.assertFalse(hasattr(newt_exporters, "export_npz"))
+        self.assertFalse(hasattr(panelsolver.core, "NpzProjection"))
+        self.assertFalse(hasattr(panelsolver.core, "project_npz_artifact"))
+        self.assertFalse(hasattr(panelsolver.app, "write_npz_projection"))
 
     def test_direct_exporters_keep_exact_semantic_artifacts_and_none_return(
         self,
@@ -528,15 +540,9 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                 "case_id": "direct",
                 "component_ids": np.array([2, 4], dtype=np.int16),
             }
-            npz_arrays = {
-                "panel_id": np.array([7], dtype=np.int16),
-                "loads": np.array([[1.25, -0.5, 0.0]], dtype=np.float32),
-            }
-
             for module in EXPORTER_MODULES:
                 product = module.__name__.split(".", maxsplit=1)[0]
                 vtp_path = output / product / "nested" / "direct.vtp"
-                npz_path = output / product / "nested" / "direct.npz"
                 with self.subTest(product=product, artifact="vtp"):
                     result = module.export_vtp(
                         out_path=vtp_path,
@@ -562,15 +568,6 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                         expected = np.asarray([value])
                         np.testing.assert_array_equal(poly.field_data[name], expected)
                         self.assertEqual(poly.field_data[name].dtype, expected.dtype)
-
-                with self.subTest(product=product, artifact="npz"):
-                    result = module.export_npz(out_path=npz_path, **npz_arrays)
-                    self.assertIsNone(result)
-                    with np.load(npz_path) as archive:
-                        self.assertEqual(archive.files, list(npz_arrays))
-                        for name, expected in npz_arrays.items():
-                            np.testing.assert_array_equal(archive[name], expected)
-                            self.assertEqual(archive[name].dtype, expected.dtype)
 
 
 if __name__ == "__main__":

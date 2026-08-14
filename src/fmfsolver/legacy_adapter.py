@@ -30,9 +30,8 @@ def project_case(
     mode: CsvCell,
     speed_ratio: CsvCell,
     translational_temperature_k: CsvCell,
-    wall_temperature_k: CsvCell,
 ) -> LegacyPhase3Projection:
-    """Preserve FMF-only CSV/NPZ fields around common Phase 3 operations."""
+    """Preserve FMF-only CSV fields around common Phase 3 operations."""
     csv_values = run.csv_values()
     csv_values.update(
         {
@@ -46,11 +45,6 @@ def project_case(
         case_signature=run.case_signature,
         ray_backend_used=run.ray_backend_used,
         solver_version=run.solver_version,
-        npz_arrays={
-            "S": speed_ratio,
-            "Ti_K": translational_temperature_k,
-            "Tw_K": wall_temperature_k,
-        },
     )
     return project_legacy_phase3_case(
         case=case,
