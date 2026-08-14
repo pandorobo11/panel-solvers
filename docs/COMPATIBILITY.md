@@ -132,7 +132,8 @@ matching VTP display, scalar/camera controls, PNG export, and close. The exact
 evidence is in `PHASE7_EXECUTION_RECORD.md`; installation and rollback are in
 `PHASE7_USER_GUIDE.md`.
 
-This is migration compatibility acceptance, not final Phase 8 acceptance. ADR
-0008 now governs the remaining audit and remediation. No migration package or
-command name is deprecated and the pinned legacy repositories remain unarchived
-references.
+Phase 8 final acceptance is complete under ADR 0008. The exact numerical,
+performance, GUI, distribution, release, rollback, and cross-platform evidence
+is recorded in `PHASE8_EXECUTION_RECORD.md` and `PHASE8_FINAL_AUDIT.md`. No
+migration package or command name is deprecated, and the pinned legacy
+repositories remain unarchived read-only references.

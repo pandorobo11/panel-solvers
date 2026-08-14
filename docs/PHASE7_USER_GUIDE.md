@@ -4,10 +4,12 @@ Phase 7 provides one `panel-solvers` distribution containing the shared engine,
 both physical models, both compatibility packages, and all six old command
 names. It does not deprecate the old names or perform the Phase 8 audit.
 
-Phase 8 is now in progress. ADR 0008 limits the supported compatibility surface
-to commands, normal launcher-driven GUI operation, documented case files, and
+Phase 8 is complete. ADR 0008 limits the accepted compatibility surface to
+commands, normal launcher-driven GUI operation, documented case files, and
 documented result semantics. Direct Python details below describe the current
 implementation on a best-effort basis rather than a frozen product contract.
+The final evidence is in `PHASE8_EXECUTION_RECORD.md` and
+`PHASE8_FINAL_AUDIT.md`.
 
 ## Install or migrate
 

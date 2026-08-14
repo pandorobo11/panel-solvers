@@ -1,5 +1,9 @@
 # Phase 8 open-Issue disposition
 
+> Completion note: this document is the historical planning disposition. The
+> plan is complete; results and final acceptance are recorded in
+> `PHASE8_EXECUTION_RECORD.md` and `PHASE8_FINAL_AUDIT.md`.
+
 This record applies ADR 0008 to every Issue open on 2026-08-14. It is a planning
 and close-out record, not authorization to combine the listed implementations.
 Each implementation remains one latest-main worktree and one independently
