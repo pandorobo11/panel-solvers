@@ -42,7 +42,6 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "ray_backend",
         "out_dir",
         "save_vtp_on",
-        "save_npz_on",
     ),
     result_columns=(
         "solver_version",
@@ -71,7 +70,6 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "faces",
         "shielded_faces",
         "vtp_path",
-        "npz_path",
     ),
 )
 CSV_WRITE_POLICY = DURABLE_CSV_WRITE_POLICY

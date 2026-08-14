@@ -24,6 +24,7 @@ from panelsolver.core import (
     WorkerExecutionError,
     WorkerLogPolicy,
 )
+from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 
@@ -31,9 +32,7 @@ INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 def _assert_artifact_semantics_equal(
     test_case: unittest.TestCase,
     actual_vtp: Path,
-    actual_npz: Path,
     expected_vtp: Path,
-    expected_npz: Path,
 ) -> None:
     actual_poly = pv.read(actual_vtp)
     expected_poly = pv.read(expected_vtp)
@@ -49,16 +48,6 @@ def _assert_artifact_semantics_equal(
             test_case.assertEqual(expected_data[name].dtype, actual_data[name].dtype)
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
-    with (
-        np.load(actual_npz, allow_pickle=True) as actual_archive,
-        np.load(expected_npz, allow_pickle=True) as expected_archive,
-    ):
-        test_case.assertEqual(set(expected_archive.files), set(actual_archive.files))
-        for name in expected_archive.files:
-            test_case.assertEqual(expected_archive[name].dtype, actual_archive[name].dtype)
-            np.testing.assert_array_equal(actual_archive[name], expected_archive[name])
-
-
 class Phase7RuntimeTests(unittest.TestCase):
     def test_products_share_supported_scheduler_policy(self) -> None:
         for policy in (FMF_POLICY, NEWT_POLICY):
@@ -70,31 +59,34 @@ class Phase7RuntimeTests(unittest.TestCase):
                 )
 
     def test_artifacts_off_still_creates_directory_and_blank_csv_paths(self) -> None:
-        row = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[0].to_dict()
+        products = (
+            (read_fmf_cases, "fmfsolver_cases.csv", FMF_POLICY),
+            (read_newt_cases, "newtsolver_cases.csv", NEWT_POLICY),
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            out_dir = root / "case_outputs"
-            row.update(
-                {
-                    "out_dir": str(out_dir),
-                    "save_vtp_on": 0,
-                    "save_npz_on": 0,
-                }
-            )
-            summary = root / "summary.csv"
-            result = run_and_write_product_cases((row,), FMF_POLICY, summary)
-            self.assertTrue(out_dir.is_dir())
-            self.assertFalse((out_dir / "fmf_zero_plate.vtp").exists())
-            self.assertFalse((out_dir / "fmf_zero_plate.npz").exists())
-            self.assertEqual("", result.cases[0].vtp_path)
-            self.assertEqual("", result.cases[0].npz_path)
-            with summary.open(encoding="utf-8", newline="") as stream:
-                total = next(csv.DictReader(stream))
-            self.assertEqual("", total["vtp_path"])
-            self.assertEqual("", total["npz_path"])
+            for reader, filename, policy in products:
+                row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
+                out_dir = root / policy.product_id / "case_outputs"
+                row.update(out_dir=str(out_dir), save_vtp_on=0)
+                summary = root / policy.product_id / "summary.csv"
+                result = run_and_write_product_cases((row,), policy, summary)
+                with self.subTest(product=policy.product_id):
+                    self.assertTrue(out_dir.is_dir())
+                    self.assertFalse((out_dir / f"{row['case_id']}.vtp").exists())
+                    self.assertFalse((out_dir / f"{row['case_id']}.npz").exists())
+                    self.assertEqual("", result.cases[0].vtp_path)
+                    self.assertFalse(hasattr(result.cases[0], "npz_path"))
+                    with summary.open(encoding="utf-8", newline="") as stream:
+                        total = next(csv.DictReader(stream))
+                    self.assertEqual("", total["vtp_path"])
+                    self.assertNotIn("save_npz_on", total)
+                    self.assertNotIn("npz_path", total)
 
     def test_checkpoints_are_completed_snapshots_in_input_order(self) -> None:
-        frame = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0, 1, 4]]
+        frame = read_current_cases(
+            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+        ).iloc[[0, 1, 4]]
         snapshots: list[tuple[list[str], int, bool]] = []
 
         def capture(projection, done: int, _total: int, final: bool) -> None:
@@ -128,7 +120,9 @@ class Phase7RuntimeTests(unittest.TestCase):
         )
 
     def test_initial_cancellation_has_no_case_side_effect(self) -> None:
-        row = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[0].to_dict()
+        row = read_current_cases(
+            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+        ).iloc[0].to_dict()
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "not-created"
             row["out_dir"] = str(out_dir)
@@ -155,7 +149,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                     summary = product_root / "summary.csv"
                     summary.write_bytes(b"pre-existing summary is replaced\n")
 
-                    base = reader(INPUTS / filename).iloc[0].to_dict()
+                    base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                     good_a = dict(base)
                     good_b = dict(base)
                     bad = dict(base)
@@ -173,7 +167,6 @@ class Phase7RuntimeTests(unittest.TestCase):
                             ray_backend="rtree",
                             out_dir=str(case_output),
                             save_vtp_on=1,
-                            save_npz_on=1,
                         )
                     bad.update(
                         case_id=bad_id,
@@ -181,7 +174,6 @@ class Phase7RuntimeTests(unittest.TestCase):
                         ray_backend="rtree",
                         out_dir=str(blocker),
                         save_vtp_on=1,
-                        save_npz_on=1,
                     )
                     logs: list[str] = []
                     progress: list[tuple[int, int]] = []
@@ -207,10 +199,9 @@ class Phase7RuntimeTests(unittest.TestCase):
                     self.assertIn("FileExistsError", caught.exception.remote_traceback)
                     for good_id in good_ids:
                         self.assertTrue((case_output / f"{good_id}.vtp").is_file())
-                        self.assertTrue((case_output / f"{good_id}.npz").is_file())
+                    self.assertEqual([], list(case_output.glob("*.npz")))
                     self.assertTrue(blocker.is_file())
                     self.assertFalse((blocker / f"{bad_id}.vtp").exists())
-                    self.assertFalse((blocker / f"{bad_id}.npz").exists())
                     self.assertFalse(any("[SAVE] final" in message for message in logs))
 
                     reference_output = product_root / "reference-output"
@@ -223,9 +214,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                     _assert_artifact_semantics_equal(
                         self,
                         case_output / f"{good_ids[0]}.vtp",
-                        case_output / f"{good_ids[0]}.npz",
                         reference_output / f"{good_ids[0]}.vtp",
-                        reference_output / f"{good_ids[0]}.npz",
                     )
 
                     self.assertEqual([(1, 3), (2, 3)], progress)
@@ -247,12 +236,16 @@ class Phase7RuntimeTests(unittest.TestCase):
     def test_parallel_success_is_input_ordered_and_forwards_worker_logs(self) -> None:
         products = (
             (
-                read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0, 1]],
+                read_current_cases(
+                    read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+                ).iloc[[0, 1]],
                 run_fmf_cases,
                 True,
             ),
             (
-                read_newt_cases(INPUTS / "newtsolver_cases.csv").iloc[[0, 1]],
+                read_current_cases(
+                    read_newt_cases, INPUTS / "newtsolver_cases.csv"
+                ).iloc[[0, 1]],
                 run_newt_cases,
                 True,
             ),
@@ -278,7 +271,11 @@ class Phase7RuntimeTests(unittest.TestCase):
                     )
 
     def test_real_gui_adapters_read_run_write_and_return_first_artifact(self) -> None:
-        rows = FMF_GUI_ADAPTERS.read_cases(INPUTS / "fmfsolver_cases.csv")
+        rows = tuple(
+            read_current_cases(
+                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+            ).to_dict(orient="records")
+        )
         self.assertEqual(6, len(rows))
         with tempfile.TemporaryDirectory() as temp_dir:
             row = dict(rows[0])

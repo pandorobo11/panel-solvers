@@ -13,6 +13,7 @@ from openpyxl import Workbook
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.case_io import InputValidationError, normalize_optional_text
+from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 _BOUNDARY_VALUES = (
@@ -128,7 +129,7 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             for product, reader, filename in products:
-                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 path = root / filename
                 for field in _COMMON_POSITIVE_FIELDS:
                     for value_name, value in _BOUNDARY_VALUES:
@@ -167,8 +168,11 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                             )
 
     def test_fmf_model_fields_keep_mode_semantics_and_field_attribution(self) -> None:
-        mode_a = read_fmf_cases(_INPUTS / "fmfsolver_cases.csv").iloc[[0]].copy()
-        mode_b = read_fmf_cases(_INPUTS / "fmfsolver_cases.csv").iloc[[1]].copy()
+        fmf_cases = read_current_cases(
+            read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
+        )
+        mode_a = fmf_cases.iloc[[0]].copy()
+        mode_b = fmf_cases.iloc[[1]].copy()
         matrices = (
             ("S", mode_a, frozenset({"S", "S,Ti_K"}), frozenset()),
             ("Ti_K", mode_a, frozenset({"Ti_K", "S,Ti_K"}), frozenset()),
@@ -207,8 +211,8 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                         )
 
     def test_newtsolver_model_fields_reject_unsafe_boundaries(self) -> None:
-        base = read_newt_cases(
-            _INPUTS / "newtsolver_cases.csv"
+        base = read_current_cases(
+            read_newt_cases, _INPUTS / "newtsolver_cases.csv"
         ).iloc[[0]].copy()
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "newtsolver-boundary.csv"
@@ -243,7 +247,7 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             for product, reader, filename, numeric_fields in products:
-                source = reader(_INPUTS / filename)
+                source = read_current_cases(reader, _INPUTS / filename)
                 for field in numeric_fields:
                     row_index = 1 if product == "fmfsolver" and field == "Mach" else 0
                     base = source.iloc[[row_index]].copy()
@@ -262,14 +266,12 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                 flags = {
                     "shielding_on": True,
                     "save_vtp_on": False,
-                    "save_npz_on": True,
                 }
                 path = root / f"{product}-flags.xlsx"
                 self._write_openpyxl_workbook(base, path, flags)
                 actual = reader(path).iloc[0]
                 self.assertEqual(1, actual["shielding_on"])
                 self.assertEqual(0, actual["save_vtp_on"])
-                self.assertEqual(1, actual["save_npz_on"])
 
                 for text in ("true", "false"):
                     with self.subTest(product=product, text=text):
@@ -300,7 +302,7 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             for product, reader, filename, fields in products:
-                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 for field in fields:
                     for value in (False, True, 0, 1):
                         with self.subTest(
@@ -339,7 +341,7 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             for product, reader, filename, defaults in products:
-                source = reader(_INPUTS / filename)
+                source = read_current_cases(reader, _INPUTS / filename)
                 base = source.iloc[[0]].copy()
                 for field, default in defaults.items():
                     for value_name, value in (("missing", None), ("blank", "   ")):
@@ -364,7 +366,9 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                         )
                         self.assertEqual(mode, reader(path).iloc[0]["attitude_input"])
 
-            newt_source = read_newt_cases(_INPUTS / "newtsolver_cases.csv")
+            newt_source = read_current_cases(
+                read_newt_cases, _INPUTS / "newtsolver_cases.csv"
+            )
             newt_base = newt_source.iloc[[0]].copy()
             for field, values in (
                 (
@@ -402,7 +406,7 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
             (read_fmf_cases, "fmfsolver_cases.csv"),
             (read_newt_cases, "newtsolver_cases.csv"),
         ):
-            frame = reader(_INPUTS / filename).iloc[[0]].copy()
+            frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
             frame["Aref_m2"] = frame["Aref_m2"].astype(object)
             frame.at[frame.index[0], "Aref_m2"] = np.bool_(True)
             with patch("panelsolver.app.case_io.pd.read_excel", return_value=frame):

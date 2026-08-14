@@ -29,5 +29,5 @@ Selected rows retain input-table order. Unknown case IDs reject the request.
 `[OK]` messages; validation and execution failures return a nonzero process exit.
 
 Output-path validation rejects collisions with the input table, any STL, and
-any planned VTP/NPZ before execution. See [Outputs](outputs.md) and
+any planned VTP before execution. See [Outputs](outputs.md) and
 [Shielding and parallel execution](shielding-and-parallel.md).

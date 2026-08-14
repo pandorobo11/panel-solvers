@@ -15,14 +15,12 @@ from panelsolver.core import (
     LocalLoads,
     MeshComponent,
     ModelCasePayload,
-    NpzProjection,
     PanelFlowState,
     PanelGeometry,
     PanelMesh,
     PayloadValue,
     VtpProjection,
     assemble_common_results,
-    project_npz_artifact,
     project_summary_csv,
     project_vtp_artifact,
     velocity_hat_stl_from_tangent_angles,
@@ -71,7 +69,6 @@ class LegacyRunContext:
     run_finished_at_utc: CsvCell
     run_elapsed_s: CsvCell
     vtp_path: CsvCell
-    npz_path: CsvCell
 
     def csv_values(self) -> dict[str, CsvCell]:
         return {
@@ -83,7 +80,6 @@ class LegacyRunContext:
             "out_attitude_input": self.attitude_input_used,
             "ray_backend_used": self.ray_backend_used,
             "vtp_path": self.vtp_path,
-            "npz_path": self.npz_path,
         }
 
 
@@ -95,7 +91,6 @@ class LegacyPhase3Projection:
     results: CommonResults
     csv: CsvProjection
     vtp: VtpProjection
-    npz: NpzProjection
 
 
 def adapt_legacy_panels(
@@ -176,17 +171,11 @@ def project_legacy_phase3_case(
         results,
         artifact_policy,
     )
-    npz_projection = project_npz_artifact(
-        adapted.mesh,
-        results,
-        artifact_policy,
-    )
     return LegacyPhase3Projection(
         adapted.mesh,
         results,
         csv_projection,
         vtp_projection,
-        npz_projection,
     )
 
 

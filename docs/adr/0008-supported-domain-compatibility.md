@@ -36,7 +36,7 @@ classes or functions.
 
 The supported compatibility surface is the command-line interface, normal GUI
 operation through the two launchers, documented case files, and documented
-result CSV/VTP/NPZ semantics. Existing direct Python modules remain available on
+result CSV/VTP semantics. Existing direct Python modules remain available on
 a best-effort basis, but exact callable keyword names, direct GUI methods,
 function or class object identity, `__module__`, `__qualname__`, pickle globals,
 and cache objects or `cache_info()` are not compatibility contracts unless a

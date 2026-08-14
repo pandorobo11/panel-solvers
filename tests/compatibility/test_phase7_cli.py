@@ -17,6 +17,7 @@ from newtsolver.app.cli_app import build_parser as build_newt_parser
 from newtsolver.app.cli_app import main as newt_main
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.cli import parse_case_ids
+from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 
@@ -72,7 +73,9 @@ class Phase7CliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_path = Path(temp_dir) / "cases.csv"
-            frame = read_fmf_cases(INPUTS / "fmfsolver_cases.csv").iloc[[0]].copy()
+            frame = read_current_cases(
+                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+            ).iloc[[0]].copy()
             frame.to_csv(input_path, index=False)
             with self.assertRaisesRegex(ValueError, "protected path"):
                 fmf_main(
@@ -113,12 +116,11 @@ class Phase7CliTests(unittest.TestCase):
             ),
         )
         for main, reader, filename, case_ids in products:
-            frame = reader(INPUTS / filename).iloc[[0, 1]].copy()
+            frame = read_current_cases(reader, INPUTS / filename).iloc[[0, 1]].copy()
             with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temp_dir:
                 root = Path(temp_dir)
                 frame["out_dir"] = str(root / "artifacts")
                 frame["save_vtp_on"] = 0
-                frame["save_npz_on"] = 0
                 input_path = root / "cases.csv"
                 output = root / "results.csv"
                 frame.to_csv(input_path, index=False)

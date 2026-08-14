@@ -16,7 +16,6 @@ from panelsolver.core import (
     PanelGeometry,
     PanelMesh,
     assemble_common_results,
-    project_npz_artifact,
     project_vtp_artifact,
 )
 
@@ -33,34 +32,6 @@ COMMON_VTP_FIELDS = {
     "solver_version",
     "stl_count",
     "stl_paths_json",
-}
-COMMON_NPZ_ARRAYS = {
-    "Aref_m2",
-    "CA",
-    "CD",
-    "CL",
-    "CN",
-    "CY",
-    "C_M_body",
-    "C_force_body",
-    "C_force_stl",
-    "Cl",
-    "Cm",
-    "Cn",
-    "Cp_n",
-    "Vhat_stl",
-    "alpha_t_deg_resolved",
-    "areas_m2",
-    "attitude_input",
-    "beta_t_deg_resolved",
-    "centers_stl_m",
-    "face_stl_index",
-    "faces",
-    "normals_out_stl",
-    "ray_backend_used",
-    "shielded",
-    "stl_paths",
-    "vertices",
 }
 GEOMETRY_CELL_FIELDS = {
     "C_face_stl",
@@ -94,7 +65,7 @@ def _tolerance(golden: dict) -> tuple[float, float]:
 
 
 class Phase3ArtifactGoldenTests(unittest.TestCase):
-    def test_all_vtp_and_npz_semantic_arrays_match(self) -> None:
+    def test_all_vtp_semantic_arrays_match(self) -> None:
         paths = sorted(GOLDEN_ROOT.glob("*/*.json"))
         paths = [path for path in paths if path.name != "contracts.json"]
         self.assertEqual(15, len(paths))
@@ -103,7 +74,6 @@ class Phase3ArtifactGoldenTests(unittest.TestCase):
             with self.subTest(solver=path.parent.name, case_id=path.stem):
                 golden = json.loads(path.read_text(encoding="utf-8"))
                 normalized = golden["normalized_input"]
-                npz_records = golden["npz"]["arrays"]
                 vtp_records = golden["vtp"]
                 geometry = PanelGeometry(
                     centers_stl_m=_npz_array(golden, "centers_stl_m"),
@@ -167,28 +137,19 @@ class Phase3ArtifactGoldenTests(unittest.TestCase):
                         for name, record in field_records.items()
                         if name not in COMMON_VTP_FIELDS
                     },
-                    npz_arrays={
-                        name: _record_array(record)
-                        for name, record in npz_records.items()
-                        if name not in COMMON_NPZ_ARRAYS
-                    },
                 )
 
                 vtp = project_vtp_artifact(mesh, results, policy)
-                npz = project_npz_artifact(mesh, results, policy)
                 atol, rtol = _tolerance(golden)
 
                 self._assert_record(vtp.points, vtp_records["points"], atol, rtol)
                 self._assert_record(vtp.faces, vtp_records["faces"], atol, rtol)
                 self.assertEqual(list(vtp_records["cell_data"]), list(vtp.cell_data))
                 self.assertEqual(list(vtp_records["field_data"]), list(vtp.field_data))
-                self.assertEqual(list(npz_records), list(npz.arrays))
                 for name, record in vtp_records["cell_data"].items():
                     self._assert_record(vtp.cell_data[name], record, atol, rtol)
                 for name, record in vtp_records["field_data"].items():
                     self._assert_record(vtp.field_data[name], record, atol, rtol)
-                for name, record in npz_records.items():
-                    self._assert_record(npz.arrays[name], record, atol, rtol)
 
     def _assert_record(
         self,

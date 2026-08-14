@@ -10,6 +10,7 @@ Accepted ADRs are retained as decision records:
 6. [Mesh repair policies and content-safe identities](0006-mesh-loading-and-fingerprints.md)
 7. [One distribution with distinct compatibility versions](0007-single-distribution-compatibility-versions.md)
 8. [Preserve compatibility in the supported domain](0008-supported-domain-compatibility.md)
+9. [Remove NPZ output](0009-remove-npz-output.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).

@@ -26,7 +26,6 @@ order shown; unknown columns are retained after them in result CSV output.
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | Shielding backend |
 | `out_dir` | no | `outputs` | path | Per-case artifact directory |
 | `save_vtp_on` | no | `1` | `0` or `1` | Save VTP |
-| `save_npz_on` | no | `0` | `0` or `1` | Save NPZ |
 
 Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
 `tangent_cone`. Leeward values are `shield` and `prandtl_meyer`. One value is

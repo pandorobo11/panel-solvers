@@ -1,7 +1,7 @@
 # Python API support policy
 
 The supported product compatibility surface is the CLI, normal GUI operation,
-documented case files, and documented CSV/VTP/NPZ semantics. There is currently
+documented case files, and documented Summary CSV/VTP semantics. There is currently
 no promised high-level `panelsolver` Python convenience API; the package root
 intentionally exports no names.
 

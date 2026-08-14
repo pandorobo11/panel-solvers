@@ -52,7 +52,7 @@ the execution engine derives a private, domain-separated result-cache signature
 from the public digest plus the exact three float64 values used by the model.
 
 That private identity is process-local cache state. It is not returned from
-`execute_case`, serialized into CSV/VTP/NPZ, or considered during artifact
+`execute_case`, serialized into CSV/VTP, or considered during artifact
 matching. This prevents a tolerance-distinct direct request from reusing another
 request's numerical result while preserving every existing public digest and
 fallback rule.

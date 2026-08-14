@@ -7,7 +7,7 @@ inside the supported domain. The current supported surfaces are:
   `newtsolver`, `newtsolver-gui`, and `newtsolver-cli`;
 - normal launcher-driven GUI operation;
 - documented CSV/XLSX/XLSM/XLS case files and product schemas/defaults;
-- documented result CSV, VTP, and NPZ semantics;
+- documented Summary CSV and VTP semantics;
 - supported numerical values, signs, frames, normalizations, and model-specific
   behavior.
 

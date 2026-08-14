@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 
-from panelsolver.core import NpzProjection, VtpProjection
+from panelsolver.core import VtpProjection
 
 
 def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
@@ -22,16 +22,6 @@ def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
     for name, values in projection.field_data.items():
         poly.field_data[name] = np.asarray(values)
     poly.save(str(output), binary=True)
-    return output
-
-
-def write_npz_projection(path: str | Path, projection: NpzProjection) -> Path:
-    """Write one compressed NPZ projection without changing named arrays."""
-    if not isinstance(projection, NpzProjection):
-        raise TypeError("projection must be an NpzProjection")
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(output, **dict(projection.arrays))
     return output
 
 
@@ -58,17 +48,7 @@ def write_legacy_vtp(
     return output
 
 
-def write_legacy_npz(path: str | Path, **arrays) -> Path:
-    """Serialize the frozen named-array NPZ call."""
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(output, **arrays)
-    return output
-
-
 __all__ = (
-    "write_legacy_npz",
     "write_legacy_vtp",
-    "write_npz_projection",
     "write_vtp_projection",
 )

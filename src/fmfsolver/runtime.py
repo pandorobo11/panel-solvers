@@ -34,17 +34,11 @@ def _projection_additions(
     mode = str(metadata["mode"])
     speed_ratio = float(metadata["S"])
     translational_temperature_k = float(metadata["Ti_K"])
-    wall_temperature_k = float(metadata["Tw_K"])
     return ProductProjectionAdditions(
         csv_values={
             "mode": mode,
             "out_S": speed_ratio,
             "out_Ti_K": translational_temperature_k,
-        },
-        npz_arrays={
-            "S": speed_ratio,
-            "Ti_K": translational_temperature_k,
-            "Tw_K": wall_temperature_k,
         },
     )
 

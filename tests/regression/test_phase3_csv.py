@@ -73,6 +73,11 @@ class Phase3CsvGoldenTests(unittest.TestCase):
             with self.subTest(solver=path.parent.name, case_id=path.stem):
                 golden = json.loads(path.read_text(encoding="utf-8"))
                 normalized = golden["normalized_input"]
+                current_input = {
+                    name: value
+                    for name, value in normalized.items()
+                    if name != "save_npz_on"
+                }
                 adapter = ADAPTERS[path.parent.name]
                 geometry = PanelGeometry(
                     centers_stl_m=_npz_array(golden, "centers_stl_m"),
@@ -107,7 +112,14 @@ class Phase3CsvGoldenTests(unittest.TestCase):
                         * (normalized["Aref_m2"] / geometry.areas_m2)[:, None]
                     ),
                 )
-                expected_rows = golden["csv"]["rows"]
+                expected_rows = [
+                    {
+                        name: value
+                        for name, value in row.items()
+                        if name not in {"save_npz_on", "npz_path"}
+                    }
+                    for row in golden["csv"]["rows"]
+                ]
                 total_row = expected_rows[0]
                 run_values = {
                     name: total_row[name]
@@ -122,15 +134,20 @@ class Phase3CsvGoldenTests(unittest.TestCase):
                 }
 
                 projection = adapter.project_csv(
-                    normalized,
+                    current_input,
                     results,
                     run_values=run_values,
                     component_sources=sources,
                 )
 
-                self.assertEqual(tuple(golden["csv"]["columns"]), projection.columns)
+                expected_columns = tuple(
+                    name
+                    for name in golden["csv"]["columns"]
+                    if name not in {"save_npz_on", "npz_path"}
+                )
+                self.assertEqual(expected_columns, projection.columns)
                 self.assertEqual(len(expected_rows), len(projection.rows))
-                input_columns = set(normalized)
+                input_columns = set(current_input)
                 for row_index, (expected, actual) in enumerate(
                     zip(expected_rows, projection.rows, strict=True)
                 ):

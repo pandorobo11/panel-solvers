@@ -47,7 +47,7 @@ shielding, evaluates a registered model, integrates totals/components, and
 returns a canonical signature with immutable results. The spawn scheduler wraps
 that engine and rebuilds snapshots in input order.
 
-CSV, VTP, and NPZ projections receive explicit product policy. Shared code does
+CSV and VTP projections receive explicit product policy. Shared code does
 not branch on a concrete model name to invent a universal schema. Compatibility
 frontends supply only model-specific input/output additions and version policy.
 

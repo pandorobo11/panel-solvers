@@ -3,9 +3,7 @@
 from .aggregation import aggregate_component_results, assemble_common_results
 from .artifacts import (
     ArtifactProjectionPolicy,
-    NpzProjection,
     VtpProjection,
-    project_npz_artifact,
     project_vtp_artifact,
 )
 from .contracts import (
@@ -134,7 +132,6 @@ __all__ = (
     "MeshValidationPolicy",
     "ModelCasePayload",
     "NonFiniteError",
-    "NpzProjection",
     "PanelFlowState",
     "PanelGeometry",
     "PanelIntegration",
@@ -184,7 +181,6 @@ __all__ = (
     "mesh_cache_stats",
     "ordered_success_snapshot",
     "prepare_case_signature",
-    "project_npz_artifact",
     "project_summary_csv",
     "project_vtp_artifact",
     "resolve_parallel_chunk_cases",

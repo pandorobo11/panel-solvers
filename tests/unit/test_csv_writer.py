@@ -39,7 +39,7 @@ class CsvWriterTests(unittest.TestCase):
         nfd = "cafe\N{COMBINING ACUTE ACCENT}"
         collision_pairs = (
             (root / "case_a.vtp", root / "CASE_A.VTP"),
-            (root / f"{nfc}.npz", root / f"{nfd}.npz"),
+            (root / f"{nfc}.csv", root / f"{nfd}.csv"),
             (root / f"{nfc}.vtp", root / f"{nfd.upper()}.VTP"),
         )
         for first, second in collision_pairs:
@@ -145,7 +145,6 @@ class CsvWriterTests(unittest.TestCase):
                     "stl_path": f"{stl_path};{second_stl_path}",
                     "out_dir": str(out_dir),
                     "save_vtp_on": 0,
-                    "save_npz_on": 0,
                 },
             )
 
@@ -155,7 +154,6 @@ class CsvWriterTests(unittest.TestCase):
                     stl_path,
                     second_stl_path,
                     out_dir / "case_a.vtp",
-                    out_dir / "case_a.npz",
                 ):
                     with self.subTest(
                         adapter=adapter.__name__, protected=protected
@@ -182,23 +180,9 @@ class CsvWriterTests(unittest.TestCase):
                         "stl_path": str(root / "mesh.stl"),
                         "out_dir": str(root / "outputs"),
                         "save_vtp_on": 0,
-                        "save_npz_on": 0,
                     },),
                     "planned VTP",
                     root / "outputs" / "case_a.vtp",
-                ),
-                (
-                    root / "outputs" / f"{nfd}.npz",
-                    input_path,
-                    ({
-                        "case_id": nfc,
-                        "stl_path": str(root / "mesh.stl"),
-                        "out_dir": str(root / "outputs"),
-                        "save_vtp_on": 0,
-                        "save_npz_on": 0,
-                    },),
-                    "planned NPZ",
-                    root / "outputs" / f"{nfc}.npz",
                 ),
                 (
                     root / "CASES.CSV",
@@ -288,7 +272,6 @@ class CsvWriterTests(unittest.TestCase):
                     "stl_path": str(root / "mesh.stl"),
                     "out_dir": str(linked_out),
                     "save_vtp_on": 0,
-                    "save_npz_on": 0,
                 },
             )
             for adapter in (fmf_csv, newt_csv):
@@ -371,7 +354,6 @@ class CsvWriterTests(unittest.TestCase):
                     "stl_path": str(stl_path),
                     "out_dir": str(root / "outputs"),
                     "save_vtp_on": 0,
-                    "save_npz_on": 0,
                 },
             )
             validators = (

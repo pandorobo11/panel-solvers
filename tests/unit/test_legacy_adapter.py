@@ -63,17 +63,14 @@ class LegacyAdapterTests(unittest.TestCase):
                 run_finished_at_utc="finish",
                 run_elapsed_s=1.0,
                 vtp_path="adapted.vtp",
-                npz_path="adapted.npz",
             ),
             mode="A",
             speed_ratio=5.0,
             translational_temperature_k=300.0,
-            wall_temperature_k=300.0,
         )
 
         self.assertIs(bundle.mesh.geometry, bundle.results.geometry)
         self.assertEqual("total", bundle.csv.rows[0]["scope"])
-        self.assertEqual(5.0, float(bundle.npz.arrays["S"]))
         self.assertEqual("adapted", bundle.vtp.field_data["case_id"][0])
         self.assertFalse(bundle.results.local_loads.traction_coeff_stl.flags.writeable)
 

@@ -257,20 +257,12 @@ def validate_summary_output_path(
                 )
         out_dir = Path(str(row.get("out_dir", "outputs")))
         if case_id:
-            candidates.extend(
-                (
-                    _CollisionPath(
-                        out_dir / f"{case_id}.vtp",
-                        "planned VTP",
-                        case_id=case_id,
-                        is_output=True,
-                    ),
-                    _CollisionPath(
-                        out_dir / f"{case_id}.npz",
-                        "planned NPZ",
-                        case_id=case_id,
-                        is_output=True,
-                    ),
+            candidates.append(
+                _CollisionPath(
+                    out_dir / f"{case_id}.vtp",
+                    "planned VTP",
+                    case_id=case_id,
+                    is_output=True,
                 )
             )
     _validate_no_output_collisions(candidates)

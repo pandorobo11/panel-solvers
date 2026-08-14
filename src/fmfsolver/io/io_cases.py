@@ -54,7 +54,6 @@ INPUT_COLUMN_ORDER = (
     "ray_backend",
     "out_dir",
     "save_vtp_on",
-    "save_npz_on",
 )
 NUMERIC_REQUIRED = (
     "stl_scale_m_per_unit",
@@ -83,7 +82,6 @@ POSITIVE_COLUMNS = frozenset(
 DEFAULTS = {
     "shielding_on": 0,
     "save_vtp_on": 1,
-    "save_npz_on": 0,
     "ray_backend": "auto",
     "attitude_input": "beta_tan",
     "out_dir": "outputs",

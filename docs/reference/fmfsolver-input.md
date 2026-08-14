@@ -27,7 +27,6 @@ shown; unknown columns are retained after them in result CSV output.
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | Shielding backend |
 | `out_dir` | no | `outputs` | path | Per-case artifact directory |
 | `save_vtp_on` | no | `1` | `0` or `1` | Save VTP |
-| `save_npz_on` | no | `0` | `0` or `1` | Save NPZ |
 
 Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
 `Altitude_km`. Specify exactly one complete pair. Every required or specified

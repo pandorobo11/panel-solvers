@@ -45,7 +45,7 @@ angles before panel calculation. The exact signs and transform are in
 - Case IDs must be unique after Unicode case-folding.
 - Required numbers must be finite; numeric booleans are rejected.
 - STL scale, reference area, and all three reference lengths must be positive.
-- `shielding_on`, `save_vtp_on`, and `save_npz_on` are `0` or `1`.
+- `shielding_on` and `save_vtp_on` are `0` or `1`.
 - `ray_backend` is `auto`, `rtree`, or `embree`.
 - Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
   rejected by the shared strict geometry boundary.

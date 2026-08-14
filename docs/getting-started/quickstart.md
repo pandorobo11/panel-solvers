@@ -40,8 +40,7 @@ Cases**. The GUI displays the generated VTP when one is saved. The plain
 By default, the CLI writes:
 
 - `outputs/basic_result.csv`: summary coefficient rows;
-- `outputs/<case_id>.vtp`: mesh, panel scalars, and case metadata;
-- no NPZ file, because `save_npz_on` defaults to `0`.
+- `outputs/<case_id>.vtp`: mesh, panel scalars, and case metadata.
 
 See [Outputs](../user-guide/outputs.md) for semantics and
 [Case files](../user-guide/case-files.md) before editing the examples.

@@ -1,10 +1,7 @@
-import tempfile
 import unittest
-from pathlib import Path
 
 import numpy as np
 
-from panelsolver.app import write_npz_projection
 from panelsolver.core import (
     ArtifactProjectionPolicy,
     CommonCasePayload,
@@ -16,7 +13,6 @@ from panelsolver.core import (
     PanelGeometry,
     PanelMesh,
     assemble_common_results,
-    project_npz_artifact,
     project_vtp_artifact,
 )
 
@@ -68,11 +64,9 @@ class ArtifactProjectionTests(unittest.TestCase):
             ray_backend_used="not_used",
             solver_version="1.0",
             vtp_field_data={"windward_eq_used": "newtonian"},
-            npz_arrays={"S": 5.0},
         )
 
         vtp = project_vtp_artifact(mesh, results, policy)
-        npz = project_npz_artifact(mesh, results, policy)
 
         self.assertEqual(
             sorted(vtp.cell_data),
@@ -86,35 +80,7 @@ class ArtifactProjectionTests(unittest.TestCase):
         self.assertEqual('["plate.stl"]', vtp.field_data["stl_paths_json"][0])
         np.testing.assert_array_equal(vtp.faces, [3, 0, 1, 2, 3, 1, 3, 2])
         np.testing.assert_array_equal(vtp.cell_data["C_face_stl"], [[1, 0, 0], [1, 0, 0]])
-        self.assertEqual(5.0, float(npz.arrays["S"]))
-        self.assertEqual("plate.stl", npz.arrays["stl_paths"][0])
         self.assertFalse(vtp.cell_data["C_face_stl"].flags.writeable)
-        self.assertFalse(npz.arrays["vertices"].flags.writeable)
-
-    def test_written_npz_is_pickle_free_and_preserves_projection_arrays(self) -> None:
-        mesh, results = fixture()
-        projection = project_npz_artifact(
-            mesh,
-            results,
-            ArtifactProjectionPolicy(
-                "beta_tan",
-                "signature",
-                "not_used",
-                "1.0",
-                npz_arrays={"S": 5.0},
-            ),
-        )
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = write_npz_projection(Path(temp_dir) / "current.npz", projection)
-            with np.load(path, allow_pickle=False) as archive:
-                self.assertEqual(list(projection.arrays), archive.files)
-                self.assertNotEqual("O", archive["stl_paths"].dtype.kind)
-                for name, expected in projection.arrays.items():
-                    actual = archive[name]
-                    self.assertEqual(expected.shape, actual.shape, name)
-                    self.assertEqual(expected.dtype, actual.dtype, name)
-                    np.testing.assert_array_equal(expected, actual, err_msg=name)
 
     def test_policy_additions_cannot_override_common_fields(self) -> None:
         mesh, results = fixture()
@@ -130,40 +96,16 @@ class ArtifactProjectionTests(unittest.TestCase):
                     vtp_field_data={"case_id": ["other"]},
                 ),
             )
-        with self.assertRaises(ContractValueError):
-            project_npz_artifact(
-                mesh,
-                results,
-                ArtifactProjectionPolicy(
-                    "beta_tan",
-                    "signature",
-                    "not_used",
-                    "1.0",
-                    npz_arrays={"CA": 99.0},
-                ),
-            )
 
-    def test_rejects_missing_scalars_object_arrays_and_geometry_mismatch(self) -> None:
+    def test_rejects_object_field_arrays_and_geometry_mismatch(self) -> None:
         mesh, results = fixture()
-        with self.assertRaises(ContractValueError):
-            project_npz_artifact(
-                mesh,
-                results,
-                ArtifactProjectionPolicy(
-                    "beta_tan",
-                    "signature",
-                    "not_used",
-                    "1.0",
-                    npz_cell_scalars=("missing",),
-                ),
-            )
         with self.assertRaises(ContractValueError):
             ArtifactProjectionPolicy(
                 "beta_tan",
                 "signature",
                 "not_used",
                 "1.0",
-                npz_arrays={"unsafe": np.array([object()], dtype=object)},
+                vtp_field_data={"unsafe": np.array([object()], dtype=object)},
             )
 
         other_geometry = PanelGeometry(

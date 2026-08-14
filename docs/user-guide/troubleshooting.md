@@ -20,7 +20,7 @@ not fall back.
 
 ## The result path is rejected
 
-The summary may not alias the input file, an STL, or any planned VTP/NPZ path.
+The summary may not alias the input file, an STL, or any planned VTP path.
 Choose a distinct filename and directory. Collision checks are deliberately
 portable across case-insensitive Windows and common macOS filesystems.
 
