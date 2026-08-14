@@ -1,1 +1,2 @@
 tests/fixtures/phase1/inputs/stl/*.stl text eol=lf
+examples/geometry/*.stl text eol=lf
