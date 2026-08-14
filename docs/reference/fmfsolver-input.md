@@ -51,4 +51,4 @@ uses `Tw_K` as the diffusely reflected molecular temperature (`T_r = T_w`).
 
 Common path, case-ID, flag, mesh, and attitude rules are in
 [Case files](../user-guide/case-files.md). Model interpretation is in
-[FMF solver](../solvers/fmfsolver.md).
+[Sentman local-load equation](../solvers/fmfsolver.md#sentman-local-load-equation).
