@@ -42,6 +42,13 @@ fmfsolver-cli --help
 newtsolver-cli --help
 ```
 
-Keep input and output data during rollback; documented formats remain compatible.
-Exact audited build hashes and the full transition probe are preserved in the
+Keep input and output data during rollback, but do not treat data retention as
+full input/output schema compatibility. The pinned legacy releases expose their
+historical NPZ output again. Before returning an old case table to the current
+`panel-solvers` release, remove the `save_npz_on` column.
+
+Current Summary CSV output does not contain `save_npz_on` or `npz_path`, and the
+current release does not create NPZ files. Existing VTP, NPZ, and CSV files are
+left untouched during rollback and return. Exact audited build hashes and the
+full transition probe are preserved in the
 [Phase 8 execution record](../history/audits/PHASE8_EXECUTION_RECORD.md).

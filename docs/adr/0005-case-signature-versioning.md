@@ -3,6 +3,10 @@
 - Status: Accepted (exact Phase 5 schema adopted)
 - Date: 2026-08-12
 
+The NPZ serialization portion of this decision is superseded by
+[ADR 0009](0009-remove-npz-output.md). Its CSV, VTP, numerical-signature, and
+cache-identity decisions remain in force.
+
 ## Context
 
 Both legacy applications use case signatures for cached results and VTP matching,
@@ -52,7 +56,7 @@ the execution engine derives a private, domain-separated result-cache signature
 from the public digest plus the exact three float64 values used by the model.
 
 That private identity is process-local cache state. It is not returned from
-`execute_case`, serialized into CSV/VTP, or considered during artifact
+`execute_case`, serialized into CSV/VTP/NPZ, or considered during artifact
 matching. This prevents a tolerance-distinct direct request from reusing another
 request's numerical result while preserving every existing public digest and
 fallback rule.

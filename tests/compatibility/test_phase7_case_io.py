@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import xlrd
 
 import fmfsolver.io.io_cases as fmf_case_module
 import newtsolver.io.io_cases as newt_case_module
@@ -34,6 +35,7 @@ from panelsolver.core import MeshValidationPolicy, ResultCache, execute_case
 from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+_CURRENT_INPUTS = Path(__file__).parents[1] / "fixtures" / "current"
 _GOLDEN = Path(__file__).parents[1] / "fixtures" / "phase1" / "golden"
 
 
@@ -72,6 +74,7 @@ class ProductCaseReaderTests(unittest.TestCase):
                                 [issue.field for issue in error.issues],
                             )
                             self.assertIn("has been removed", str(error))
+                            self.assertIn("Delete this field", str(error))
                             self.assertIn("no longer writes NPZ files", str(error))
 
     def test_other_unknown_columns_remain_preserved(self) -> None:
@@ -154,11 +157,26 @@ class ProductCaseReaderTests(unittest.TestCase):
                     )
 
     def test_csv_xlsx_xlsm_and_biff_xls_preserve_valid_rows(self) -> None:
-        for reader, stem, row_count in (
-            (read_fmf_cases, "fmfsolver_cases", 6),
-            (read_newt_cases, "newtsolver_cases", 9),
+        for reader, stem, case_id, major_values in (
+            (
+                read_fmf_cases,
+                "fmfsolver_cases",
+                "fmf_current_biff",
+                {"S": 5.0, "Ti_K": 300.0, "Tw_K": 300.0},
+            ),
+            (
+                read_newt_cases,
+                "newtsolver_cases",
+                "newt_current_biff",
+                {
+                    "Mach": 6.0,
+                    "gamma": 1.4,
+                    "windward_eq": "newtonian",
+                    "leeward_eq": "shield",
+                },
+            ),
         ):
-            csv_frame = read_current_cases(reader, _INPUTS / f"{stem}.csv")
+            csv_frame = reader(_CURRENT_INPUTS / f"{stem}.csv")
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp = Path(temp_dir)
                 xlsx = temp / f"{stem}.xlsx"
@@ -166,16 +184,45 @@ class ProductCaseReaderTests(unittest.TestCase):
                 csv_frame.to_excel(xlsx, index=False, engine="openpyxl")
                 xlsm.write_bytes(xlsx.read_bytes())
                 for path in (
+                    _CURRENT_INPUTS / f"{stem}.csv",
                     xlsx,
                     xlsm,
+                    _CURRENT_INPUTS / f"{stem}.xls",
                 ):
                     with self.subTest(stem=stem, suffix=path.suffix):
-                        actual = reader(path)
-                        self.assertEqual(row_count, len(actual))
-                        self.assertEqual(
-                            csv_frame["case_id"].tolist(), actual["case_id"].tolist()
-                        )
+                        if path.suffix == ".xls":
+                            workbook = xlrd.open_workbook(path)
+                            self.assertEqual(80, workbook.biff_version)
+                            self.assertEqual(2, workbook.sheet_by_index(0).nrows)
+                            with patch(
+                                "panelsolver.app.case_io.pd.read_excel",
+                                wraps=pd.read_excel,
+                            ) as read_excel:
+                                actual = reader(path)
+                            self.assertEqual(
+                                "xlrd", read_excel.call_args.kwargs["engine"]
+                            )
+                        else:
+                            actual = reader(path)
+                        self.assertEqual(1, len(actual))
+                        self.assertEqual([case_id], actual["case_id"].tolist())
                         self.assertEqual(list(csv_frame.columns), list(actual.columns))
+                        for name, expected in major_values.items():
+                            self.assertEqual(expected, actual.iloc[0][name])
+                        self.assertEqual(
+                            (
+                                _CURRENT_INPUTS
+                                / "../phase1/inputs/stl/plate.stl"
+                            ).resolve(),
+                            Path(actual.iloc[0]["stl_path"]),
+                        )
+                        self.assertEqual(
+                            (
+                                _CURRENT_INPUTS
+                                / f"outputs/{stem.removesuffix('_cases')}"
+                            ).resolve(),
+                            Path(actual.iloc[0]["out_dir"]),
+                        )
 
                 with self.assertRaises(Exception) as caught:
                     reader(_INPUTS / f"{stem}.xls")
@@ -184,6 +231,7 @@ class ProductCaseReaderTests(unittest.TestCase):
                     ["save_npz_on"],
                     [issue.field for issue in caught.exception.issues],
                 )
+                self.assertIn("Delete this field", str(caught.exception))
 
     def test_case_ids_use_one_portable_unicode_and_casefold_policy(self) -> None:
         products = (

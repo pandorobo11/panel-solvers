@@ -6,8 +6,11 @@ inside VTP are not contracts.
 
 ## Summary CSV
 
-The writer emits canonical input columns, then unknown input columns in their
-source order, then the product's result columns.
+The writer emits canonical input columns, then accepted non-reserved unknown
+input columns in their source order, then the product's result columns. The
+retired `save_npz_on` field is not an accepted unknown column: case readers
+reject it and old case files must remove it. Summary CSV also no longer contains
+the retired `npz_path` result column.
 
 FMF result columns, in order:
 

@@ -2,6 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-08-15
+- Supersedes: the NPZ serialization portion of ADR 0005 and the NPZ
+  compatibility-surface portion of ADR 0008
 
 ## Context
 
@@ -37,7 +39,9 @@ serialization.
 This decision does not change numerical formulas, coordinate systems, signs,
 normalization, VTP semantics, or the case-signature schema or values. It also
 does not change either product compatibility version or the shared distribution
-version; such version changes require explicit separate direction.
+version; such version changes require explicit separate direction. The CSV,
+VTP, numerical-signature, cache-identity, and supported-domain portions of ADR
+0005 and ADR 0008 are not superseded.
 
 ## Consequences
 

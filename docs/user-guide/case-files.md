@@ -50,6 +50,8 @@ angles before panel calculation. The exact signs and transform are in
 - Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
   rejected by the shared strict geometry boundary.
 
-Unknown input columns are preserved after the canonical input columns in the
-summary CSV. A direct Python call may not insert reader defaults; the documented
-file reader is the supported case-file interface.
+Accepted non-reserved unknown input columns are preserved after the canonical
+input columns in the Summary CSV. The retired `save_npz_on` field is an explicit
+exception: it is rejected in CSV, XLSX, XLSM, and XLS input and must be removed
+from old case files. A direct Python call may not insert reader defaults; the
+documented file reader is the supported case-file interface.
