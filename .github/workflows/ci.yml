@@ -91,7 +91,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes libegl1
 
       - name: Install dependencies
-        run: uv sync --locked --extra rayaccel
+        run: uv sync --locked --extra rayaccel --group docs
+
+      - name: Verify generated documentation plots
+        run: >-
+          uv run --no-sync python
+          scripts/generate_docs_angle_response_plots.py --check
 
       - name: Build distributions
         run: uv build

@@ -12,6 +12,20 @@ uv sync --locked --extra rayaccel
 installs the platform-specific Embree binding; rtree remains a supported backend
 and must stay testable.
 
+## Documentation plots
+
+Install the documentation-only plotting dependency, regenerate the committed
+SVG plots, or verify that they are synchronized with the current models:
+
+```bash
+uv sync --locked --group docs
+uv run --group docs python scripts/generate_docs_angle_response_plots.py
+uv run --group docs python scripts/generate_docs_angle_response_plots.py --check
+```
+
+When ray-acceleration development dependencies are also needed, combine the
+options as `uv sync --locked --extra rayaccel --group docs`.
+
 ## Change discipline
 
 1. Read `AGENTS.md`, the current task, the architecture and compatibility pages,

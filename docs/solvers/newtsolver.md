@@ -340,6 +340,57 @@ oblique-shock solution or an attached Taylor--Maccoll solution, and it does not
 directly solve a detached shock field. It is the current code's
 implementation-defined bridge to the Modified-Newtonian cap.
 
+### Representative angular response
+
+Both illustrative angular responses below fix
+$\hat{\boldsymbol V}=[1,0,0]$ and vary the panel normal as
+$\boldsymbol n_{\mathrm{in}}=[\sin\delta,\cos\delta,0]$. Therefore
+$\mu=\boldsymbol n_{\mathrm{in}}\mathbin{\boldsymbol\cdot}
+\hat{\boldsymbol V}=\sin\delta$, and
+$\delta=\mathtt{theta\_deg}-90^\circ$. At $\delta=-90^\circ$ the panel faces
+directly away from the flow, $\delta=0^\circ$ is grazing incidence, and at
+$\delta=+90^\circ$ it faces directly into the flow.
+
+#### Windward response
+
+![Windward newtsolver pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-windward-cp-vs-angle.svg)
+
+*Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
+shielding and `leeward_eq=shield`. Solid Tangent segments are attached weak
+branches; dashed Tangent segments are implementation-defined continuations to
+the Modified-Newtonian cap. These curves show the local response of one
+isolated, unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$.
+They are not whole-vehicle aerodynamic polars. The plotted $C_p$ values are
+local panel coefficients, not whole-vehicle force coefficients.*
+
+Newtonian reaches $C_p=2$ at $\delta=90^\circ$. Modified Newtonian retains the
+same $\sin^2\delta$ shape but scales it by the finite-Mach $C_{p,\max}$.
+Tangent Wedge and Tangent Cone use their local shock relations at small and
+moderate angles. After each model's computed attachment limit, the current
+implementation-defined continuation connects its critical value to
+$C_{p,\max}$; the dashed portions are not detached-shock solutions. Agreement
+or separation among these curves does not establish a universal ranking of
+model accuracy.
+
+#### Leeward response
+
+![Leeward newtsolver pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-leeward-cp-vs-angle.svg)
+
+*Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
+`windward_eq=newtonian` and no ray shielding. The leeward `shield` equation
+assigns $C_p=0$, while Prandtl--Meyer gives expansion suction; the vacuum
+pressure coefficient is the lower bound. Ray shielding is a separate geometry
+operation. These curves show the local response of one isolated, unshielded
+panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
+whole-vehicle aerodynamic polars. The plotted $C_p$ values are local panel
+coefficients, not whole-vehicle force coefficients.*
+
+The `leeward_eq=shield` selector is only the zero-pressure equation for a
+leeward-oriented, otherwise active panel. In contrast, `shielding_on=1` performs
+ray-occlusion testing and forces any geometrically hidden panel to zero load,
+independently of whether its selected leeward equation is `shield` or
+`prandtl_meyer`.
+
 ## Flow inputs and constraints
 
 `Mach` must be positive and `gamma` must be greater than 1. Modified Newtonian,

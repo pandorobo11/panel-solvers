@@ -34,6 +34,7 @@ newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
 dev = ["ruff"]
+docs = ["matplotlib"]
 
 [build-system]
 requires = ["hatchling"]
