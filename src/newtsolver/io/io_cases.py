@@ -13,6 +13,7 @@ from panelsolver.app.case_io import (
     ValidationIssue,
     count_semicolon_entries,
     expand_component_values,
+    normalize_optional_text,
     read_case_table,
     split_semicolon_tokens,
 )
@@ -96,31 +97,43 @@ DEFAULTS = {
     "leeward_eq": "shield",
     "out_dir": "outputs",
 }
+
+
 def _validate_surface_equations(frame: pd.DataFrame, add_issue: AddIssue) -> None:
     for index in frame.index:
         component_count = max(count_semicolon_entries(frame.at[index, "stl_path"]), 1)
         try:
-            _, canonical = expand_component_values(
+            windward = normalize_optional_text(
                 frame.at[index, "windward_eq"],
+                field="windward_eq",
+                default="newtonian",
+            )
+            _, canonical = expand_component_values(
+                windward,
                 default_value="newtonian",
                 resolver=normalize_windward_equation,
                 component_count=component_count,
                 field_name="windward_eq",
             )
             frame.at[index, "windward_eq"] = canonical
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             add_issue(int(index), "windward_eq", str(exc))
             continue
         try:
-            _, canonical = expand_component_values(
+            leeward = normalize_optional_text(
                 frame.at[index, "leeward_eq"],
+                field="leeward_eq",
+                default="shield",
+            )
+            _, canonical = expand_component_values(
+                leeward,
                 default_value="shield",
                 resolver=normalize_leeward_equation,
                 component_count=component_count,
                 field_name="leeward_eq",
             )
             frame.at[index, "leeward_eq"] = canonical
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             add_issue(int(index), "leeward_eq", str(exc))
 
 

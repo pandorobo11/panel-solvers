@@ -42,6 +42,32 @@ def _is_numeric_boolean(value: object) -> bool:
     return isinstance(value, (bool, np.bool_))
 
 
+def _is_missing_scalar(value: object) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return False
+    try:
+        missing = pd.isna(value)
+    except (TypeError, ValueError):
+        return False
+    if missing is True:
+        return True
+    if isinstance(missing, np.bool_):
+        return missing.item() is True
+    return False
+
+
+def normalize_optional_text(value: object, *, field: str, default: str) -> str:
+    """Normalize one optional reader text cell without truth-value coercion."""
+    if _is_missing_scalar(value):
+        return default
+    if not isinstance(value, str):
+        raise TypeError(f"{field} must be text when specified.")
+    normalized = value.strip()
+    return normalized if normalized else default
+
+
 @dataclass(frozen=True, slots=True)
 class ValidationIssue:
     """One structured validation error for an input case table."""
@@ -303,12 +329,20 @@ def _validate_ray_backend(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         )
 
 
-def _normalize_attitude(value: object) -> str:
-    return str(value or "").strip().lower() or "beta_tan"
-
-
 def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
-    frame["attitude_input"] = frame["attitude_input"].map(_normalize_attitude)
+    normalized: list[str] = []
+    for index, value in frame["attitude_input"].items():
+        try:
+            mode = normalize_optional_text(
+                value,
+                field="attitude_input",
+                default="beta_tan",
+            ).lower()
+        except (TypeError, ValueError) as exc:
+            add_issue(int(index), "attitude_input", str(exc))
+            mode = "beta_tan"
+        normalized.append(mode)
+    frame["attitude_input"] = pd.Series(normalized, index=frame.index)
     invalid = ~frame["attitude_input"].isin(ATTITUDE_INPUT_VALUES)
     for index in frame.index[invalid]:
         add_issue(
@@ -446,6 +480,7 @@ __all__ = (
     "count_semicolon_entries",
     "expand_component_values",
     "is_filled",
+    "normalize_optional_text",
     "read_case_table",
     "split_semicolon_tokens",
     "validate_case_id",

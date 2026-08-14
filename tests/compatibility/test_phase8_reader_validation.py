@@ -12,7 +12,7 @@ from openpyxl import Workbook
 
 from fmfsolver.io.io_cases import read_cases as read_fmf_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
-from panelsolver.app.case_io import InputValidationError
+from panelsolver.app.case_io import InputValidationError, normalize_optional_text
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 _BOUNDARY_VALUES = (
@@ -88,6 +88,37 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
             observed.intersection(attributed_fields),
             f"{field} rejection was attributed only to {sorted(observed)!r}",
         )
+
+    def test_optional_text_normalization_distinguishes_missing_from_non_text(
+        self,
+    ) -> None:
+        for value in (None, pd.NA, float("nan"), np.float64("nan"), "", "   "):
+            with self.subTest(value=repr(value)):
+                self.assertEqual(
+                    "fallback",
+                    normalize_optional_text(
+                        value,
+                        field="selector",
+                        default="fallback",
+                    ),
+                )
+        self.assertEqual(
+            "BETA_TAN",
+            normalize_optional_text(
+                "  BETA_TAN  ",
+                field="selector",
+                default="fallback",
+            ),
+        )
+        for value in (False, True, np.bool_(False), 0, 1, 1.5, [], ["beta_tan"]):
+            with self.subTest(value=repr(value)), self.assertRaisesRegex(
+                TypeError, "selector"
+            ):
+                normalize_optional_text(
+                    value,
+                    field="selector",
+                    default="fallback",
+                )
 
     def test_common_numeric_fields_share_accept_reject_and_attribution(self) -> None:
         products = (
@@ -250,6 +281,121 @@ class Phase8ReaderValidationMatrixTests(unittest.TestCase):
                             "Aref_m2",
                             {issue.field for issue in caught.exception.issues},
                         )
+
+    def test_openpyxl_selector_cells_reject_non_text_scalars(self) -> None:
+        products = (
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                ("attitude_input",),
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                ("attitude_input", "windward_eq", "leeward_eq"),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for product, reader, filename, fields in products:
+                base = reader(_INPUTS / filename).iloc[[0]].copy()
+                for field in fields:
+                    for value in (False, True, 0, 1):
+                        with self.subTest(
+                            product=product,
+                            field=field,
+                            value=value,
+                        ):
+                            path = root / f"{product}-{field}-{value!s}.xlsx"
+                            self._write_openpyxl_workbook(base, path, {field: value})
+                            with self.assertRaises(InputValidationError) as caught:
+                                reader(path)
+                            self.assertIn(
+                                field,
+                                {issue.field for issue in caught.exception.issues},
+                            )
+
+    def test_openpyxl_missing_blank_and_valid_selectors_keep_contracts(self) -> None:
+        products = (
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                {"attitude_input": "beta_tan"},
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                {
+                    "attitude_input": "beta_tan",
+                    "windward_eq": "newtonian",
+                    "leeward_eq": "shield",
+                },
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for product, reader, filename, defaults in products:
+                source = reader(_INPUTS / filename)
+                base = source.iloc[[0]].copy()
+                for field, default in defaults.items():
+                    for value_name, value in (("missing", None), ("blank", "   ")):
+                        with self.subTest(
+                            product=product,
+                            field=field,
+                            value=value_name,
+                        ):
+                            path = root / f"{product}-{field}-{value_name}.xlsx"
+                            self._write_openpyxl_workbook(base, path, {field: value})
+                            actual = reader(path)
+                            self.assertEqual(default, actual.iloc[0][field])
+                            self.assertEqual(list(source.columns), list(actual.columns))
+
+                for mode in ("beta_tan", "beta_sin", "bank"):
+                    with self.subTest(product=product, attitude_input=mode):
+                        path = root / f"{product}-attitude-{mode}.xlsx"
+                        self._write_openpyxl_workbook(
+                            base,
+                            path,
+                            {"attitude_input": f"  {mode.upper()}  "},
+                        )
+                        self.assertEqual(mode, reader(path).iloc[0]["attitude_input"])
+
+            newt_source = read_newt_cases(_INPUTS / "newtsolver_cases.csv")
+            newt_base = newt_source.iloc[[0]].copy()
+            for field, values in (
+                (
+                    "windward_eq",
+                    (
+                        "newtonian",
+                        "modified_newtonian",
+                        "tangent_wedge",
+                        "tangent_cone",
+                    ),
+                ),
+                ("leeward_eq", ("shield", "prandtl_meyer")),
+            ):
+                for value in values:
+                    with self.subTest(field=field, value=value):
+                        path = root / f"newtsolver-{field}-{value}.xlsx"
+                        self._write_openpyxl_workbook(
+                            newt_base,
+                            path,
+                            {field: f"  {value.upper()}  "},
+                        )
+                        self.assertEqual(value, read_newt_cases(path).iloc[0][field])
+
+            multicomponent = newt_source.loc[
+                newt_source["case_id"] == "newt_bank_multicomponent"
+            ].iloc[[0]]
+            path = root / "newtsolver-multicomponent.xlsx"
+            self._write_openpyxl_workbook(multicomponent, path, {})
+            actual = read_newt_cases(path).iloc[0]
+            self.assertEqual("tangent_cone;newtonian", actual["windward_eq"])
+            self.assertEqual("prandtl_meyer;shield", actual["leeward_eq"])
 
     def test_numpy_booleans_are_rejected_before_numeric_coercion(self) -> None:
         for reader, filename in (
