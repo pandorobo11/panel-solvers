@@ -12,6 +12,8 @@ Accepted ADRs are retained as decision records:
 8. [Preserve compatibility in the supported domain](0008-supported-domain-compatibility.md)
 9. [Remove NPZ output](0009-remove-npz-output.md)
 10. [Remove legacy BIFF XLS input](0010-remove-legacy-xls-input.md)
+11. [Use flow-domain names on canonical user-facing
+    surfaces](0011-canonical-domain-naming.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).

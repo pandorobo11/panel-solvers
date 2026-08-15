@@ -118,6 +118,61 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
             ):
                 resolve_attitude(alpha, beta, "beta_tan")
 
+        inside = float(np.nextafter(90.0, 0.0))
+        for alpha, beta in (
+            (-inside, 0.0),
+            (inside, 0.0),
+            (0.0, -inside),
+            (0.0, inside),
+        ):
+            with self.subTest(alpha=alpha, beta=beta):
+                resolved = resolve_attitude(alpha, beta, "BeTa_TaN")
+                self.assertEqual("beta_tan", resolved.input_mode)
+
+    def test_beta_sin_restricts_only_alpha_to_principal_domain(self) -> None:
+        for alpha in (-90.0, 90.0):
+            with self.subTest(alpha=alpha), self.assertRaisesRegex(
+                ValueError, "alpha_deg.*strictly between -90 and 90"
+            ):
+                resolve_attitude(alpha, 180.0, "beta_sin")
+
+        inside = float(np.nextafter(90.0, 0.0))
+        for alpha in (-inside, 0.0, inside):
+            for beta in (90.0, 180.0, -180.0):
+                with self.subTest(alpha=alpha, beta=beta):
+                    resolved = resolve_attitude(alpha, beta, "BETA_SIN")
+                    self.assertEqual("beta_sin", resolved.input_mode)
+                    self.assertTrue(np.isfinite(resolved.velocity_hat_stl).all())
+
+    def test_bank_accepts_finite_periodic_values(self) -> None:
+        baseline = resolve_attitude(15.0, 30.0, "bank")
+        for alpha, bank in ((375.0, 30.0), (15.0, 390.0), (-345.0, -330.0)):
+            with self.subTest(alpha=alpha, bank=bank):
+                periodic = resolve_attitude(alpha, bank, "BaNk")
+                np.testing.assert_allclose(
+                    baseline.velocity_hat_stl,
+                    periodic.velocity_hat_stl,
+                    rtol=0.0,
+                    atol=1.0e-15,
+                )
+
+    def test_selector_accepts_only_none_or_text_without_truth_coercion(self) -> None:
+        for selector in (None, "", "   ", "BETA_TAN", " beta_sin ", "BaNk"):
+            with self.subTest(selector=repr(selector)):
+                resolved = resolve_attitude(0.0, 0.0, selector)
+                expected = "beta_tan" if selector is None or not selector.strip() else (
+                    selector.strip().lower()
+                )
+                self.assertEqual(expected, resolved.input_mode)
+
+        for selector in (False, 0, [], object()):
+            with self.subTest(selector=repr(selector)), self.assertRaisesRegex(
+                TypeError, "attitude_input must be text or None"
+            ):
+                resolve_attitude(0.0, 0.0, selector)
+        with self.assertRaisesRegex(ValueError, "Invalid attitude_input"):
+            resolve_attitude(0.0, 0.0, "unknown")
+
 
 if __name__ == "__main__":
     unittest.main()

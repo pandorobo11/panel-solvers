@@ -4,7 +4,7 @@
 
 `shielding_on=1` casts an upstream ray from every face center and makes a panel's
 load exactly zero when another face is hit first. This geometry-occlusion step is
-independent of newtsolver's `leeward_eq=shield`, which is a zero-pressure surface
+independent of Hypersonic `leeward_eq=shield`, which is a zero-pressure surface
 equation.
 
 `ray_backend` accepts:

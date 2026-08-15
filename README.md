@@ -1,15 +1,15 @@
 # panel-solvers
 
-`panel-solvers` is a single Python distribution for two STL panel-method
-applications:
+`panel-solvers` is a single Python distribution for two STL panel-method flow
+domains:
 
-| Command family | Use it for | Physical model |
+| Canonical domain | Use it for | Physical model or methods |
 |---|---|---|
-| `fmfsolver` | Free-molecular and rarefied-flow surface loads | Sentman |
-| `newtsolver` | Hypersonic pressure loads | Newtonian-family methods |
+| `fmf` | Free-molecular and rarefied-flow surface loads | Sentman |
+| `hypersonic` | Hypersonic pressure loads | Newtonian-family methods |
 
 Choose FMF when molecular thermal interaction and tangential surface load matter.
-Choose newtsolver for continuum hypersonic pressure estimates using Newtonian,
+Choose Hypersonic for continuum pressure estimates using Newtonian,
 modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
 [Choosing a solver](docs/index.md#choosing-a-solver) for the model limits.
 
@@ -33,11 +33,11 @@ and command names overlap. See the [installation guide](docs/getting-started/ins
 
 ## Run
 
-Launch either GUI, then select its example case file:
+Launch either canonical GUI, then select its example case file:
 
 ```bash
-fmfsolver-gui
-newtsolver-gui
+panelsolver-gui fmf
+panelsolver-gui hypersonic
 ```
 
 Run the same examples without the GUI:
@@ -46,7 +46,7 @@ Run the same examples without the GUI:
 panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
 panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
 
-# Compatibility commands remain available:
+# Legacy compatibility commands remain available:
 fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
 newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
 ```
@@ -56,7 +56,8 @@ newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-c
 
 Case tables may be CSV, XLSX, or XLSM files.
 
-The aliases `fmfsolver` and `newtsolver` also launch their respective GUIs.
+The six `fmfsolver` / `newtsolver` commands remain legacy compatibility entry
+points with unchanged versions, behavior, and GUI titles.
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains the files and the main
 CLI options.
@@ -66,22 +67,25 @@ CLI options.
 - [Documentation home](docs/index.md)
 - [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
 - [Case-file guide](docs/user-guide/case-files.md)
-- [FMF solver](docs/solvers/fmfsolver.md) and
-  [newtsolver](docs/solvers/newtsolver.md)
+- [FMF](docs/solvers/fmfsolver.md) and
+  [Hypersonic](docs/solvers/newtsolver.md)
 - [FMF input](docs/reference/fmfsolver-input.md),
-  [newtsolver input](docs/reference/newtsolver-input.md), and
+  [Hypersonic input](docs/reference/newtsolver-input.md), and
   [output reference](docs/reference/output-formats.md)
 - [Development guide](docs/development/setup-and-testing.md)
 - [Migration and audit history](docs/history/README.md)
 
 ## Status and compatibility
 
-The FMF/newtsolver integration and Phase 8 audit are complete. One
+The FMF/Hypersonic integration and Phase 8 audit are complete. One
 `panel-solvers` distribution (currently `0.1.0`) provides the canonical
-`panelsolver` command and all six compatible command names. Product-facing
+`panelsolver` and `panelsolver-gui` command namespaces plus all six legacy
+compatibility command names. Product-facing
 compatibility versions remain FMF `1.3.8` and
 newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
-and documented Summary CSV/VTP semantics are compatibility surfaces; direct Python
-implementation details are best effort. See the
+and documented Summary CSV/VTP semantics are compatibility surfaces. The small
+`panelsolver` package-root Python API is stable; lower-level architecture APIs,
+legacy direct-Python compatibility, and private implementation have distinct
+support levels. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md).

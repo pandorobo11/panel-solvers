@@ -30,6 +30,7 @@ EXPECTED_COMPATIBILITY_ENTRY_POINTS = {
 }
 EXPECTED_ENTRY_POINTS = {
     "panelsolver": "panelsolver.cli:main",
+    "panelsolver-gui": "panelsolver.gui:main",
     **EXPECTED_COMPATIBILITY_ENTRY_POINTS,
 }
 
@@ -97,14 +98,29 @@ _TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
 
 
 def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
+    import panelsolver
     from panelsolver import (
+        FMFCase,
         HypersonicCase,
-        SentmanCase,
         SolveResult,
         resolve_attitude,
+        solve_fmf,
         solve_hypersonic,
-        solve_sentman,
     )
+
+    expected_surface = (
+        "FMFCase",
+        "HypersonicCase",
+        "ResolvedAttitude",
+        "SolveResult",
+        "resolve_attitude",
+        "solve_fmf",
+        "solve_hypersonic",
+    )
+    if panelsolver.__all__ != expected_surface:
+        raise RuntimeError(f"unexpected stable API surface: {panelsolver.__all__!r}")
+    if hasattr(panelsolver, "SentmanCase") or hasattr(panelsolver, "solve_sentman"):
+        raise RuntimeError("removed package-root Sentman API aliases remain")
 
     common = {
         "stl_paths": (inputs / "stl" / "plate.stl",),
@@ -121,9 +137,9 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
     previous = Path.cwd()
     os.chdir(work)
     try:
-        sentman = solve_sentman(
-            SentmanCase(
-                case_id="api_sentman",
+        fmf = solve_fmf(
+            FMFCase(
+                case_id="api_fmf",
                 **common,
                 speed_ratio=5.0,
                 translational_temperature_k=300.0,
@@ -140,13 +156,79 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
         )
     finally:
         os.chdir(previous)
-    if not isinstance(sentman, SolveResult) or not isinstance(hypersonic, SolveResult):
+    if not isinstance(fmf, SolveResult) or not isinstance(hypersonic, SolveResult):
         raise TypeError("high-level solve returned an unexpected type")
     if list(work.iterdir()):
         raise RuntimeError("high-level in-memory solve wrote filesystem artifacts")
-    for result in (sentman, hypersonic):
+    for result in (fmf, hypersonic):
         if result.local_loads.n_faces < 1 or len(result.case_signature) != 64:
             raise RuntimeError("high-level solve result is incomplete")
+
+
+def _smoke_canonical_gui_entrypoint() -> None:
+    from PySide6 import QtCore, QtWidgets
+
+    from panelsolver import gui as canonical_gui
+    from panelsolver.app.gui_bootstrap import create_main_window
+    from panelsolver.app.main_window import MainWindow
+
+    class OffscreenViewer(QtWidgets.QWidget):
+        log_message = QtCore.Signal(str)
+        save_selected_images_requested = QtCore.Signal()
+
+        def load_vtp(self, *_args) -> None:
+            pass
+
+        def clear_view(self) -> None:
+            pass
+
+        def set_case_rows(self, *_args) -> None:
+            pass
+
+        def save_images_for_case_rows(self, *_args) -> None:
+            pass
+
+    _application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    entry = next(
+        item
+        for item in importlib.metadata.distribution("panel-solvers").entry_points
+        if item.group == "console_scripts" and item.name == "panelsolver-gui"
+    )
+    launcher = entry.load()
+    expected = {
+        "fmf": ("fmf", "sentman", "Panel Solver — FMF"),
+        "hypersonic": (
+            "hypersonic",
+            "hypersonic",
+            "Panel Solver — Hypersonic",
+        ),
+    }
+    constructed: list[tuple[str, str, str]] = []
+
+    def construct(spec, argv):
+        if len(argv) != 1:
+            raise RuntimeError(f"canonical GUI leaked dispatcher arguments: {argv!r}")
+        window = create_main_window(
+            spec,
+            window_factory=lambda selected: MainWindow(
+                selected,
+                viewer_panel=OffscreenViewer(),
+            ),
+        )
+        constructed.append((spec.product_id, spec.model_id, window.windowTitle()))
+        window.close()
+        return 0
+
+    original = canonical_gui.run_gui
+    canonical_gui.run_gui = construct
+    try:
+        for domain in expected:
+            if launcher([domain]) != 0:
+                raise RuntimeError(f"canonical GUI {domain} launcher failed")
+    finally:
+        canonical_gui.run_gui = original
+    if constructed != list(expected.values()):
+        raise RuntimeError(f"canonical GUI identity changed: {constructed!r}")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
@@ -567,9 +649,25 @@ def main() -> int:
         _prepare_current_inputs(inputs)
         excel_inputs = _prepare_current_excel_inputs(inputs)
         _smoke_high_level_api(staging, inputs)
+        _smoke_canonical_gui_entrypoint()
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
         canonical = _command_path("panelsolver")
+        canonical_gui = _command_path("panelsolver-gui")
+        for arguments in (("--help",), ("fmf", "--help"), ("hypersonic", "--help")):
+            gui_help = subprocess.run(
+                [canonical_gui, *arguments],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
+            if gui_help.returncode != 0 or "panelsolver-gui" not in gui_help.stdout:
+                raise RuntimeError(
+                    f"canonical GUI help failed for {arguments!r}:\n"
+                    f"stdout={gui_help.stdout!r}\nstderr={gui_help.stderr!r}"
+                )
         canonical_help = subprocess.run(
             [canonical, "--help"],
             cwd=staging,

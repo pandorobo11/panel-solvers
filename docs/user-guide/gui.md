@@ -1,13 +1,17 @@
 # GUI guide
 
-Launch the GUI for the physical model you intend to use:
+Launch the canonical GUI with a flow-domain selector:
 
 ```bash
-fmfsolver-gui
-newtsolver-gui
+panelsolver-gui fmf
+panelsolver-gui hypersonic
 ```
 
-`fmfsolver` and `newtsolver` are equivalent GUI aliases.
+These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`. FMF currently
+uses the Sentman physical model; Hypersonic provides Newtonian-family methods.
+
+The legacy compatibility commands `fmfsolver`, `fmfsolver-gui`, `newtsolver`,
+and `newtsolver-gui` remain available with their existing titles and behavior.
 
 ## Run cases
 

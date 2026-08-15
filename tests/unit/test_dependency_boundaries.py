@@ -119,7 +119,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(119, len(graph), "Update the recorded production module count")
+        self.assertEqual(121, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -219,6 +219,24 @@ class DependencyBoundaryTests(unittest.TestCase):
     def test_canonical_cli_import_does_not_load_private_compatibility(self) -> None:
         code = (
             "import sys; import panelsolver.cli; "
+            "loaded=sorted(name for name in sys.modules "
+            "if name.startswith('panelsolver._compat')); "
+            "assert loaded == [], loaded"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
+
+    def test_canonical_api_import_does_not_load_private_compatibility(self) -> None:
+        code = (
+            "import sys; import panelsolver; "
+            "loaded=sorted(name for name in sys.modules "
+            "if name.startswith('panelsolver._compat')); "
+            "assert loaded == [], loaded"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
+
+    def test_canonical_gui_import_does_not_load_private_compatibility(self) -> None:
+        code = (
+            "import sys; import panelsolver.gui; "
             "loaded=sorted(name for name in sys.modules "
             "if name.startswith('panelsolver._compat')); "
             "assert loaded == [], loaded"

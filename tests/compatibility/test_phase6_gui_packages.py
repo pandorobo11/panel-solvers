@@ -11,6 +11,7 @@ class Phase6GuiPackageTests(unittest.TestCase):
             "panelsolver.app.gui_bootstrap",
             "panelsolver.app.main_window",
             "panelsolver.app.viewer",
+            "panelsolver.gui",
             "fmfsolver.app.gui_app",
             "newtsolver.app.gui_app",
         ):
@@ -20,6 +21,7 @@ class Phase6GuiPackageTests(unittest.TestCase):
     def test_canonical_and_all_phase7_legacy_commands_are_registered(self) -> None:
         expected_commands = {
             "panelsolver": "panelsolver.cli:main",
+            "panelsolver-gui": "panelsolver.gui:main",
             "fmfsolver": "fmfsolver.app.gui_app:main",
             "fmfsolver-gui": "fmfsolver.app.gui_app:main",
             "fmfsolver-cli": "fmfsolver.app.cli_app:main",

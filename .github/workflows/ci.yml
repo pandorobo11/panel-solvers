@@ -155,6 +155,7 @@ jobs:
           assert prepare_gui_spec(newt_solver_spec()).model_id == "hypersonic"
           expected = {
               "panelsolver": "panelsolver.cli:main",
+              "panelsolver-gui": "panelsolver.gui:main",
               "fmfsolver": "fmfsolver.app.gui_app:main",
               "fmfsolver-gui": "fmfsolver.app.gui_app:main",
               "fmfsolver-cli": "fmfsolver.app.cli_app:main",

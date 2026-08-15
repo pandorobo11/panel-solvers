@@ -35,6 +35,9 @@ Commands in that environment can be prefixed with `uv run`.
 panelsolver --help
 panelsolver fmf --help
 panelsolver hypersonic --help
+panelsolver-gui --help
+panelsolver-gui fmf --help
+panelsolver-gui hypersonic --help
 fmfsolver-cli --help
 newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'

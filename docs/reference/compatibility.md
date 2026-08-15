@@ -5,7 +5,11 @@ inside the supported domain. The current supported surfaces are:
 
 - canonical batch commands `panelsolver fmf` and
   `panelsolver hypersonic`;
-- all six commands: `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`,
+- canonical GUI commands `panelsolver-gui fmf` and
+  `panelsolver-gui hypersonic`;
+- the stable package-root Python API listed in [Python API support](python-api.md);
+- all six legacy compatibility commands: `fmfsolver`, `fmfsolver-gui`,
+  `fmfsolver-cli`,
   `newtsolver`, `newtsolver-gui`, and `newtsolver-cli`;
 - normal launcher-driven GUI operation;
 - documented CSV/XLSX/XLSM case files and product schemas/defaults;
@@ -13,13 +17,15 @@ inside the supported domain. The current supported surfaces are:
 - supported numerical values, signs, frames, normalizations, and model-specific
   behavior.
 
-Direct Python implementation details are best effort as described in
+Legacy direct-Python implementation details are best effort as described in
 [Python API support](python-api.md). Invalid-input quirks, exact exceptions and
 tracebacks, object identity, pickle globals, and cache internals are not frozen
 product differences.
 
-The canonical `fmf` token selects the free-molecular-flow domain and its Sentman
-model. It does not identify the legacy `fmfsolver` product or distribution.
+The canonical `fmf` token selects the free-molecular-flow domain and its current
+Sentman model. `hypersonic` selects the hypersonic panel-method domain and its
+Newtonian-family methods. Neither token identifies a legacy product. The naming
+contract is recorded in [ADR 0011](../adr/0011-canonical-domain-naming.md).
 
 Best-effort implementation lives in private `panelsolver._compat`, which points
 only inward to the shared layers. Supported CLI/GUI runtime does not import that
@@ -33,7 +39,7 @@ all three top-level packages. Product-facing compatibility versions remain:
 
 | Frontend | Compatibility version |
 |---|---:|
-| FMF | `1.3.8` |
+| fmfsolver | `1.3.8` |
 | newtsolver | `1.0.3` |
 
 Use `importlib.metadata.version("panel-solvers")` for the installed distribution

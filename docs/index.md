@@ -7,13 +7,13 @@ output, CLI, and GUI platform for two independent panel-load models. Start with
 
 ## Choosing a solver
 
-| Question | FMF solver | newtsolver |
+| Question | FMF | Hypersonic |
 |---|---|---|
 | Flow regime | Free molecular / rarefied | Hypersonic pressure approximation |
 | Model input | `S` + `Ti_K`, or `Mach` + `Altitude_km`; always `Tw_K` | `Mach`, `gamma`, and surface equations |
 | Panel load | Sentman normal and tangential traction | Pressure-only normal traction |
 | Equation selection | Sentman Mode A or Mode B | Per-component windward/leeward equations |
-| Read next | [FMF solver](solvers/fmfsolver.md) | [newtsolver](solvers/newtsolver.md) |
+| Read next | [FMF](solvers/fmfsolver.md) | [Hypersonic](solvers/newtsolver.md) |
 
 These are engineering panel methods, not general-purpose CFD. Confirm that the
 assumptions documented on the solver page match the intended flow regime and
@@ -31,7 +31,7 @@ geometry before interpreting coefficients.
 ## Reference
 
 - [FMF input columns](reference/fmfsolver-input.md)
-- [newtsolver input columns](reference/newtsolver-input.md)
+- [Hypersonic input columns](reference/newtsolver-input.md)
 - [Output formats](reference/output-formats.md)
 - [Environment variables](reference/environment-variables.md)
 - [Numerical conventions](reference/numerical-conventions.md)

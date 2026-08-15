@@ -1,7 +1,8 @@
-# newtsolver
+# Hypersonic
 
-newtsolver evaluates pressure-only panel traction for Newtonian-family flow
-models. The local load is `-Cp` times the outward panel normal; the shared engine
+The Hypersonic domain evaluates pressure-only panel traction for
+Newtonian-family flow models. The local load is `-Cp` times the outward panel
+normal; the shared engine
 owns geometry scaling, shielding, integration, components, and artifacts.
 
 ## Surface equations
@@ -55,8 +56,8 @@ C_p
 $$
 
 where $\gamma$ is the specific-heat ratio, not the incidence cosine. `Cp_n` is
-newtsolver's local panel pressure-coefficient output. The model returns local
-pressure-only traction
+the Hypersonic domain's local panel pressure-coefficient output. The model
+returns local pressure-only traction
 
 $$
 \boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j},
@@ -353,7 +354,7 @@ $\delta=+90^\circ$ it faces directly into the flow.
 
 #### Windward response
 
-![Windward newtsolver pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-windward-cp-vs-angle.svg)
+![Windward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-windward-cp-vs-angle.svg)
 
 *Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
 shielding and `leeward_eq=shield`. Solid Tangent segments are attached weak
@@ -374,7 +375,7 @@ model accuracy.
 
 #### Leeward response
 
-![Leeward newtsolver pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-leeward-cp-vs-angle.svg)
+![Leeward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-leeward-cp-vs-angle.svg)
 
 *Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
 `windward_eq=newtonian` and no ray shielding. The leeward `shield` equation
@@ -405,7 +406,7 @@ approximations do not model viscous effects, full shock interaction, or general
 three-dimensional CFD physics. Select them only within a justified engineering
 approximation regime.
 
-See the [newtsolver input reference](../reference/newtsolver-input.md) and
+See the [Hypersonic input reference](../reference/newtsolver-input.md) and
 [numerical conventions](../reference/numerical-conventions.md).
 
 ## References

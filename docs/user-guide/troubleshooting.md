@@ -43,5 +43,5 @@ canceled runs as partial state.
 
 The installed distribution is `panel-solvers`, while the compatibility package
 versions remain FMF `1.3.8` and newtsolver `1.0.3`. Do not install the shared and
-legacy distributions together. Direct Python implementation details are best
-effort; use documented CLI, GUI, and file interfaces for stable automation.
+legacy distributions together. The documented `panelsolver` package-root API is
+stable; legacy direct-Python implementation details are best effort.

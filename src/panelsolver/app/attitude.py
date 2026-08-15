@@ -73,8 +73,13 @@ class ResolvedAttitude:
         object.__setattr__(self, "input_mode", resolve_attitude_mode(self.input_mode))
 
 
-def resolve_attitude_mode(value: object) -> str:
-    mode = str(value or "").strip().lower() or "beta_tan"
+def resolve_attitude_mode(value: str | None) -> str:
+    if value is None:
+        mode = "beta_tan"
+    elif not isinstance(value, str):
+        raise TypeError("attitude_input must be text or None")
+    else:
+        mode = value.strip().lower() or "beta_tan"
     if mode not in ATTITUDE_INPUT_VALUES:
         raise ValueError(
             f"Invalid attitude_input: '{value}'. "
@@ -94,7 +99,7 @@ def _unit(values: tuple[float, float, float], *, message: str) -> np.ndarray:
 def resolve_attitude(
     alpha_deg: float,
     beta_or_bank_deg: float,
-    attitude_input: object = None,
+    attitude_input: str | None = None,
 ) -> ResolvedAttitude:
     """Resolve a supported attitude to the shared tangent-angle convention."""
     mode = resolve_attitude_mode(attitude_input)
@@ -140,6 +145,11 @@ def resolve_attitude(
             message="Invalid bank-angle inputs leading to zero direction.",
         )
     else:
+        if not -90.0 < alpha_in < 90.0:
+            raise ValueError(
+                "attitude_input='beta_sin' requires alpha_deg to be "
+                "strictly between -90 and 90 degrees."
+            )
         alpha_rad = math.radians(alpha_in)
         beta_sin_rad = math.radians(beta_in)
         tangent_alpha = math.tan(alpha_rad)

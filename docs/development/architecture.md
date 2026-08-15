@@ -5,7 +5,7 @@ in-memory API, a shared model-neutral engine/application layer, two independent
 physical models, and thin compatibility frontends.
 
 ```text
-panelsolver CLI / stable in-memory API
+panelsolver CLI / panelsolver-gui / stable in-memory API
                     |
                     v
 fmfsolver / newtsolver compatibility frontends
@@ -22,7 +22,7 @@ panelsolver._compat ----------> panelsolver.app
 
 | Layer | Owns |
 |---|---|
-| `panelsolver` root/API | small stable model-specific in-memory solve surface and canonical flow-domain command selection |
+| `panelsolver` root/API | small stable domain-specific in-memory solve surface and canonical flow-domain command selection |
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
@@ -66,6 +66,11 @@ not branch on a concrete model name to invent a universal schema. Compatibility
 frontends supply only model-specific input/output additions and version policy.
 The in-memory API stops at the common execution result and performs no artifact
 serialization.
+
+Canonical selectors and high-level case names use the FMF and Hypersonic flow
+domains. Sentman and Newtonian-family names identify physical models or methods;
+`fmfsolver` and `newtsolver` identify only legacy compatibility frontends. See
+[ADR 0011](../adr/0011-canonical-domain-naming.md).
 
 ## Stable decisions
 
