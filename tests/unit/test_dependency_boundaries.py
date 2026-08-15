@@ -117,13 +117,30 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(114, len(graph), "Update the recorded Phase 8 module count")
+        self.assertEqual(113, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
         )
         cycle = find_cycle(graph)
         self.assertIsNone(cycle, "Internal dependency cycle: " + " -> ".join(cycle or ()))
+
+    def test_complete_result_cache_surface_is_absent(self) -> None:
+        prohibited = (
+            "ResultCache",
+            "ResultCacheStats",
+            "ResultCacheError",
+            "result_cache=",
+            "_result_cache_signature",
+            "panelsolver.execution-cache",
+        )
+        violations = [
+            f"{path.relative_to(SRC_ROOT)}: {token}"
+            for path in sorted(SRC_ROOT.rglob("*.py"))
+            for token in prohibited
+            if token in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual([], violations)
 
     def test_every_shared_layer_obeys_documented_inward_direction(self) -> None:
         self.assert_edges_avoid(

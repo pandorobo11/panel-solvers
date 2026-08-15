@@ -470,6 +470,19 @@ def main() -> int:
         present = [name for name in names if hasattr(module, name)]
         if present:
             raise RuntimeError(f"removed neutral NPZ API remains: {present}")
+    removed_cache_api = [
+        name
+        for name in ("ResultCache", "ResultCacheError", "ResultCacheStats")
+        if hasattr(neutral_core, name)
+    ]
+    if removed_cache_api:
+        raise RuntimeError(f"removed result-cache API remains: {removed_cache_api}")
+    if importlib.util.find_spec("panelsolver.core.result_cache") is not None:
+        raise RuntimeError("removed panelsolver.core.result_cache module remains")
+    if "result_cache" in inspect.signature(neutral_core.execute_case).parameters:
+        raise RuntimeError("execute_case still accepts removed result_cache keyword")
+    if "cache_hit" in neutral_core.CaseExecutionResult.__dataclass_fields__:
+        raise RuntimeError("CaseExecutionResult still exposes result-cache state")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)

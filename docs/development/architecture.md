@@ -18,7 +18,7 @@ fmfsolver / newtsolver compatibility frontends
 
 | Layer | Owns |
 |---|---|
-| `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, caches, scheduler |
+| `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, CLI/GUI orchestration, artifact and CSV serialization |
 | `fmfsolver`, `newtsolver` | legacy names, model schemas/defaults, compatibility versions, product projection policy |
