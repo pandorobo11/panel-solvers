@@ -40,7 +40,7 @@ from newtsolver.core.solver import run_case as run_newt_case
 from newtsolver.core.solver import run_cases as run_newt_cases
 from newtsolver.io.csv_out import write_results_csv as write_newt_results_csv
 from newtsolver.io.io_cases import read_cases as read_newt_cases
-from panelsolver.app.legacy_results import legacy_result_frame
+from panelsolver._compat.legacy_results import legacy_result_frame
 from panelsolver.core import CsvProjection
 from tests.current_case_fixtures import read_current_cases
 

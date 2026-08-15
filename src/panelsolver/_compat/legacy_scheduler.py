@@ -7,6 +7,8 @@ from collections.abc import Callable, Iterator
 
 import pandas as pd
 
+from panelsolver.app.attitude import resolve_attitude
+from panelsolver.app.environment import resolve_parallel_chunk_environment
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -17,9 +19,6 @@ from panelsolver.core import (
     WorkerUnexpectedExitError,
     iter_case_results_parallel,
 )
-
-from .attitude import resolve_attitude
-from .environment import resolve_parallel_chunk_environment
 
 
 class _LegacyCallbackError(BaseException):

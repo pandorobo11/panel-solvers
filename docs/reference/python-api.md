@@ -22,7 +22,23 @@ importable on a best-effort basis. Exact keyword names, function/class identity,
 defining module, qualname, pickle global, cache object, exception text or chain,
 traceback, and validation timing are not compatibility contracts.
 
+Their implementation is isolated under private `panelsolver._compat`. That
+package is not a public API and may change without deprecation. The former
+internal `panelsolver.app.legacy_*` module paths have been removed rather than
+keeping app-to-compatibility reverse dependencies; use the product frontend
+paths for best-effort direct calls.
+
 Direct calls that bypass `read_cases()` must supply the fields their adapter
 needs; file-reader defaults are not guaranteed to be inserted. Prefer the case
 file plus CLI interface for durable automation. See
 [Compatibility](compatibility.md) and [ADR 0008](../adr/0008-supported-domain-compatibility.md).
+
+## Test-policy classification
+
+- Release contracts are covered by command, normal GUI, case-table,
+  Summary CSV/VTP, installed-wheel, and supported numerical regression tests.
+- Direct-Python tests under the compatibility suite are best-effort smoke and
+  diagnostic coverage; exact identity, qualname, traceback, and cache details
+  asserted by historical tests do not promote those details to public contract.
+- Phase 1 fixtures/goldens and Phase 3 adapter regressions are historical
+  evidence and remain read-only inputs to compatibility decisions.

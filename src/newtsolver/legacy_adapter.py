@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from panelsolver.app.legacy_adapter import (
+from panelsolver._compat.legacy_adapter import (
     LegacyPanelSnapshot,
     LegacyPhase3Projection,
     LegacyRunContext,

@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from panelsolver._compat.legacy_signatures import (
+    LegacySignaturePolicy,
+    build_artifact_signature_candidates,
+)
 from panelsolver.app.case_adapter import (
     AdaptedCase,
     ProductCasePolicy,
     adapt_case_row,
-    build_artifact_signature_candidates,
 )
 from panelsolver.app.case_io import expand_component_values
-from panelsolver.app.legacy_signatures import LegacySignaturePolicy
 from panelsolver.app.solver_spec import ArtifactSignatureCandidates
-from panelsolver.core import MeshValidationPolicy
+from panelsolver.core import MeshValidationPolicy, prepare_case_signature
 from panelsolver.models import ModelRegistry
 from panelsolver.models.hypersonic.selectors import (
     normalize_leeward_equation,
@@ -129,8 +131,6 @@ CASE_POLICY = ProductCasePolicy(
     compatibility_version=NEWTSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="NEWTSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
-    signature_defaults=DEFAULTS,
-    legacy_signature_policy=LEGACY_SIGNATURE_POLICY,
     model_payload=_model_payload,
 )
 
@@ -148,7 +148,13 @@ def build_signatures(
     *,
     registry: ModelRegistry | None = None,
 ) -> ArtifactSignatureCandidates:
-    return build_artifact_signature_candidates(row, CASE_POLICY, registry=registry)
+    primary = prepare_case_signature(adapt_row(row, registry=registry).request)
+    return build_artifact_signature_candidates(
+        row,
+        primary=primary,
+        defaults=DEFAULTS,
+        policy=LEGACY_SIGNATURE_POLICY,
+    )
 
 
 __all__ = (

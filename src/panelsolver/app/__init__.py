@@ -6,7 +6,6 @@ from .case_adapter import (
     AdaptedCase,
     ProductCasePolicy,
     adapt_case_row,
-    build_artifact_signature_candidates,
 )
 from .case_io import (
     CaseReaderPolicy,
@@ -23,14 +22,6 @@ from .csv_writer import (
     write_csv_atomic,
 )
 from .execution import default_model_registry, request_from_registry
-from .legacy_adapter import (
-    AdaptedLegacyPanels,
-    LegacyPanelSnapshot,
-    LegacyPhase3Projection,
-    LegacyRunContext,
-    adapt_legacy_panels,
-    project_legacy_phase3_case,
-)
 from .runtime import (
     PreparedProductCase,
     ProductBatchRunResult,
@@ -65,7 +56,6 @@ __all__ = (
     "ATTITUDE_INPUT_VALUES",
     "DURABLE_CSV_WRITE_POLICY",
     "AdaptedCase",
-    "AdaptedLegacyPanels",
     "ArtifactCaseMatch",
     "ArtifactLoadMode",
     "ArtifactSignatureCandidates",
@@ -74,9 +64,6 @@ __all__ = (
     "GuiRunRequest",
     "GuiRunResult",
     "InputValidationError",
-    "LegacyPanelSnapshot",
-    "LegacyPhase3Projection",
-    "LegacyRunContext",
     "PreparedProductCase",
     "ProductBatchRunResult",
     "ProductCasePolicy",
@@ -90,16 +77,13 @@ __all__ = (
     "TempNameStyle",
     "ValidationIssue",
     "adapt_case_row",
-    "adapt_legacy_panels",
     "artifact_display_allowed",
-    "build_artifact_signature_candidates",
     "combine_csv_projections",
     "default_model_registry",
     "discover_scalar_fields",
     "field_data_scalar",
     "match_artifact_case",
     "prepare_product_cases",
-    "project_legacy_phase3_case",
     "read_case_table",
     "request_from_registry",
     "resolve_attitude",

@@ -463,6 +463,18 @@ def main() -> int:
         raise RuntimeError("newtsolver.core.pressure_models.__all__ changed")
     neutral_core = importlib.import_module("panelsolver.core")
     neutral_app = importlib.import_module("panelsolver.app")
+    for name in (
+        "legacy_adapter",
+        "legacy_mesh",
+        "legacy_results",
+        "legacy_scheduler",
+        "legacy_shielding",
+        "legacy_signatures",
+    ):
+        if importlib.util.find_spec(f"panelsolver.app.{name}") is not None:
+            raise RuntimeError(f"compatibility implementation remains in app: {name}")
+        if importlib.util.find_spec(f"panelsolver._compat.{name}") is None:
+            raise RuntimeError(f"installed wheel is missing private compat module: {name}")
     for module, names in (
         (neutral_core, ("NpzProjection", "project_npz_artifact")),
         (neutral_app, ("write_npz_projection",)),

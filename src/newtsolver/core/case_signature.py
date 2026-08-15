@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from panelsolver.app.legacy_signatures import build_legacy_case_signature
+from panelsolver._compat.legacy_signatures import build_legacy_case_signature
 
 from ..case_adapter import LEGACY_SIGNATURE_POLICY, NEWTSOLVER_COMPATIBILITY_VERSION
 

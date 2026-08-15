@@ -9,7 +9,7 @@ import numpy as np
 
 from fmfsolver import legacy_adapter as fmf_adapter
 from newtsolver import legacy_adapter as newt_adapter
-from panelsolver.app import LegacyPanelSnapshot, LegacyRunContext
+from panelsolver._compat.legacy_adapter import LegacyPanelSnapshot, LegacyRunContext
 from panelsolver.core import CommonCasePayload, ModelCasePayload
 
 REPOSITORY_ROOT = Path(__file__).parents[2]

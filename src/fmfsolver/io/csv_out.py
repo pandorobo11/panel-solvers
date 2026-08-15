@@ -1,6 +1,6 @@
 """Frozen FMF DataFrame CSV calls over shared writer policy."""
 
-from panelsolver.app.legacy_results import (
+from panelsolver._compat.legacy_results import (
     append_legacy_results_csv,
     write_legacy_results_csv,
 )

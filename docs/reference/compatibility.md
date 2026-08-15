@@ -16,6 +16,11 @@ Direct Python implementation details are best effort as described in
 tracebacks, object identity, pickle globals, and cache internals are not frozen
 product differences.
 
+Best-effort implementation lives in private `panelsolver._compat`, which points
+only inward to the shared layers. Supported CLI/GUI runtime does not import that
+package directly; the `fmfsolver` and `newtsolver` frontends select it only for
+legacy direct-Python translation.
+
 ## Distribution and product versions
 
 The single distribution is `panel-solvers`, currently version `0.1.0`. It owns

@@ -3,7 +3,11 @@ import unittest
 import numpy as np
 
 from fmfsolver.legacy_adapter import project_case
-from panelsolver.app import LegacyPanelSnapshot, LegacyRunContext, adapt_legacy_panels
+from panelsolver._compat.legacy_adapter import (
+    LegacyPanelSnapshot,
+    LegacyRunContext,
+    adapt_legacy_panels,
+)
 from panelsolver.core import CommonCasePayload, ContractValueError, ModelCasePayload
 
 

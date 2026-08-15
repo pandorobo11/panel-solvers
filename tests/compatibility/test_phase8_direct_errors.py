@@ -29,8 +29,8 @@ from newtsolver.core.parallel_scheduler import (
 from newtsolver.core.solver import run_case as run_newt_case
 from newtsolver.core.solver import run_cases as run_newt_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
-from panelsolver.app.legacy_results import run_legacy_cases
-from panelsolver.app.legacy_scheduler import translate_legacy_scheduler_error
+from panelsolver._compat.legacy_results import run_legacy_cases
+from panelsolver._compat.legacy_scheduler import translate_legacy_scheduler_error
 from panelsolver.core import (
     CsvProjection,
     MeshLoadError,

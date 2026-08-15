@@ -6,12 +6,13 @@ frontends.
 
 ```text
 fmfsolver / newtsolver compatibility frontends
-                         |
-                   panelsolver.app
-                    /          \
-        panelsolver.models   panelsolver.core
-                    |
-              panelsolver.core
+          |                         |
+          v                         v
+panelsolver._compat ----------> panelsolver.app
+          |                    /          \
+          +---------> panelsolver.models   panelsolver.core
+                            |
+                      panelsolver.core
 ```
 
 ## Layer ownership
@@ -21,6 +22,7 @@ fmfsolver / newtsolver compatibility frontends
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
+| `panelsolver._compat` | private legacy adapters, result/mesh/shielding translation, D015 scheduler/error translation, and D017/D018 signature reconstruction |
 | `fmfsolver`, `newtsolver` | legacy names, model schemas/defaults, compatibility versions, product projection policy |
 
 Allowed dependency directions are `app -> models -> core`, `app -> core`, and
@@ -30,6 +32,11 @@ Physical equations do not belong in GUI or compatibility code.
 Product selection and compatibility environment names are resolved in the
 application/front-end boundary. Core receives product-neutral configuration
 values and does not inspect process environment variables.
+
+`panelsolver._compat` depends inward on app, models, or core. Core, models, app,
+and the shared GUI never import `_compat`; normal shared runtime therefore does
+not require compatibility implementation. The two thin frontends may import the
+private package for best-effort direct-Python behavior.
 
 ## Numerical boundary
 

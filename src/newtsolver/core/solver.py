@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from panelsolver.app.legacy_results import run_legacy_case, run_legacy_cases
-from panelsolver.app.legacy_scheduler import legacy_execution_order
+from panelsolver._compat.legacy_results import run_legacy_case, run_legacy_cases
+from panelsolver._compat.legacy_scheduler import legacy_execution_order
 
 from ..csv_adapter import CSV_PROJECTION_POLICY
 from ..runtime import RUNTIME_POLICY

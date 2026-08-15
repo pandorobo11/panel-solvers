@@ -1,6 +1,6 @@
 """FMF parallel call shape over the shared scheduler."""
 
-from panelsolver.app.legacy_scheduler import (
+from panelsolver._compat.legacy_scheduler import (
     iter_legacy_case_results_parallel,
     resolve_legacy_parallel_chunk_cases,
 )
