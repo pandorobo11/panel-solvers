@@ -43,3 +43,10 @@ Golden data must identify the pinned legacy repository and commit that generated
 it. Updating expected values merely to make tests pass is prohibited. The
 current workflow is in
 [Development setup and testing](docs/development/setup-and-testing.md).
+
+## Contribution license
+
+Unless you explicitly state otherwise, contributions intentionally submitted
+for inclusion in panel-solvers are provided under the project's
+[Apache License 2.0](LICENSE), consistent with section 5 of that license. This
+project does not require a Contributor License Agreement.

@@ -14,10 +14,12 @@ schema; Summary CSV and VTP are the supported outputs.
 The examples use a 1 m scale, an origin moment reference, `Aref_m2=1`, and 1 m
 moment reference lengths. These simple global references make component rows
 add directly to the total row for all eight coefficients. The four meshes in
-`geometry/` are byte-identical copies of the small Phase 1 inputs, whose
-provenance is the accepted pinned FMF and newtsolver legacy sources. Examples
-exercise the current canonical readers, defaults, validation, and output
-semantics; they do not copy the legacy sample matrices.
+`geometry/` are simple geometric fixtures created by the maintainer for the
+legacy projects and carried forward byte-identically from the small Phase 1
+inputs. The current example CSVs were created for panel-solvers; they do not
+copy the legacy sample matrices. These files are project material distributed
+under Apache-2.0. Examples exercise the current canonical readers, defaults,
+validation, and output semantics.
 
 The `examples/fmfsolver/` and `examples/newtsolver/` directory names are retained
 for compatibility and history; they are not canonical product identities.

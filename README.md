@@ -91,3 +91,10 @@ legacy direct-Python compatibility, and private implementation have distinct
 support levels. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+panel-solvers code, documentation, examples, and project-generated material are
+licensed under the [Apache License 2.0](LICENSE). Third-party and public-domain
+rights and provenance, including US1976 and PDAS, are documented in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

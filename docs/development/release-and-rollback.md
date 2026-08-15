@@ -19,6 +19,15 @@ compatibility packages, and all six console commands.
 `CHANGELOG.md` is the source of truth for release notes. CI publishes the exact
 tested artifacts only after all platform and artifact gates pass.
 
+## Distribution licensing boundary
+
+The Python wheel declares runtime dependencies but does not vendor their source
+or binaries. This includes PySide6 and Qt, which pip installs as separate
+distributions under their upstream terms. Before publishing a standalone bundle
+that embeds Qt or any other dependency, perform a separate license and notice
+audit for the exact bundled files; the wheel audit does not cover such a
+distribution.
+
 ## Roll back to pinned legacy implementations
 
 The shared distribution and legacy distributions must not coexist. Pinned source
