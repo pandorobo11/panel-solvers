@@ -1,7 +1,8 @@
-# newtsolver input reference
+# Hypersonic input reference
 
-This page is the canonical newtsolver case-table schema. Columns appear in the
-order shown; accepted non-reserved unknown columns are retained after them in
+This page is the canonical Hypersonic case-table schema, also used by the legacy
+`newtsolver` compatibility commands. Columns appear in the order shown; accepted
+non-reserved unknown columns are retained after them in
 Summary CSV output. The retired `save_npz_on` field is an explicit exception:
 CSV, XLSX, and XLSM readers reject it, and old case files must remove it.
 
@@ -37,5 +38,5 @@ cone, and Prandtl–Meyer require `Mach > 1`.
 
 Every required numeric field must be finite, and numeric booleans are rejected.
 Common rules are in [Case files](../user-guide/case-files.md); physical
-interpretation is in the newtsolver
+interpretation is in the Hypersonic
 [pressure-model equations](../solvers/newtsolver.md#pressure-model-equations).

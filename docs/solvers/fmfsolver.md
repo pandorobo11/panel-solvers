@@ -42,7 +42,8 @@ described in [Numerical conventions](../reference/numerical-conventions.md).
   unit normal used in Sentman's original report.
 - $\gamma=\boldsymbol n_{\mathrm{in}}\mathbin{\boldsymbol\cdot}
   \hat{\boldsymbol V}$ is the direction cosine between the flow and inward
-  normal. Here, $\gamma$ is not the specific-heat ratio used by newtsolver.
+  normal. Here, $\gamma$ is not the specific-heat ratio used by Hypersonic
+  methods.
 - $S$ is the molecular speed ratio, $T_i$ is the incident translational
   temperature, and $T_w$ is the wall temperature. The input columns are `S`,
   `Ti_K`, and `Tw_K`.

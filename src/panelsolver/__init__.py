@@ -3,19 +3,19 @@
 from panelsolver.app.attitude import ResolvedAttitude, resolve_attitude
 
 from .api import (
+    FMFCase,
     HypersonicCase,
-    SentmanCase,
     SolveResult,
+    solve_fmf,
     solve_hypersonic,
-    solve_sentman,
 )
 
 __all__ = (
+    "FMFCase",
     "HypersonicCase",
     "ResolvedAttitude",
-    "SentmanCase",
     "SolveResult",
     "resolve_attitude",
+    "solve_fmf",
     "solve_hypersonic",
-    "solve_sentman",
 )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import os
 import unittest
 from pathlib import Path
@@ -13,6 +15,7 @@ from fmfsolver.app import gui_app as fmf_gui_app
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.app import gui_app as newt_gui_app
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
+from panelsolver import gui as canonical_gui
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
     GuiAdaptersUnavailable,
@@ -127,6 +130,40 @@ class GuiBootstrapTests(unittest.TestCase):
         self.assertNotIn("S", newt.case_columns)
         self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)
         self.assertIsNot(fmf.format_case, newt.format_case)
+
+    def test_canonical_launcher_reuses_specs_with_domain_visible_identity(self) -> None:
+        fmf = canonical_gui.canonical_gui_spec("fmf")
+        hypersonic = canonical_gui.canonical_gui_spec("hypersonic")
+        self.assertEqual("fmf", fmf.product_id)
+        self.assertEqual("sentman", fmf.model_id)
+        self.assertEqual("Panel Solver — FMF", fmf.window_title)
+        self.assertIsNotNone(fmf.adapters)
+        self.assertEqual("hypersonic", hypersonic.product_id)
+        self.assertEqual("hypersonic", hypersonic.model_id)
+        self.assertEqual("Panel Solver — Hypersonic", hypersonic.window_title)
+        self.assertIsNotNone(hypersonic.adapters)
+
+        captured = []
+        with patch(
+            "panelsolver.gui.run_gui",
+            side_effect=lambda spec, argv: captured.append((spec, argv)) or 17,
+        ):
+            self.assertEqual(17, canonical_gui.main(["fmf"]))
+            self.assertEqual(17, canonical_gui.main(["hypersonic"]))
+        self.assertEqual(
+            ["Panel Solver — FMF", "Panel Solver — Hypersonic"],
+            [spec.window_title for spec, _argv in captured],
+        )
+        self.assertTrue(all(len(argv) == 1 for _spec, argv in captured))
+
+    def test_canonical_launcher_without_domain_prints_help_and_exits_zero(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(0, canonical_gui.main([]))
+        help_text = stdout.getvalue()
+        self.assertIn("usage: panelsolver-gui", help_text)
+        self.assertIn("fmf", help_text)
+        self.assertIn("hypersonic", help_text)
 
 
 if __name__ == "__main__":

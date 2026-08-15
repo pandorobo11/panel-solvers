@@ -1,10 +1,10 @@
 # Case files
 
-Both products accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
+Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
 Legacy Excel 97–2003 BIFF `.xls` input is not supported; resave the workbook as
 `.xlsx` or export it as CSV. Exact columns and defaults are defined in the
 [FMF input reference](../reference/fmfsolver-input.md) and
-[newtsolver input reference](../reference/newtsolver-input.md).
+[Hypersonic input reference](../reference/newtsolver-input.md).
 
 ## Paths and components
 
@@ -20,9 +20,9 @@ Every STL is scaled by the common `stl_scale_m_per_unit`. Component IDs are
 zero-based positions in that list. Component rows use the global reference area,
 moment reference point, and reference lengths.
 
-For newtsolver, a surface-equation cell may contain one selector applied to all
+For Hypersonic, a surface-equation cell may contain one selector applied to all
 components or exactly one semicolon-separated selector per STL. See
-[newtsolver](../solvers/newtsolver.md).
+[Hypersonic](../solvers/newtsolver.md).
 
 ## Attitude modes
 

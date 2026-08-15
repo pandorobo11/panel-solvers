@@ -11,18 +11,18 @@ panelsolver hypersonic --input PATH [--output PATH] [--workers N]
 
 Here `fmf` means the free-molecular-flow domain selector. It is not the legacy
 `fmfsolver` distribution or product identity. The selected physical model is
-Sentman; the stable Python API names that model explicitly as `SentmanCase` and
-`solve_sentman()`.
+Sentman; the stable Python API names the domain as `FMFCase` and `solve_fmf()`.
 
 | Selector | Flow-domain identity | Physical model identity | Reused case schema |
 |---|---|---|---|
 | `fmf` | free molecular flow | Sentman | FMF case table |
-| `hypersonic` | hypersonic pressure approximation | Newtonian-family selection | newtsolver case table |
+| `hypersonic` | hypersonic pressure approximation | Newtonian-family methods | Hypersonic case table |
 
 The final column is a schema/application-service reuse choice, not the identity
 of the canonical command.
 
-The existing compatibility batch commands remain and share the same options:
+The existing legacy compatibility batch commands remain and share the same
+options:
 
 ```text
 fmfsolver-cli --input PATH [--output PATH] [--workers N]

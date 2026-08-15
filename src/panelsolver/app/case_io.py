@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .attitude import ATTITUDE_INPUT_VALUES
+from .case_identity import validate_case_id
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -26,15 +27,6 @@ _REMOVED_XLS_MESSAGE = (
     "Resave the workbook as .xlsx or export it as .csv."
 )
 RAY_BACKEND_VALUES = frozenset({"auto", "rtree", "embree"})
-_INVALID_CASE_ID_CHARS = frozenset('/\\<>:"|?*')
-_WINDOWS_RESERVED_NAMES = {
-    "CON",
-    "PRN",
-    "AUX",
-    "NUL",
-    *(f"COM{index}" for index in range(1, 10)),
-    *(f"LPT{index}" for index in range(1, 10)),
-}
 
 
 def is_filled(value: object) -> bool:
@@ -133,29 +125,6 @@ class CaseReaderPolicy:
             raise ValueError(
                 "required_numeric_message_style must be 'split' or 'finite'"
             )
-
-
-def validate_case_id(value: object) -> str:
-    """Return one portable Unicode case identifier or raise ``ValueError``."""
-    case_id = unicodedata.normalize("NFC", "" if value is None else str(value))
-    if not case_id:
-        raise ValueError("must not be empty.")
-    if case_id in {".", ".."}:
-        raise ValueError("must not be '.' or '..'.")
-    if case_id.endswith((".", " ")):
-        raise ValueError("must not end with a dot or space.")
-    if any(
-        char in _INVALID_CASE_ID_CHARS or unicodedata.category(char) == "Cc"
-        for char in case_id
-    ):
-        raise ValueError(
-            "must be a portable filename without path separators, control "
-            "characters, or Windows-invalid characters."
-        )
-    reserved_stem = case_id.split(".", 1)[0].rstrip(" ").upper()
-    if reserved_stem in _WINDOWS_RESERVED_NAMES:
-        raise ValueError("is a reserved filename on Windows.")
-    return case_id
 
 
 def _validate_case_ids(frame: pd.DataFrame, add_issue: AddIssue) -> None:

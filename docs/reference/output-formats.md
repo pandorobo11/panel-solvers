@@ -22,7 +22,7 @@ component_stl_path, ray_backend_used, CA, CY, CN, Cl, Cm, Cn, CD, CL,
 faces, shielded_faces, vtp_path
 ```
 
-newtsolver result columns, in order:
+Hypersonic result columns, in order:
 
 ```text
 solver_version, case_signature, run_started_at_utc, run_finished_at_utc,
@@ -53,7 +53,7 @@ alpha_t_deg_resolved, attitude_input_used, beta_t_deg_resolved, case_id,
 case_signature, ray_backend_used, solver_version, stl_count, stl_paths_json
 ```
 
-newtsolver additionally stores `windward_eq_used` and `leeward_eq_used`. FMF's
+Hypersonic additionally stores `windward_eq_used` and `leeward_eq_used`. FMF's
 resolved `mode`, `out_S`, and `out_Ti_K` values are carried by Summary CSV, not
 VTP. `Tw_K` remains an FMF input column.
 

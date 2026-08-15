@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from panelsolver.app.attitude import ResolvedAttitude
+from panelsolver.app.case_identity import validate_case_id
 from panelsolver.app.execution import request_from_registry
 from panelsolver.core import (
     CommonCasePayload,
@@ -47,8 +48,8 @@ def _validate_attitude(value: ResolvedAttitude) -> ResolvedAttitude:
 
 
 @dataclass(frozen=True, slots=True)
-class SentmanCase:
-    """Inputs for one Sentman free-molecular-flow calculation.
+class FMFCase:
+    """Inputs for one free-molecular-flow calculation using Sentman.
 
     The model inputs are the resolved Sentman Mode A quantities. Use the
     lower-level model API when atmosphere-based Mode B resolution is required.
@@ -70,6 +71,7 @@ class SentmanCase:
     ray_backend: str = "auto"
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "case_id", validate_case_id(self.case_id))
         object.__setattr__(self, "stl_paths", _paths(self.stl_paths))
         object.__setattr__(
             self,
@@ -100,6 +102,7 @@ class HypersonicCase:
     ray_backend: str = "auto"
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "case_id", validate_case_id(self.case_id))
         object.__setattr__(self, "stl_paths", _paths(self.stl_paths))
         object.__setattr__(
             self,
@@ -124,7 +127,7 @@ class SolveResult:
 
 
 def _solve(
-    case: SentmanCase | HypersonicCase,
+    case: FMFCase | HypersonicCase,
     *,
     model: SentmanModel | HypersonicModel,
     model_payload: Mapping[str, object],
@@ -170,10 +173,10 @@ def _solve(
     )
 
 
-def solve_sentman(case: SentmanCase) -> SolveResult:
-    """Solve a Sentman case entirely in memory."""
-    if not isinstance(case, SentmanCase):
-        raise TypeError("case must be a SentmanCase")
+def solve_fmf(case: FMFCase) -> SolveResult:
+    """Solve an FMF case with the Sentman model entirely in memory."""
+    if not isinstance(case, FMFCase):
+        raise TypeError("case must be an FMFCase")
     return _solve(
         case,
         model=SentmanModel(),
@@ -202,9 +205,9 @@ def solve_hypersonic(case: HypersonicCase) -> SolveResult:
 
 
 __all__ = (
+    "FMFCase",
     "HypersonicCase",
-    "SentmanCase",
     "SolveResult",
+    "solve_fmf",
     "solve_hypersonic",
-    "solve_sentman",
 )
