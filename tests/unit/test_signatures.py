@@ -7,8 +7,6 @@ import unittest
 from panelsolver.core import (
     CommonCasePayload,
     ResolvedShieldingConfig,
-    ResultCache,
-    ResultCacheError,
     SignatureError,
     SignatureMatchKind,
     build_case_signature,
@@ -97,7 +95,7 @@ class SignatureTests(unittest.TestCase):
         )
         self.assertTrue(all(item.digest != baseline for item in variants))
 
-    def test_cache_capacity_does_not_change_numerical_signature(self) -> None:
+    def test_shielding_cache_capacity_does_not_change_case_signature(self) -> None:
         first = _signature(shielding_config=_shielding(cache_max=1))
         second = _signature(shielding_config=_shielding(cache_max=99))
         self.assertEqual(first.digest, second.digest)
@@ -161,41 +159,6 @@ class SignatureTests(unittest.TestCase):
                 legacy_signatures=(direct, normalized_file),
             ).legacy_index,
         )
-
-
-class ResultCacheTests(unittest.TestCase):
-    def test_cache_defensively_copies_values_and_tracks_hits(self) -> None:
-        cache = ResultCache[dict[str, list[int]]](max_entries=1)
-        signature = _signature()
-        value = {"items": [1, 2]}
-        cache.put(signature, value)
-        value["items"].append(3)
-        first = cache.get(signature)
-        self.assertEqual({"items": [1, 2]}, first)
-        first["items"].append(4)
-        self.assertEqual({"items": [1, 2]}, cache.get(signature))
-        self.assertEqual((1, 2, 0), (
-            cache.stats().entries,
-            cache.stats().hits,
-            cache.stats().misses,
-        ))
-
-    def test_cache_eviction_disabled_mode_and_key_isolation(self) -> None:
-        cache = ResultCache[str](max_entries=1)
-        first = _signature()
-        second = _signature(model_algorithm_version="sentman-v2")
-        cache.put(first, "first")
-        cache.put(second, "second")
-        self.assertIsNone(cache.get(first))
-        self.assertEqual("second", cache.get(second))
-        self.assertEqual(1, cache.stats().evictions)
-
-        disabled = ResultCache[str](max_entries=0)
-        disabled.put(first, "value")
-        self.assertIsNone(disabled.get(first))
-        self.assertEqual(0, disabled.stats().entries)
-        with self.assertRaises(ResultCacheError):
-            ResultCache(max_entries=-1)
 
 
 if __name__ == "__main__":

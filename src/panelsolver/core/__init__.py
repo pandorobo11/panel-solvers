@@ -61,7 +61,6 @@ from .mesh_loading import (
     load_panel_mesh,
     mesh_cache_stats,
 )
-from .result_cache import ResultCache, ResultCacheError, ResultCacheStats
 from .scheduler import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -143,9 +142,6 @@ __all__ = (
     "PayloadValue",
     "RayBackend",
     "ResolvedShieldingConfig",
-    "ResultCache",
-    "ResultCacheError",
-    "ResultCacheStats",
     "SchedulerCancelled",
     "SchedulerError",
     "SchedulerProgress",

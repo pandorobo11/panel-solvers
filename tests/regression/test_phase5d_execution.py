@@ -11,7 +11,6 @@ from panelsolver.app import default_model_registry, request_from_registry
 from panelsolver.core import (
     CommonCasePayload,
     ModelCasePayload,
-    ResultCache,
     ShieldingConfig,
     execute_case,
 )
@@ -66,7 +65,6 @@ class Phase5dExecutionGoldenTests(unittest.TestCase):
         paths = [path for path in paths if path.name != "contracts.json"]
         self.assertEqual(15, len(paths))
         registry = default_model_registry()
-        result_cache = ResultCache(max_entries=4)
 
         for path in paths:
             with self.subTest(solver=path.parent.name, case_id=path.stem):
@@ -108,7 +106,7 @@ class Phase5dExecutionGoldenTests(unittest.TestCase):
                         ray_backend=normalized["ray_backend"],
                     ),
                 )
-                execution = execute_case(request, result_cache=result_cache)
+                execution = execute_case(request)
                 result = execution.results
                 loads = result.local_loads
                 face_force = (

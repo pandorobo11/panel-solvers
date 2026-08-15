@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 
 import numpy as np
 
@@ -14,7 +12,6 @@ from panelsolver.core import (
     ExecutionModelError,
     LocalLoads,
     ModelCasePayload,
-    ResultCache,
     ShieldingConfig,
     execute_case,
 )
@@ -91,102 +88,12 @@ def _request(model=None, **updates) -> CaseExecutionRequest:
     return CaseExecutionRequest(**values)
 
 
-def _assert_array_semantics_equal(
-    test_case: unittest.TestCase,
-    actual: np.ndarray,
-    expected: np.ndarray,
-) -> None:
-    test_case.assertEqual(expected.dtype, actual.dtype)
-    test_case.assertEqual(expected.shape, actual.shape)
-    np.testing.assert_array_equal(actual, expected)
-
-
-def _assert_integrated_semantics_equal(test_case, actual, expected) -> None:
-    for name in (
-        "force_coeff_stl",
-        "force_coeff_body",
-        "force_coeff_stability",
-        "moment_area_coeff_body_m",
-        "moment_coeff_body",
-    ):
-        _assert_array_semantics_equal(
-            test_case,
-            getattr(actual, name),
-            getattr(expected, name),
-        )
-
-
-def _assert_result_semantics_equal(test_case, actual, expected) -> None:
-    test_case.assertEqual(actual.case, expected.case)
-    test_case.assertEqual(actual.model_case, expected.model_case)
-    for name in ("centers_stl_m", "normals_out_stl", "areas_m2", "component_ids"):
-        _assert_array_semantics_equal(
-            test_case,
-            getattr(actual.geometry, name),
-            getattr(expected.geometry, name),
-        )
-    _assert_array_semantics_equal(
-        test_case,
-        actual.flow_state.velocity_hat_stl,
-        expected.flow_state.velocity_hat_stl,
-    )
-    _assert_array_semantics_equal(
-        test_case,
-        actual.flow_state.shielded,
-        expected.flow_state.shielded,
-    )
-    _assert_array_semantics_equal(
-        test_case,
-        actual.local_loads.traction_coeff_stl,
-        expected.local_loads.traction_coeff_stl,
-    )
-    test_case.assertEqual(
-        set(actual.local_loads.cell_scalars),
-        set(expected.local_loads.cell_scalars),
-    )
-    for name in expected.local_loads.cell_scalars:
-        _assert_array_semantics_equal(
-            test_case,
-            actual.local_loads.cell_scalars[name],
-            expected.local_loads.cell_scalars[name],
-        )
-    test_case.assertEqual(actual.local_loads.metadata, expected.local_loads.metadata)
-    _assert_integrated_semantics_equal(test_case, actual.total, expected.total)
-    test_case.assertEqual(len(actual.components), len(expected.components))
-    for actual_component, expected_component in zip(
-        actual.components,
-        expected.components,
-        strict=True,
-    ):
-        test_case.assertEqual(
-            (
-                actual_component.component_id,
-                actual_component.face_count,
-                actual_component.shielded_face_count,
-                actual_component.metadata,
-            ),
-            (
-                expected_component.component_id,
-                expected_component.face_count,
-                expected_component.shielded_face_count,
-                expected_component.metadata,
-            ),
-        )
-        _assert_integrated_semantics_equal(
-            test_case,
-            actual_component.integrated,
-            expected_component.integrated,
-        )
-    test_case.assertEqual(actual.metadata, expected.metadata)
-
-
 class ExecutionTests(unittest.TestCase):
     def test_one_engine_evaluates_and_integrates_a_protocol_model(self) -> None:
         model = _CountingModel()
         result = execute_case(_request(model))
 
         self.assertEqual(1, model.evaluate_calls)
-        self.assertFalse(result.cache_hit)
         self.assertEqual("not_used", result.shielding.config.effective_backend)
         self.assertEqual("synthetic", result.results.model_id)
         self.assertEqual(result.signature.digest, result.results.metadata["case_signature"])
@@ -195,31 +102,8 @@ class ExecutionTests(unittest.TestCase):
             result.results.local_loads.traction_coeff_stl.shape[0],
         )
 
-    def test_result_cache_skips_model_but_keeps_current_source_metadata(self) -> None:
-        model = _CountingModel()
-        cache = ResultCache(max_entries=1)
-        first = execute_case(_request(model), result_cache=cache)
-
-        with tempfile.TemporaryDirectory() as temporary:
-            copied = Path(temporary) / "renamed.stl"
-            copied.write_bytes((FIXTURE_STL / "plate.stl").read_bytes())
-            second = execute_case(
-                _request(model, stl_paths=[copied]),
-                result_cache=cache,
-            )
-
-        self.assertFalse(first.cache_hit)
-        self.assertTrue(second.cache_hit)
-        self.assertEqual(1, model.evaluate_calls)
-        self.assertNotEqual(
-            first.mesh.components[0].source,
-            second.mesh.components[0].source,
-        )
-        self.assertEqual(first.signature.digest, second.signature.digest)
-
-    def test_result_cache_isolates_every_accepted_exact_flow_direction(self) -> None:
+    def test_each_call_evaluates_the_exact_accepted_flow_direction(self) -> None:
         model = _FlowEchoModel()
-        cache = ResultCache(max_entries=3)
         request_a = _request(
             model,
             velocity_hat_stl=np.array([1.0, 0.0, 0.0]),
@@ -234,86 +118,40 @@ class ExecutionTests(unittest.TestCase):
             velocity_hat_stl=np.array([next_float, 0.0, 0.0]),
         )
 
-        first_a = execute_case(request_a, result_cache=cache)
-        first_b = execute_case(request_b, result_cache=cache)
-        first_c = execute_case(request_c, result_cache=cache)
-        cached_a = execute_case(request_a, result_cache=cache)
-        cached_b = execute_case(request_b, result_cache=cache)
-        cached_c = execute_case(request_c, result_cache=cache)
-        fresh_b = execute_case(request_b)
+        first_a = execute_case(request_a)
+        first_b = execute_case(request_b)
+        first_c = execute_case(request_c)
+        repeated_b = execute_case(request_b)
 
         self.assertEqual(first_a.signature.digest, first_b.signature.digest)
         self.assertEqual(first_a.signature.digest, first_c.signature.digest)
-        self.assertEqual(
-            [False, False, False, True, True, True],
-            [
-                first_a.cache_hit,
-                first_b.cache_hit,
-                first_c.cache_hit,
-                cached_a.cache_hit,
-                cached_b.cache_hit,
-                cached_c.cache_hit,
-            ],
-        )
         self.assertEqual(4, model.evaluate_calls)
-        self.assertEqual(
-            (3, 3, 3),
-            (
-                cache.stats().entries,
-                cache.stats().hits,
-                cache.stats().misses,
-            ),
+        np.testing.assert_array_equal(
+            first_b.results.local_loads.traction_coeff_stl[:, 1],
+            np.full(first_b.mesh.n_faces, 1.0e-12),
         )
         np.testing.assert_array_equal(
-            cached_b.results.local_loads.traction_coeff_stl[:, 1],
-            np.full(cached_b.mesh.n_faces, 1.0e-12),
+            first_c.results.local_loads.traction_coeff_stl[:, 0],
+            np.full(first_c.mesh.n_faces, next_float),
         )
         np.testing.assert_array_equal(
-            cached_c.results.local_loads.traction_coeff_stl[:, 0],
-            np.full(cached_c.mesh.n_faces, next_float),
+            repeated_b.results.local_loads.traction_coeff_stl,
+            first_b.results.local_loads.traction_coeff_stl,
         )
-        _assert_result_semantics_equal(self, cached_b.results, fresh_b.results)
-        _assert_result_semantics_equal(self, cached_c.results, first_c.results)
 
-    def test_execute_case_owns_private_result_cache_entries(self) -> None:
+    def test_requested_backend_remains_in_signature_when_shielding_is_off(self) -> None:
         model = _CountingModel()
-        request = _request(model)
-        baseline = execute_case(request)
-
-        generic_cache = ResultCache(max_entries=1)
-        generic_cache.put(baseline.signature, baseline.results)
-        self.assertIsNotNone(generic_cache.get(baseline.signature))
-
-        preseeded_cache = ResultCache(max_entries=2)
-        preseeded_cache.put(baseline.signature, baseline.results)
-        preseeded = execute_case(request, result_cache=preseeded_cache)
-        self.assertFalse(preseeded.cache_hit)
-        self.assertEqual(2, preseeded_cache.stats().entries)
-
-        engine_cache = ResultCache(max_entries=1)
-        first = execute_case(request, result_cache=engine_cache)
-        self.assertFalse(first.cache_hit)
-        self.assertIsNone(engine_cache.get(first.signature))
-        repeated = execute_case(request, result_cache=engine_cache)
-        self.assertTrue(repeated.cache_hit)
-        self.assertEqual(3, model.evaluate_calls)
-
-    def test_backend_request_isolates_cache_even_when_shielding_is_off(self) -> None:
-        model = _CountingModel()
-        cache = ResultCache(max_entries=2)
         first = execute_case(
             _request(
                 model,
                 shielding=ShieldingConfig(enabled=False, ray_backend="rtree"),
             ),
-            result_cache=cache,
         )
         second = execute_case(
             _request(
                 model,
                 shielding=ShieldingConfig(enabled=False, ray_backend="embree"),
             ),
-            result_cache=cache,
         )
         self.assertNotEqual(first.signature.digest, second.signature.digest)
         self.assertEqual(2, model.evaluate_calls)

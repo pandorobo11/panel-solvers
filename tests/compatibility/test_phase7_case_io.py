@@ -31,7 +31,7 @@ from newtsolver.case_adapter import (
     build_signatures as build_newt_signatures,
 )
 from newtsolver.io.io_cases import read_cases as read_newt_cases
-from panelsolver.core import MeshValidationPolicy, ResultCache, execute_case
+from panelsolver.core import MeshValidationPolicy, execute_case
 from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
@@ -420,7 +420,7 @@ class ProductCaseAdapterTests(unittest.TestCase):
                 self.assertEqual(2, len(candidates.legacy_signatures))
                 self.assertNotEqual(*candidates.legacy_signatures)
 
-    def test_equivalent_attitude_modes_keep_exact_cache_entries_separate(self) -> None:
+    def test_equivalent_attitude_modes_keep_exact_execution_values(self) -> None:
         frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
         beta_sin = frame.loc[
             frame["case_id"] == "newt_beta_sin_boundary"
@@ -447,31 +447,15 @@ class ProductCaseAdapterTests(unittest.TestCase):
             )
         )
 
-        cache = ResultCache(max_entries=2)
-        first_sin = execute_case(adapted_sin.request, result_cache=cache)
-        first_tan = execute_case(adapted_tan.request, result_cache=cache)
-        cached_sin = execute_case(adapted_sin.request, result_cache=cache)
-        cached_tan = execute_case(adapted_tan.request, result_cache=cache)
+        first_sin = execute_case(adapted_sin.request)
+        first_tan = execute_case(adapted_tan.request)
 
         self.assertEqual(first_sin.signature.digest, first_tan.signature.digest)
-        self.assertEqual(
-            [False, False, True, True],
-            [
-                first_sin.cache_hit,
-                first_tan.cache_hit,
-                cached_sin.cache_hit,
-                cached_tan.cache_hit,
-            ],
-        )
         self.assertFalse(
             np.array_equal(
                 first_sin.results.local_loads.traction_coeff_stl,
                 first_tan.results.local_loads.traction_coeff_stl,
             )
-        )
-        self.assertEqual(
-            (2, 2, 2),
-            (cache.stats().entries, cache.stats().hits, cache.stats().misses),
         )
 
 
