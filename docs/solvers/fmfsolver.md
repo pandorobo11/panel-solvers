@@ -55,7 +55,7 @@ Define
 ```math
 h = \gamma S,
 \qquad
-\Phi = 1 + \operatorname{erf}(h),
+\Phi = 1 + \mathrm{erf}(h),
 \qquad
 E = e^{-h^2}.
 ```
@@ -147,13 +147,13 @@ representative temperature ratio.
 
 ![Sentman local normal and tangential traction versus local panel angle at S=7](../assets/plots/sentman-local-traction-vs-angle.svg)
 
-*Representative local response at $S=7$ and
+**Figure.** Representative local response at $S=7$ and
 $\sqrt{T_w/T_i}=0.425$, using complete diffuse reflection, complete thermal
 accommodation with $T_r=T_w$, and no ray shielding. The vertical line at
 $\delta=0^\circ$ marks grazing incidence; finite load there results from random
 thermal motion. These curves show the local response of one isolated,
 unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
-whole-vehicle aerodynamic polars.*
+whole-vehicle aerodynamic polars.
 
 The plotted normal component is the local normal traction coefficient
 $C_n=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{in}}$,

@@ -10,6 +10,7 @@ SOLVER_DOCS = (
     ROOT / "docs" / "solvers" / "newtsolver.md",
 )
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+WHOLE_EMPHASIS_RE = re.compile(r"\*(?!\*)[\s\S]*\*")
 
 
 def _is_closing_fence(line: str, marker: str, minimum_length: int) -> bool:
@@ -55,6 +56,26 @@ def _scan_markdown(markdown: str) -> tuple[int, list[int], tuple[int, str] | Non
     return math_block_count, legacy_display_markers, unclosed_fence
 
 
+def _figure_captions(markdown: str) -> list[str]:
+    lines = markdown.splitlines()
+    captions: list[str] = []
+
+    for line_number, line in enumerate(lines):
+        if not line.startswith("![") or line_number + 2 >= len(lines):
+            continue
+        if lines[line_number + 1] != "":
+            continue
+
+        caption_lines: list[str] = []
+        for caption_line in lines[line_number + 2 :]:
+            if caption_line == "":
+                break
+            caption_lines.append(caption_line)
+        captions.append("\n".join(caption_lines))
+
+    return captions
+
+
 class DocumentationMathTest(unittest.TestCase):
     def test_solver_docs_use_balanced_fenced_math_blocks(self) -> None:
         for path in SOLVER_DOCS:
@@ -74,6 +95,23 @@ class DocumentationMathTest(unittest.TestCase):
                     markdown
                 )
                 self.assertEqual(legacy_markers, [])
+
+    def test_solver_docs_do_not_use_unsupported_operatorname_macro(self) -> None:
+        for path in SOLVER_DOCS:
+            with self.subTest(path=path.relative_to(ROOT)):
+                markdown = path.read_text(encoding="utf-8")
+                self.assertNotIn(r"\operatorname", markdown)
+
+    def test_math_figure_captions_do_not_wrap_the_whole_paragraph_in_emphasis(
+        self,
+    ) -> None:
+        for path in SOLVER_DOCS:
+            with self.subTest(path=path.relative_to(ROOT)):
+                markdown = path.read_text(encoding="utf-8")
+                for caption in _figure_captions(markdown):
+                    if "$" not in caption:
+                        continue
+                    self.assertIsNone(WHOLE_EMPHASIS_RE.fullmatch(caption))
 
     def test_scanner_ignores_math_examples_inside_code_fences(self) -> None:
         markdown = r"""````markdown

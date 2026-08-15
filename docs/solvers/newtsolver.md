@@ -321,7 +321,7 @@ coefficient. The current code uses
 ```math
 w
 =
-\operatorname{clip}\left(
+\mathrm{clip}\left(
 \frac{\sin^2\delta-\sin^2\delta_{\max}}
 {1-\sin^2\delta_{\max}},
 0,1
@@ -356,13 +356,13 @@ $\delta=+90^\circ$ it faces directly into the flow.
 
 ![Windward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-windward-cp-vs-angle.svg)
 
-*Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
+**Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
 shielding and `leeward_eq=shield`. Solid Tangent segments are attached weak
 branches; dashed Tangent segments are implementation-defined continuations to
 the Modified-Newtonian cap. These curves show the local response of one
 isolated, unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$.
 They are not whole-vehicle aerodynamic polars. The plotted $C_p$ values are
-local panel coefficients, not whole-vehicle force coefficients.*
+local panel coefficients, not whole-vehicle force coefficients.
 
 Newtonian reaches $C_p=2$ at $\delta=90^\circ$. Modified Newtonian retains the
 same $\sin^2\delta$ shape but scales it by the finite-Mach $C_{p,\max}$.
@@ -377,14 +377,14 @@ model accuracy.
 
 ![Leeward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-leeward-cp-vs-angle.svg)
 
-*Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
+**Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
 `windward_eq=newtonian` and no ray shielding. The leeward `shield` equation
 assigns $C_p=0$, while Prandtl--Meyer gives expansion suction; the vacuum
 pressure coefficient is the lower bound. Ray shielding is a separate geometry
 operation. These curves show the local response of one isolated, unshielded
 panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
 whole-vehicle aerodynamic polars. The plotted $C_p$ values are local panel
-coefficients, not whole-vehicle force coefficients.*
+coefficients, not whole-vehicle force coefficients.
 
 The `leeward_eq=shield` selector is only the zero-pressure equation for a
 leeward-oriented, otherwise active panel. In contrast, `shielding_on=1` performs
