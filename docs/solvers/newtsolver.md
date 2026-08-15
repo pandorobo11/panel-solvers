@@ -46,26 +46,26 @@ from the output normal-to-flow angle
 
 All pressure models use
 
-$$
+```math
 C_p
 =
 \frac{p-p_\infty}{\tfrac12\rho_\infty V_\infty^2}
 =
 \frac{2}{\gamma M_\infty^2}
 \left(\frac{p}{p_\infty}-1\right),
-$$
+```
 
 where $\gamma$ is the specific-heat ratio, not the incidence cosine. `Cp_n` is
 the Hypersonic domain's local panel pressure-coefficient output. The model
 returns local pressure-only traction
 
-$$
+```math
 \boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j},
 \qquad
 \Delta\boldsymbol C_j
 =
 \boldsymbol{\tau}_j\frac{A_j}{A_{\mathrm{ref}}}.
-$$
+```
 
 The shared integrator, not the model, applies $A_j/A_{\mathrm{ref}}$ exactly
 once, sums $\boldsymbol C_{\mathrm{total,STL}}=\sum_j
@@ -97,9 +97,9 @@ integration are otherwise common.
 
 For a windward panel, the Newtonian impact approximation gives
 
-$$
+```math
 C_p=2\sin^2\delta=2\mu^2.
-$$
+```
 
 This represents the surface-normal momentum change of particles impacting the
 panel. Mach number and $\gamma$ do not appear directly in this equation. The
@@ -111,14 +111,14 @@ claim that Newtonian hypersonic impact theory is physically valid there.
 
 Modified Newtonian replaces the factor 2 with a stagnation-point cap:
 
-$$
+```math
 C_p=C_{p,\max}\sin^2\delta=C_{p,\max}\mu^2.
-$$
+```
 
 The current code obtains that cap from a normal shock followed by isentropic
 deceleration of the post-shock flow:
 
-$$
+```math
 \frac{p_2}{p_\infty}
 =1+\frac{2\gamma}{\gamma+1}\left(M_\infty^2-1\right),
 \qquad
@@ -126,9 +126,9 @@ M_2^2
 =
 \frac{1+\tfrac12(\gamma-1)M_\infty^2}
 {\gamma M_\infty^2-\tfrac12(\gamma-1)},
-$$
+```
 
-$$
+```math
 \frac{p_{0,2}}{p_2}
 =
 \left(1+\frac{\gamma-1}{2}M_2^2\right)^{\frac{\gamma}{\gamma-1}},
@@ -136,14 +136,14 @@ $$
 \frac{p_{0,2}}{p_\infty}
 =
 \frac{p_2}{p_\infty}\frac{p_{0,2}}{p_2},
-$$
+```
 
-$$
+```math
 C_{p,\max}
 =
 \frac{2}{\gamma M_\infty^2}
 \left(\frac{p_{0,2}}{p_\infty}-1\right).
-$$
+```
 
 Here $p_{0,2}$ is the total pressure obtained by bringing the flow immediately
 behind the normal shock to rest isentropically. This cap is also the endpoint
@@ -155,30 +155,30 @@ Tangent wedge treats each windward panel as a local two-dimensional wedge of
 turning angle $\delta$. An attached shock satisfies the
 $\delta$--$\beta$--$M$ relation
 
-$$
+```math
 \tan\delta
 =
 2\cot\beta
 \frac{M_\infty^2\sin^2\beta-1}
 {M_\infty^2\left(\gamma+\cos2\beta\right)+2}.
-$$
+```
 
 The implementation selects the weak attached solution for shock angle $\beta$.
 It then applies the normal-shock pressure jump to the shock-normal Mach number:
 
-$$
+```math
 M_{n1}=M_\infty\sin\beta,
 \qquad
 \frac{p_2}{p_\infty}
 =1+\frac{2\gamma}{\gamma+1}\left(M_{n1}^2-1\right),
-$$
+```
 
-$$
+```math
 C_p
 =
 \frac{2}{\gamma M_\infty^2}
 \left(\frac{p_2}{p_\infty}-1\right).
-$$
+```
 
 This is a panel-by-panel pressure estimate: an attached solution on one panel
 does not propagate a downstream state to its neighbors and does not account for
@@ -195,33 +195,33 @@ cone axis. For a candidate conical shock angle, the code first obtains the
 immediate post-shock state from oblique-shock relations, then integrates the
 Taylor--Maccoll system toward the cone. Velocity is nondimensionalized as
 
-$$
+```math
 v=\frac{V}{V_{\max}}
 =
 \left[1+\frac{2}{(\gamma-1)M^2}\right]^{-1/2}.
-$$
+```
 
 With radial and polar components $v_r$ and $v_\theta$, the implemented system
 is
 
-$$
+```math
 \frac{dv_r}{d\theta}=v_\theta,
-$$
+```
 
-$$
+```math
 \frac{dv_\theta}{d\theta}
 =
 \frac{v_rv_\theta^2-a\left(2v_r+v_\theta\cot\theta\right)}
 {a-v_\theta^2},
 \qquad
 a=\frac{\gamma-1}{2}\left(1-v_r^2-v_\theta^2\right).
-$$
+```
 
 The location where $v_\theta=0$ is the cone surface. If $M_2,p_2$ are the
 immediate post-shock values and $M_c,p_c$ are the surface values, the pressure
 conversion is
 
-$$
+```math
 \frac{p_c}{p_2}
 =
 \left[
@@ -233,7 +233,7 @@ C_{p,c}
 =
 \frac{2}{\gamma M_\infty^2}
 \left(\frac{p_c}{p_\infty}-1\right).
-$$
+```
 
 The implementation evaluates candidate shock angles, retains the attached weak
 branch of the cone-angle-to-$C_p$ relation, and interpolates that relation for
@@ -246,9 +246,9 @@ configuration's actual three-dimensional conical-flow topology.
 
 For `leeward_eq=shield`,
 
-$$
+```math
 C_p=0.
-$$
+```
 
 This is a leeward surface-pressure equation. It is separate from
 `shielding_on=1`, which performs ray-occlusion geometry processing and forces a
@@ -260,7 +260,7 @@ See [Shielding and parallel execution](../user-guide/shielding-and-parallel.md).
 Leeward panels have $\delta<0$ except at the zero-incidence boundary. The
 Prandtl--Meyer function for $M>1$ is
 
-$$
+```math
 \nu(M)
 =
 \sqrt{\frac{\gamma+1}{\gamma-1}}
@@ -268,21 +268,21 @@ $$
 \sqrt{\frac{\gamma-1}{\gamma+1}\left(M^2-1\right)}
 \right]
 -\tan^{-1}\sqrt{M^2-1}.
-$$
+```
 
 The implementation's sign convention is
 
-$$
+```math
 \nu_2=\nu(M_\infty)-\delta,
 \qquad
 \nu(M_2)=\nu_2.
-$$
+```
 
 Because $\delta<0$, the Prandtl--Meyer angle increases by $|\delta|$. The code
 monotonically inverts this relation numerically, then uses the isentropic
 pressure ratio
 
-$$
+```math
 \frac{p_2}{p_\infty}
 =
 \left[
@@ -294,18 +294,18 @@ C_p
 =
 \frac{2}{\gamma M_\infty^2}
 \left(\frac{p_2}{p_\infty}-1\right).
-$$
+```
 
 The finite-Mach expansion limit and vacuum-pressure lower bound are
 
-$$
+```math
 \nu_{\max}
 =
 \frac{\pi}{2}
 \left(\sqrt{\frac{\gamma+1}{\gamma-1}}-1\right),
 \qquad
 C_{p,\mathrm{vac}}=-\frac{2}{\gamma M_\infty^2}.
-$$
+```
 
 Expansion states below $\nu_{\max}$ are inverted numerically; larger requested
 turns use the vacuum coefficient, which is also enforced as the lower bound.
@@ -318,7 +318,7 @@ after their respective attached weak branches end. Let $\delta_{\max}$ be the
 maximum attached turning angle and $C_{p,\mathrm{crit}}$ its pressure
 coefficient. The current code uses
 
-$$
+```math
 w
 =
 \operatorname{clip}\left(
@@ -326,14 +326,14 @@ w
 {1-\sin^2\delta_{\max}},
 0,1
 \right),
-$$
+```
 
-$$
+```math
 C_p
 =
 C_{p,\mathrm{crit}}
 +\left(C_{p,\max}-C_{p,\mathrm{crit}}\right)w.
-$$
+```
 
 This preserves continuity with $C_p(\delta_{\max})=C_{p,\mathrm{crit}}$ and
 reaches $C_p(90^\circ)=C_{p,\max}$. It is not a standard attached

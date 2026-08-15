@@ -52,33 +52,33 @@ described in [Numerical conventions](../reference/numerical-conventions.md).
 
 Define
 
-$$
+```math
 h = \gamma S,
 \qquad
 \Phi = 1 + \operatorname{erf}(h),
 \qquad
 E = e^{-h^2}.
-$$
+```
 
 The implemented coefficients are
 
-$$
+```math
 c_{\parallel}
 =
 \gamma\Phi
 +
 \frac{E}{S\sqrt{\pi}},
-$$
+```
 
-$$
+```math
 c_{n,i}
 =
 \frac{\Phi}{2S^2},
-$$
+```
 
 and
 
-$$
+```math
 c_{n,r}
 =
 \frac{1}{2}
@@ -88,17 +88,17 @@ c_{n,r}
 +
 \frac{E}{S^2}
 \right].
-$$
+```
 
 The local traction coefficient is therefore
 
-$$
+```math
 \boldsymbol{\tau}
 =
 c_{\parallel}\hat{\boldsymbol V}
 +
 \left(c_{n,i}+c_{n,r}\right)\boldsymbol n_{\mathrm{in}}.
-$$
+```
 
 In this local equation, $S$ enters the projected speed $h$ and the explicit
 $1/S$ and $1/S^2$ terms. The incident temperature and wall temperature enter
@@ -120,12 +120,12 @@ thermal motion, so this is not a simple windward-only pressure law.
 
 For panel $j$, the common integrator forms
 
-$$
+```math
 \Delta\boldsymbol C_j
 =
 \boldsymbol{\tau}_j
 \frac{A_j}{A_{\mathrm{ref}}}.
-$$
+```
 
 This is algebraically the same as the original report's $dC/dA$ form. The
 current model returns the local traction numerator, and the common integrator
@@ -160,14 +160,14 @@ $C_n=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{in}}$,
 which equals the model's `Cp_n` scalar but is not described here as a pressure
 coefficient. The tangential component is
 
-$$
+```math
 \hat{\boldsymbol t}
 =
 \frac{\hat{\boldsymbol V}-\mu\boldsymbol n_{\mathrm{in}}}
 {\sqrt{1-\mu^2}},
 \qquad
 C_t=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}.
-$$
+```
 
 At the directly facing endpoint, where the in-plane direction is not unique,
 the graph uses the continuous limit $C_t=0$. At grazing incidence the load is
