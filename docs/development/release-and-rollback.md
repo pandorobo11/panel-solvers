@@ -44,8 +44,9 @@ newtsolver-cli --help
 
 Keep input and output data during rollback, but do not treat data retention as
 full input/output schema compatibility. The pinned legacy releases expose their
-historical NPZ output again. Before returning an old case table to the current
-`panel-solvers` release, remove the `save_npz_on` column.
+historical `.xls` input and NPZ output again. Before returning an old case table
+to the current `panel-solvers` release, convert `.xls` to `.xlsx` or CSV and
+remove the `save_npz_on` column.
 
 Current Summary CSV output does not contain `save_npz_on` or `npz_path`, and the
 current release does not create NPZ files. Existing VTP, NPZ, and CSV files are

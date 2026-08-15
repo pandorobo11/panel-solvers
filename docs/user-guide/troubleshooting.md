@@ -12,6 +12,9 @@ header, a non-finite value, a non-positive reference quantity, an incomplete FMF
 Mode A/B pair, an invalid equation selector, or an attitude outside the reader
 domain. See the solver-specific input reference.
 
+Legacy Excel 97–2003 `.xls` files are no longer supported. Resave the workbook
+as `.xlsx` in Excel or another spreadsheet application, or export it as CSV.
+
 ## Embree is unavailable
 
 Install the optional extra with `python -m pip install '.[rayaccel]'`, or set the

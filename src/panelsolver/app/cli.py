@@ -64,7 +64,7 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
         "-i",
         "--input",
         required=True,
-        help="Input cases file (.csv/.xlsx/.xlsm/.xls)",
+        help="Input cases file (.csv/.xlsx/.xlsm)",
     )
     parser.add_argument(
         "-o",

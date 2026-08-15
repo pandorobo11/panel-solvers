@@ -11,7 +11,7 @@ newtsolver-cli --input PATH [--output PATH] [--workers N]
 
 | Option | Meaning | Default |
 |---|---|---|
-| `-i`, `--input` | CSV/XLSX/XLSM/XLS case table | required |
+| `-i`, `--input` | CSV/XLSX/XLSM case table | required |
 | `-o`, `--output` | Summary CSV | `<input_dir>/outputs/<input_stem>_result.csv` |
 | `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
 | `--cases` | Space- or comma-separated case IDs | all cases |

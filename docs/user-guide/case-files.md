@@ -1,7 +1,8 @@
 # Case files
 
-Both products accept CSV, XLSX, XLSM, and legacy BIFF XLS. Excel input uses the
-first worksheet. Exact columns and defaults are defined in the
+Both products accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
+Legacy Excel 97–2003 BIFF `.xls` input is not supported; resave the workbook as
+`.xlsx` or export it as CSV. Exact columns and defaults are defined in the
 [FMF input reference](../reference/fmfsolver-input.md) and
 [newtsolver input reference](../reference/newtsolver-input.md).
 
@@ -52,6 +53,6 @@ angles before panel calculation. The exact signs and transform are in
 
 Accepted non-reserved unknown input columns are preserved after the canonical
 input columns in the Summary CSV. The retired `save_npz_on` field is an explicit
-exception: it is rejected in CSV, XLSX, XLSM, and XLS input and must be removed
+exception: it is rejected in CSV, XLSX, and XLSM input and must be removed
 from old case files. A direct Python call may not insert reader defaults; the
 documented file reader is the supported case-file interface.

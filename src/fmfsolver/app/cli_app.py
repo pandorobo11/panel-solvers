@@ -23,7 +23,7 @@ def _validate_output(
 
 CLI_POLICY = ProductCliPolicy(
     program="fmfsolver-cli",
-    description="Run FMF solver from CSV/Excel input without GUI.",
+    description="Run FMF solver from CSV/XLSX/XLSM input without GUI.",
     runtime_policy=RUNTIME_POLICY,
     read_cases=read_cases,
     validate_output_path=_validate_output,

@@ -21,6 +21,10 @@ _REMOVED_NPZ_MESSAGE = (
     "save_npz_on has been removed. Delete this field; "
     "panel-solvers no longer writes NPZ files."
 )
+_REMOVED_XLS_MESSAGE = (
+    "Legacy .xls input is no longer supported. "
+    "Resave the workbook as .xlsx or export it as .csv."
+)
 RAY_BACKEND_VALUES = frozenset({"auto", "rtree", "embree"})
 _INVALID_CASE_ID_CHARS = frozenset('/\\<>:"|?*')
 _WINDOWS_RESERVED_NAMES = {
@@ -428,17 +432,18 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
         raise TypeError("policy must be a CaseReaderPolicy")
     input_path = Path(path).expanduser()
     suffix = input_path.suffix.lower()
+    if suffix == ".xls":
+        raise ValueError(_REMOVED_XLS_MESSAGE)
     if suffix == ".csv":
         frame = pd.read_csv(
             input_path,
             dtype={"case_id": "string"},
             keep_default_na=policy.keep_default_na,
         )
-    elif suffix in {".xlsx", ".xlsm", ".xls"}:
-        engine = "xlrd" if suffix == ".xls" else "openpyxl"
+    elif suffix in {".xlsx", ".xlsm"}:
         frame = pd.read_excel(
             input_path,
-            engine=engine,
+            engine="openpyxl",
             dtype={"case_id": "string"},
             keep_default_na=policy.keep_default_na,
         )

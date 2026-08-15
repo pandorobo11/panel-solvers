@@ -17,6 +17,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pyvista as pv
 
 EXPECTED_ENTRY_POINTS = {
@@ -85,8 +86,8 @@ EXPECTED_DIRECT_COMPONENT_KEYS = [
 ]
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
 EXPECTED_CLI_DESCRIPTIONS = {
-    "fmfsolver": "Run FMF solver from CSV/Excel input without GUI.",
-    "newtsolver": "Run newtsolver from CSV/Excel input without GUI.",
+    "fmfsolver": "Run FMF solver from CSV/XLSX/XLSM input without GUI.",
+    "newtsolver": "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
 }
 _TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
 
@@ -144,6 +145,20 @@ def _prepare_current_inputs(inputs: Path) -> None:
             writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
             writer.writeheader()
             writer.writerows({name: row[name] for name in columns} for row in rows)
+
+
+def _prepare_current_excel_inputs(inputs: Path) -> dict[str, dict[str, Path]]:
+    prepared: dict[str, dict[str, Path]] = {}
+    for product in ("fmfsolver", "newtsolver"):
+        source = inputs / f"{product}_cases.csv"
+        frame = pd.read_csv(source).iloc[[0]].copy()
+        frame["save_vtp_on"] = 0
+        xlsx = inputs / f"{product}_cases.xlsx"
+        xlsm = inputs / f"{product}_cases.xlsm"
+        frame.to_excel(xlsx, index=False, engine="openpyxl")
+        shutil.copyfile(xlsx, xlsm)
+        prepared[product] = {".xlsx": xlsx, ".xlsm": xlsm}
+    return prepared
 
 
 def _load_phase1_comparator(repository: Path):
@@ -415,6 +430,9 @@ def main() -> int:
     }
     if installed != EXPECTED_ENTRY_POINTS:
         raise RuntimeError(f"Unexpected console scripts: {installed}")
+    requirements = importlib.metadata.distribution("panel-solvers").requires or ()
+    if any("xlrd" in requirement.casefold() for requirement in requirements):
+        raise RuntimeError("installed wheel still requires removed xlrd dependency")
 
     contract_data = {
         product: json.loads(
@@ -465,6 +483,7 @@ def main() -> int:
             inputs,
         )
         _prepare_current_inputs(inputs)
+        excel_inputs = _prepare_current_excel_inputs(inputs)
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
         for product in ("fmfsolver", "newtsolver"):
@@ -483,6 +502,8 @@ def main() -> int:
                     f"stdout={help_result.stdout!r}\nstderr={help_result.stderr!r}"
                 )
             _validate_cli_help(product, help_result.stdout)
+            if "Input cases file (.csv/.xlsx/.xlsm)" not in help_result.stdout:
+                raise RuntimeError(f"{product} help advertises stale input formats")
 
             empty_cases = subprocess.run(
                 [command, "--input", "cases.csv", "--cases"],
@@ -595,6 +616,61 @@ def main() -> int:
                     )
             if list(inputs.rglob("*.npz")):
                 raise RuntimeError(f"{product} unexpectedly wrote NPZ output")
+
+            for suffix, input_path in excel_inputs[product].items():
+                format_output = staging / "format-smoke" / product / f"{suffix[1:]}.csv"
+                format_output.parent.mkdir(parents=True, exist_ok=True)
+                format_result = subprocess.run(
+                    [
+                        command,
+                        "--input",
+                        input_path,
+                        "--output",
+                        format_output,
+                        "--workers",
+                        "1",
+                        "--flush-every-cases",
+                        "0",
+                    ],
+                    cwd=staging,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env=subprocess_environment,
+                )
+                if format_result.returncode != 0 or not format_output.is_file():
+                    raise RuntimeError(
+                        f"{product} {suffix} input failed:\n"
+                        f"{format_result.stdout}\n{format_result.stderr}"
+                    )
+
+            rejected_output = staging / "format-smoke" / product / "xls.csv"
+            rejected = subprocess.run(
+                [
+                    command,
+                    "--input",
+                    inputs / f"{product}_cases.xls",
+                    "--output",
+                    rejected_output,
+                ],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
+            rejection_text = f"{rejected.stdout}\n{rejected.stderr}"
+            if (
+                rejected.returncode == 0
+                or rejected_output.exists()
+                or "Legacy .xls input is no longer supported" not in rejection_text
+                or ".xlsx" not in rejection_text
+                or ".csv" not in rejection_text
+            ):
+                raise RuntimeError(
+                    f"{product} legacy .xls migration rejection changed:\n"
+                    f"{rejection_text}"
+                )
     return 0
 
 

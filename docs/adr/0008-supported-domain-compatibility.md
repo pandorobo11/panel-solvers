@@ -7,6 +7,10 @@ The NPZ compatibility-surface portion of this decision is superseded by
 [ADR 0009](0009-remove-npz-output.md). Its CSV, VTP, numerical, and supported-
 domain decisions otherwise remain in force.
 
+The legacy BIFF `.xls` case-file portion of this decision is superseded by
+[ADR 0010](0010-remove-legacy-xls-input.md). Its CSV, XLSX, XLSM, VTP,
+numerical, and other supported-domain decisions remain in force.
+
 ## Context
 
 Phase 1 correctly recorded every observable difference between the pinned FMF
