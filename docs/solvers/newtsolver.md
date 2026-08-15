@@ -153,7 +153,7 @@ used by the implementation-defined detached continuation below.
 
 Tangent wedge treats each windward panel as a local two-dimensional wedge of
 turning angle $\delta$. An attached shock satisfies the
-$\delta$--$\beta$--$M$ relation
+$\delta$ – $\beta$ – $M$ relation
 
 ```math
 \tan\delta
@@ -236,7 +236,7 @@ C_{p,c}
 ```
 
 The implementation evaluates candidate shock angles, retains the attached weak
-branch of the cone-angle-to-$C_p$ relation, and interpolates that relation for
+branch of the cone-angle relation for $C_p$, and interpolates that relation for
 panel angles. Beyond its maximum attached cone angle it uses the continuation
 defined below, rather than an attached Taylor--Maccoll solution. Each panel is
 evaluated independently, so this local cone analogy does not recover the
