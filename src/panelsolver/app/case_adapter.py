@@ -29,7 +29,6 @@ class ProductCasePolicy:
 
     product_id: str
     model_id: str
-    compatibility_version: str
     legacy_env_prefix: str
     mesh_validation_policy: MeshValidationPolicy
     model_payload: ModelPayloadBuilder

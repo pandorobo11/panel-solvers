@@ -32,19 +32,29 @@ only inward to the shared layers. Supported CLI/GUI runtime does not import that
 package directly; the `fmfsolver` and `newtsolver` frontends select it only for
 legacy direct-Python translation.
 
-## Distribution and product versions
+## Distribution version and migration baselines
 
 The single distribution is `panel-solvers`, currently version `0.1.0`. It owns
-all three top-level packages. Product-facing compatibility versions remain:
+all three top-level packages and uses one version across both domains. Summary
+CSV and VTP `solver_version` record the installed distribution version that
+generated them. If only FMF behavior changes in `panel-solvers 0.2.0`, newly
+generated FMF and Hypersonic artifacts both record `solver_version=0.2.0`;
+release notes identify the domain or model that changed.
 
-| Frontend | Compatibility version |
+The original implementations used for compatibility and migration work were:
+
+| Domain | Migration baseline |
 |---|---:|
-| fmfsolver | `1.3.8` |
-| newtsolver | `1.0.3` |
+| FMF | `fmfsolver 1.3.8` |
+| Hypersonic | `newtsolver 1.0.3` |
 
 Use `importlib.metadata.version("panel-solvers")` for the installed distribution
-version. Compatibility versions appear only where the accepted product format
-already exposed them. The shared and legacy distributions cannot safely coexist.
+version. The baseline values are not current solver or domain versions. They
+remain in private compatibility code only where legacy signature reconstruction
+or best-effort direct-Python `__version__` behavior requires them. Detailed
+source commits and migration evidence are in
+[Migration history](../history/migration/MIGRATION_SOURCES.md). The shared and
+legacy distributions cannot safely coexist.
 
 ## Shared convergence
 

@@ -89,7 +89,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 CASE_POLICY = ProductCasePolicy(
     product_id="fmfsolver",
     model_id="sentman",
-    compatibility_version=FMFSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="FMFSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
     model_payload=_model_payload,

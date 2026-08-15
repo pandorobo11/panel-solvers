@@ -119,7 +119,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 CASE_POLICY = ProductCasePolicy(
     product_id="newtsolver",
     model_id="hypersonic",
-    compatibility_version=NEWTSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="NEWTSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
     model_payload=_model_payload,

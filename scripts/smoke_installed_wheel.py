@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import csv
 import importlib
 import importlib.metadata
@@ -562,6 +563,8 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
 def main() -> int:
     repository = Path(sys.argv[1]).resolve()
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
+    installed_version = importlib.metadata.version("panel-solvers")
+    legacy_artifact_versions = {"1.3.8", "1.0.3"}
     installed = {
         entry.name: entry.value
         for entry in importlib.metadata.distribution("panel-solvers").entry_points
@@ -736,6 +739,22 @@ def main() -> int:
             header = output.read_text(encoding="utf-8").splitlines()[0]
             if "npz" in header.casefold():
                 raise RuntimeError(f"canonical {domain} restored NPZ output")
+            with output.open(encoding="utf-8", newline="") as stream:
+                canonical_rows = list(csv.DictReader(stream))
+            canonical_versions = {
+                row["solver_version"] for row in canonical_rows
+            }
+            if canonical_versions != {installed_version}:
+                raise RuntimeError(
+                    f"canonical {domain} artifact version changed: "
+                    f"{canonical_versions!r}"
+                )
+            canonical_total = next(
+                row for row in canonical_rows if row["scope"] == "total"
+            )
+            canonical_vtp = pv.read(canonical_total["vtp_path"])
+            if str(canonical_vtp.field_data["solver_version"][0]) != installed_version:
+                raise RuntimeError(f"canonical {domain} CSV/VTP versions differ")
             for suffix, input_path in excel_inputs[product].items():
                 format_output = (
                     staging / "canonical-format-smoke" / domain / f"{suffix[1:]}.csv"
@@ -839,6 +858,13 @@ def main() -> int:
                 raise RuntimeError(f"{product} result columns changed")
             if "save_npz_on" in columns or "npz_path" in columns:
                 raise RuntimeError(f"{product} summary retains removed NPZ columns")
+            current_versions = {row["solver_version"] for row in rows}
+            if current_versions != {installed_version}:
+                raise RuntimeError(
+                    f"{product} artifact version changed: {current_versions!r}"
+                )
+            if not legacy_artifact_versions.isdisjoint(current_versions):
+                raise RuntimeError(f"{product} emitted a legacy artifact version")
             case_order = [row["case_id"] for row in rows if row["scope"] == "total"]
             if case_order != contract["case_order"]:
                 raise RuntimeError(f"{product} case order changed: {case_order}")
@@ -867,8 +893,13 @@ def main() -> int:
                             for row in golden["csv"]["rows"]
                         ],
                     },
-                    "vtp": golden["vtp"],
+                    "vtp": copy.deepcopy(golden["vtp"]),
                 }
+                for expected_row in expected["csv"]["rows"]:
+                    expected_row["solver_version"] = installed_version
+                expected["vtp"]["field_data"]["solver_version"]["values"] = [
+                    installed_version
+                ]
                 actual = {
                     "csv": {
                         "columns": semantic_csv["columns"],
@@ -883,6 +914,20 @@ def main() -> int:
                         roots={inputs.resolve(): "<fixture-root>"},
                     ),
                 }
+                actual_csv_versions = {
+                    row["solver_version"] for row in actual["csv"]["rows"]
+                }
+                actual_vtp_version = actual["vtp"]["field_data"][
+                    "solver_version"
+                ]["values"][0]
+                if (
+                    actual_csv_versions != {installed_version}
+                    or actual_vtp_version != installed_version
+                ):
+                    raise RuntimeError(
+                        f"{product} CSV/VTP distribution versions differ for "
+                        f"{case_id}"
+                    )
                 differences = comparator._compare_values(
                     expected,
                     actual,

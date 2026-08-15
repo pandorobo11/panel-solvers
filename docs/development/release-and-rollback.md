@@ -9,8 +9,9 @@ compatibility packages, and all six console commands.
 2. Move applicable `CHANGELOG.md` entries from `[Unreleased]` to a dated version
    section and retain a fresh `[Unreleased]` section.
 3. Update current distribution-version references in README and current docs.
-   Do not change FMF `1.3.8` or newtsolver `1.0.3` without a separate accepted
-   compatibility decision.
+   Runtime artifacts for both domains will record the new distribution version.
+   Do not change the FMF `1.3.8` or newtsolver `1.0.3` migration-baseline
+   constants used by legacy signatures without a separate accepted decision.
 4. Run the locked unit/regression/compatibility/GUI suite, Ruff, build, and clean
    installed-wheel smoke tests for both products.
 5. Tag only the protected accepted `main` commit as `v<project.version>`.

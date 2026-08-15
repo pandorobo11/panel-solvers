@@ -63,7 +63,8 @@ that engine and rebuilds snapshots in input order.
 
 CSV and VTP projections receive explicit product policy. Shared code does
 not branch on a concrete model name to invent a universal schema. Compatibility
-frontends supply only model-specific input/output additions and version policy.
+frontends supply only model-specific input/output additions; the shared
+application records the installed distribution version as artifact provenance.
 The in-memory API stops at the common execution result and performs no artifact
 serialization.
 

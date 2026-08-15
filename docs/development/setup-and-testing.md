@@ -71,6 +71,9 @@ than file bytes. Per-quantity tolerances and provenance live in
 
 ## Versions
 
-`pyproject.toml` owns the shared distribution version, currently `0.1.0`. FMF
-`1.3.8` and newtsolver `1.0.3` are independent compatibility values. Release and
-rollback procedures are in [Release and rollback](release-and-rollback.md).
+`pyproject.toml` owns the single distribution version, currently `0.1.0`.
+Summary CSV and VTP retrieve that installed `panel-solvers` version from
+distribution metadata for both domains. FMF `1.3.8` and newtsolver `1.0.3` are
+historical migration baselines retained for legacy signature and best-effort
+direct-Python compatibility. Release and rollback procedures are in
+[Release and rollback](release-and-rollback.md).
