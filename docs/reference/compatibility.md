@@ -6,7 +6,7 @@ inside the supported domain. The current supported surfaces are:
 - all six commands: `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`,
   `newtsolver`, `newtsolver-gui`, and `newtsolver-cli`;
 - normal launcher-driven GUI operation;
-- documented CSV/XLSX/XLSM/XLS case files and product schemas/defaults;
+- documented CSV/XLSX/XLSM case files and product schemas/defaults;
 - documented Summary CSV and VTP semantics;
 - supported numerical values, signs, frames, normalizations, and model-specific
   behavior.
@@ -33,7 +33,7 @@ already exposed them. The shared and legacy distributions cannot safely coexist.
 ## Shared convergence
 
 Both frontends use common strict mesh and numeric validation, portable case IDs,
-Excel dispatch, output collision/durable CSV behavior, and scheduler
+case-table dispatch, output collision/durable CSV behavior, and scheduler
 `FORWARD / YIELD_COMPLETED` policy. Model inputs/equations, product-only output
 fields, legacy signatures, GUI identities, and migration command/package names
 remain distinct where required.

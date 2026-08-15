@@ -8,6 +8,5 @@ tolerance.
 source meshes, valid/invalid case tables, and semantic JSON captures. See
 `phase1/README.md` before regenerating it.
 
-`current/` contains minimal current-schema case tables used to exercise file
-formats whose historical Phase 1 inputs intentionally retain removed fields.
-Its README records how the committed BIFF8 fixtures were produced.
+Current-schema case tables are derived in temporary directories by
+`tests/current_case_fixtures.py`; the committed Phase 1 inputs remain unchanged.

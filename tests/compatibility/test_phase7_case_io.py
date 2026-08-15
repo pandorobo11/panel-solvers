@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 import unittest
 from dataclasses import asdict
@@ -7,7 +8,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-import xlrd
 
 import fmfsolver.io.io_cases as fmf_case_module
 import newtsolver.io.io_cases as newt_case_module
@@ -35,8 +35,22 @@ from panelsolver.core import MeshValidationPolicy, ResultCache, execute_case
 from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
-_CURRENT_INPUTS = Path(__file__).parents[1] / "fixtures" / "current"
 _GOLDEN = Path(__file__).parents[1] / "fixtures" / "phase1" / "golden"
+
+
+def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
+    if path.suffix == ".csv":
+        frame.to_csv(path, index=False)
+        return
+    if path.suffix == ".xlsx":
+        frame.to_excel(path, index=False, engine="openpyxl")
+        return
+    if path.suffix == ".xlsm":
+        xlsx = path.with_suffix(".xlsx")
+        frame.to_excel(xlsx, index=False, engine="openpyxl")
+        shutil.copyfile(xlsx, path)
+        return
+    raise AssertionError(f"Unsupported test case-table suffix: {path.suffix}")
 
 
 class ProductCaseReaderTests(unittest.TestCase):
@@ -56,15 +70,12 @@ class ProductCaseReaderTests(unittest.TestCase):
             for reader, filename in products:
                 base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 for value in (0, 1):
-                    for suffix in (".csv", ".xlsx"):
+                    for suffix in (".csv", ".xlsx", ".xlsm"):
                         with self.subTest(filename=filename, value=value, suffix=suffix):
                             frame = base.copy()
                             frame["save_npz_on"] = value
                             path = root / f"{Path(filename).stem}-{value}{suffix}"
-                            if suffix == ".csv":
-                                frame.to_csv(path, index=False)
-                            else:
-                                frame.to_excel(path, index=False, engine="openpyxl")
+                            _write_case_table(frame, path)
                             with self.assertRaises(Exception) as caught:
                                 reader(path)
                             error = caught.exception
@@ -135,39 +146,37 @@ class ProductCaseReaderTests(unittest.TestCase):
                         [asdict(issue) for issue in error.issues],
                     )
 
-    def test_excel_engine_dispatch_is_common(self) -> None:
+    def test_ooxml_excel_engine_dispatch_is_common(self) -> None:
         for reader, filename in (
             (read_fmf_cases, "fmfsolver_cases.csv"),
             (read_newt_cases, "newtsolver_cases.csv"),
         ):
             frame = read_current_cases(reader, _INPUTS / filename)
-            for suffix, engine in (
-                (".xls", "xlrd"),
-                (".xlsx", "openpyxl"),
-                (".xlsm", "openpyxl"),
-            ):
+            for suffix in (".xlsx", ".xlsm"):
                 with self.subTest(filename=filename, suffix=suffix), patch(
                     "panelsolver.app.case_io.pd.read_excel",
                     return_value=frame.copy(),
                 ) as read_excel:
                     reader(f"cases{suffix}")
-                    self.assertEqual(engine, read_excel.call_args.kwargs["engine"])
+                    self.assertEqual(
+                        "openpyxl", read_excel.call_args.kwargs["engine"]
+                    )
                     self.assertEqual(
                         {"case_id": "string"}, read_excel.call_args.kwargs["dtype"]
                     )
 
-    def test_csv_xlsx_xlsm_and_biff_xls_preserve_valid_rows(self) -> None:
-        for reader, stem, case_id, major_values in (
+    def test_csv_xlsx_and_xlsm_preserve_valid_rows(self) -> None:
+        for reader, filename, case_id, major_values in (
             (
                 read_fmf_cases,
-                "fmfsolver_cases",
-                "fmf_current_biff",
+                "fmfsolver_cases.csv",
+                "fmf_supported_formats",
                 {"S": 5.0, "Ti_K": 300.0, "Tw_K": 300.0},
             ),
             (
                 read_newt_cases,
-                "newtsolver_cases",
-                "newt_current_biff",
+                "newtsolver_cases.csv",
+                "newt_supported_formats",
                 {
                     "Mach": 6.0,
                     "gamma": 1.4,
@@ -176,62 +185,58 @@ class ProductCaseReaderTests(unittest.TestCase):
                 },
             ),
         ):
-            csv_frame = reader(_CURRENT_INPUTS / f"{stem}.csv")
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp = Path(temp_dir)
-                xlsx = temp / f"{stem}.xlsx"
-                xlsm = temp / f"{stem}.xlsm"
-                csv_frame.to_excel(xlsx, index=False, engine="openpyxl")
-                xlsm.write_bytes(xlsx.read_bytes())
-                for path in (
-                    _CURRENT_INPUTS / f"{stem}.csv",
-                    xlsx,
-                    xlsm,
-                    _CURRENT_INPUTS / f"{stem}.xls",
-                ):
-                    with self.subTest(stem=stem, suffix=path.suffix):
-                        if path.suffix == ".xls":
-                            workbook = xlrd.open_workbook(path)
-                            self.assertEqual(80, workbook.biff_version)
-                            self.assertEqual(2, workbook.sheet_by_index(0).nrows)
-                            with patch(
-                                "panelsolver.app.case_io.pd.read_excel",
-                                wraps=pd.read_excel,
-                            ) as read_excel:
-                                actual = reader(path)
-                            self.assertEqual(
-                                "xlrd", read_excel.call_args.kwargs["engine"]
-                            )
-                        else:
-                            actual = reader(path)
+                geometry = temp / "geometry"
+                geometry.mkdir()
+                shutil.copyfile(_INPUTS / "stl" / "plate.stl", geometry / "plate.stl")
+                source = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                source.loc[source.index[0], "case_id"] = case_id
+                source.loc[source.index[0], "stl_path"] = "geometry/plate.stl"
+                source.loc[source.index[0], "out_dir"] = "outputs"
+                paths = tuple(
+                    temp / f"cases{suffix}"
+                    for suffix in (".csv", ".xlsx", ".xlsm")
+                )
+                for path in paths:
+                    _write_case_table(source, path)
+                csv_frame = reader(paths[0])
+                for path in paths:
+                    with self.subTest(filename=filename, suffix=path.suffix):
+                        actual = reader(path)
                         self.assertEqual(1, len(actual))
                         self.assertEqual([case_id], actual["case_id"].tolist())
                         self.assertEqual(list(csv_frame.columns), list(actual.columns))
                         for name, expected in major_values.items():
                             self.assertEqual(expected, actual.iloc[0][name])
                         self.assertEqual(
-                            (
-                                _CURRENT_INPUTS
-                                / "../phase1/inputs/stl/plate.stl"
-                            ).resolve(),
+                            (geometry / "plate.stl").resolve(),
                             Path(actual.iloc[0]["stl_path"]),
                         )
                         self.assertEqual(
-                            (
-                                _CURRENT_INPUTS
-                                / f"outputs/{stem.removesuffix('_cases')}"
-                            ).resolve(),
+                            (temp / "outputs").resolve(),
                             Path(actual.iloc[0]["out_dir"]),
                         )
 
-                with self.assertRaises(Exception) as caught:
-                    reader(_INPUTS / f"{stem}.xls")
-                self.assertEqual("InputValidationError", type(caught.exception).__name__)
-                self.assertEqual(
-                    ["save_npz_on"],
-                    [issue.field for issue in caught.exception.issues],
-                )
-                self.assertIn("Delete this field", str(caught.exception))
+    def test_legacy_xls_is_rejected_before_excel_read_with_migration_help(self) -> None:
+        for reader, stem in (
+            (read_fmf_cases, "fmfsolver_cases"),
+            (read_newt_cases, "newtsolver_cases"),
+        ):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                uppercase = Path(temp_dir) / f"{stem}.XLS"
+                shutil.copyfile(_INPUTS / f"{stem}.xls", uppercase)
+                for path in (_INPUTS / f"{stem}.xls", uppercase):
+                    with self.subTest(stem=stem, suffix=path.suffix), patch(
+                        "panelsolver.app.case_io.pd.read_excel"
+                    ) as read_excel:
+                        with self.assertRaises(ValueError) as caught:
+                            reader(path)
+                    read_excel.assert_not_called()
+                    message = str(caught.exception)
+                    self.assertIn("Legacy .xls input is no longer supported", message)
+                    self.assertIn(".xlsx", message)
+                    self.assertIn(".csv", message)
 
     def test_case_ids_use_one_portable_unicode_and_casefold_policy(self) -> None:
         products = (

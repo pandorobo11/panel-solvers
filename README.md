@@ -47,6 +47,8 @@ fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cas
 newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
 ```
 
+Case tables may be CSV, XLSX, or XLSM files.
+
 The aliases `fmfsolver` and `newtsolver` also launch their respective GUIs.
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains the files and the main

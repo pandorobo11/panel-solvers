@@ -5,7 +5,7 @@
 - Python 3.12 or newer
 - A platform supported by the required Python dependencies, including Qt,
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
-- An STL mesh and a CSV or Excel case table
+- An STL mesh and a CSV, XLSX, or XLSM case table
 
 ## Install from a checkout
 

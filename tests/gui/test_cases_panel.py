@@ -130,6 +130,19 @@ class CasesPanelTests(unittest.TestCase):
         self.assertIn("gamma", newt._table_columns)
         self.assertNotIn("S", newt._table_columns)
 
+    def test_input_picker_offers_only_current_case_table_formats(self) -> None:
+        panel, _ = self.make_panel()
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getOpenFileName",
+            return_value=("", ""),
+        ) as choose:
+            panel.pick_input_file()
+        self.assertEqual(
+            "CSV/Excel (*.csv *.xlsx *.xlsm)",
+            choose.call_args.args[3],
+        )
+
     def test_selected_rows_keep_table_order_and_no_selection_means_all(self) -> None:
         panel, _ = self.make_panel()
         panel.load_input_file("/tmp/input.csv")

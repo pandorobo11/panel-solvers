@@ -28,12 +28,12 @@ class Phase7CliTests(unittest.TestCase):
             for program, description, builder in (
                 (
                     "fmfsolver-cli",
-                    "Run FMF solver from CSV/Excel input without GUI.",
+                    "Run FMF solver from CSV/XLSX/XLSM input without GUI.",
                     build_fmf_parser,
                 ),
                 (
                     "newtsolver-cli",
-                    "Run newtsolver from CSV/Excel input without GUI.",
+                    "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
                     build_newt_parser,
                 ),
             ):
@@ -41,6 +41,8 @@ class Phase7CliTests(unittest.TestCase):
                     help_text = builder().format_help()
                     self.assertIn(f"usage: {program}", help_text)
                     self.assertIn(description, help_text)
+                    self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", help_text)
+                    self.assertNotIn(".xls)", help_text)
                     self.assertIn("--cases CASES [CASES ...]", help_text)
                     self.assertIn("--flush-every-cases", help_text)
                     with contextlib.redirect_stderr(io.StringIO()):

@@ -111,7 +111,7 @@ class CasesPanel(QtWidgets.QWidget):
 
         self.input_value = QtWidgets.QLineEdit()
         self.input_value.setReadOnly(True)
-        self.input_value.setPlaceholderText("CSV / Excel input file")
+        self.input_value.setPlaceholderText("CSV / XLSX / XLSM input file")
         self.btn_pick_input = QtWidgets.QPushButton("Select Input File")
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
@@ -185,7 +185,7 @@ class CasesPanel(QtWidgets.QWidget):
             self,
             "Select Input File",
             str(Path.cwd()),
-            "CSV/Excel (*.csv *.xlsx *.xlsm *.xls)",
+            "CSV/Excel (*.csv *.xlsx *.xlsm)",
         )
         if path:
             self.load_input_file(path)

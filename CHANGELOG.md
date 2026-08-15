@@ -5,6 +5,10 @@ compatibility versions are tracked separately under ADR 0007.
 
 ## [Unreleased]
 
+- **Breaking:** Remove legacy Excel 97–2003 BIFF `.xls` input support and the
+  `xlrd` runtime dependency. Convert `.xls` case files to `.xlsx` or CSV before
+  using the current release. CSV, XLSX, and XLSM behavior is unchanged, and
+  solver numerical results are unaffected.
 - **Breaking:** Remove NPZ output, the `save_npz_on` case field, the Summary CSV
   `npz_path` column, and both compatibility frontends' `export_npz` API. Old
   case files must delete the `save_npz_on` column. Existing NPZ files are not

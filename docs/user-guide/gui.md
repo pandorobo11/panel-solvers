@@ -11,7 +11,7 @@ newtsolver-gui
 
 ## Run cases
 
-1. Choose **Select Input File** and open a CSV, XLSX, XLSM, or XLS case table.
+1. Choose **Select Input File** and open a CSV, XLSX, or XLSM case table.
 2. Select one or more table rows. With no selection, **Run Selected Cases** runs
    every loaded row.
 3. Set **Workers**. Use `1` for the simplest deterministic run.

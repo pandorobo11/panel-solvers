@@ -15,7 +15,6 @@ dependencies = [
   "rtree",
   "scipy",
   "trimesh",
-  "xlrd",
 ]
 
 [project.optional-dependencies]
