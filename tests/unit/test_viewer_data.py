@@ -66,6 +66,26 @@ class ArtifactMatchingTests(unittest.TestCase):
         self.assertFalse(wrong_id.matched)
         self.assertTrue(wrong_id.signature.matched)
 
+    def test_legacy_solver_version_metadata_does_not_control_matching(self) -> None:
+        primary = _signature("primary")
+        candidates = ArtifactSignatureCandidates(primary)
+        for legacy_version in ("1.3.8", "1.0.3"):
+            with self.subTest(legacy_version=legacy_version):
+                artifact = SimpleNamespace(
+                    field_data={
+                        "case_id": ["case"],
+                        "case_signature": [primary.digest],
+                        "solver_version": [legacy_version],
+                    }
+                )
+                self.assertTrue(
+                    match_artifact_case(
+                        artifact,
+                        {"case_id": "case"},
+                        candidates,
+                    ).matched
+                )
+
     def test_missing_corrupt_or_multivalued_field_data_never_auto_matches(self) -> None:
         primary = _signature("primary")
         candidates = ArtifactSignatureCandidates(primary)

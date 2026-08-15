@@ -1,4 +1,4 @@
-"""Compatibility metadata used by current domain serialization policy."""
+"""Private legacy-product metadata retained for compatibility frontends."""
 
 FMFSOLVER_COMPATIBILITY_VERSION = "1.3.8"
 NEWTSOLVER_COMPATIBILITY_VERSION = "1.0.3"

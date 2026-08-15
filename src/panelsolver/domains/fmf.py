@@ -50,8 +50,6 @@ from panelsolver.core import (
 from panelsolver.models import ModelRegistry
 from panelsolver.models.sentman_atmosphere import altitude_range_km
 
-from .versions import FMFSOLVER_COMPATIBILITY_VERSION
-
 REQUIRED = (
     "case_id",
     "stl_path",
@@ -201,7 +199,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 CASE_POLICY = ProductCasePolicy(
     product_id="fmfsolver",
     model_id="sentman",
-    compatibility_version=FMFSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="FMFSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
     model_payload=_model_payload,
@@ -464,7 +461,6 @@ __all__ = (
     "CSV_PROJECTION_POLICY",
     "CSV_WRITE_POLICY",
     "DEFAULTS",
-    "FMFSOLVER_COMPATIBILITY_VERSION",
     "GUI_ADAPTERS",
     "INPUT_COLUMN_ORDER",
     "RUNTIME_POLICY",

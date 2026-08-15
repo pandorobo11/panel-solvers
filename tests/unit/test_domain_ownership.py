@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import unittest
+from importlib.metadata import version
 from pathlib import Path
 
 from fmfsolver.app.cli_app import CLI_POLICY as LEGACY_FMF_CLI_POLICY
@@ -14,6 +15,7 @@ from newtsolver.runtime import RUNTIME_POLICY as LEGACY_HYPERSONIC_RUNTIME_POLIC
 from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
+INSTALLED_VERSION = version("panel-solvers")
 
 
 class DomainOwnershipTests(unittest.TestCase):
@@ -41,15 +43,15 @@ from tests.current_case_fixtures import read_current_cases
 
 inputs = Path({str(REPOSITORY_ROOT)!r}) / 'tests' / 'fixtures' / 'phase1' / 'inputs'
 with tempfile.TemporaryDirectory() as temp_dir:
-    for domain, filename, expected_version in (
-        (fmf, 'fmfsolver_cases.csv', '1.3.8'),
-        (hypersonic, 'newtsolver_cases.csv', '1.0.3'),
+    for domain, filename in (
+        (fmf, 'fmfsolver_cases.csv'),
+        (hypersonic, 'newtsolver_cases.csv'),
     ):
         row = read_current_cases(domain.read_cases, inputs / filename).iloc[0].to_dict()
         row.update(out_dir=temp_dir, save_vtp_on=0, shielding_on=0, ray_backend='rtree')
         result = domain.run_cases((row,))
         assert len(result.cases) == 1
-        assert result.cases[0].csv.rows[0]['solver_version'] == expected_version
+        assert result.cases[0].csv.rows[0]['solver_version'] == {INSTALLED_VERSION!r}
         candidates = domain.build_primary_signatures(row)
         assert candidates.legacy_signatures == ()
 

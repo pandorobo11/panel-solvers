@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import csv
+import importlib.metadata
 import importlib.util
 import json
 import shutil
@@ -23,6 +25,7 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
+LEGACY_ARTIFACT_VERSIONS = {"1.3.8", "1.0.3"}
 
 
 def _load_comparator_module():
@@ -41,6 +44,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
         cls.comparator = _load_comparator_module()
 
     def test_all_cases_serialize_to_current_csv_and_frozen_vtp_semantics(self) -> None:
+        installed_version = importlib.metadata.version("panel-solvers")
         products = (
             (
                 "fmfsolver",
@@ -121,8 +125,16 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                                     for expected_row in golden["csv"]["rows"]
                                 ],
                             },
-                            "vtp": golden["vtp"],
+                            "vtp": copy.deepcopy(golden["vtp"]),
                         }
+                        # Phase 1 remains immutable historical evidence. Adjust only
+                        # the in-memory expectation for the accepted current artifact
+                        # provenance contract.
+                        for expected_row in expected["csv"]["rows"]:
+                            expected_row["solver_version"] = installed_version
+                        expected["vtp"]["field_data"]["solver_version"]["values"] = [
+                            installed_version
+                        ]
                         differences = self.comparator._compare_values(
                             expected,
                             actual,
@@ -134,13 +146,30 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                             (staged / "outputs" / f"{case_id}.npz").exists()
                         )
 
-                        raw_total = next(
+                        raw_case_rows = [
                             csv_row
                             for csv_row in raw_csv_rows
                             if csv_row["case_id"] == case_id
-                            and csv_row["scope"] == "total"
+                        ]
+                        self.assertEqual(
+                            {installed_version},
+                            {csv_row["solver_version"] for csv_row in raw_case_rows},
+                        )
+                        self.assertTrue(
+                            LEGACY_ARTIFACT_VERSIONS.isdisjoint(
+                                csv_row["solver_version"] for csv_row in raw_case_rows
+                            )
+                        )
+                        raw_total = next(
+                            csv_row
+                            for csv_row in raw_case_rows
+                            if csv_row["scope"] == "total"
                         )
                         poly = pv.read(staged / "outputs" / f"{case_id}.vtp")
+                        vtp_version = str(poly.field_data["solver_version"][0])
+                        self.assertEqual(installed_version, vtp_version)
+                        self.assertEqual(raw_total["solver_version"], vtp_version)
+                        self.assertNotIn(vtp_version, LEGACY_ARTIFACT_VERSIONS)
                         primary = signatures(row).primary.digest
                         self.assertEqual(primary, raw_total["case_signature"])
                         self.assertEqual(

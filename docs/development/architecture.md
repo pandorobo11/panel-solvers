@@ -72,9 +72,10 @@ that engine and rebuilds snapshots in input order.
 
 CSV and VTP projections receive explicit domain-owned policy. Shared code does
 not branch on a concrete model name to invent a universal schema. Compatibility
-versions remain neutral constants used by canonical serialization policy and
-forwarded by the legacy packages. The in-memory API stops at the common
-execution result and performs no artifact serialization.
+frontends supply only model-specific input/output additions; the shared
+application records the installed distribution version as artifact provenance.
+The in-memory API stops at the common execution result and performs no artifact
+serialization.
 
 Canonical GUI artifact matching constructs only the current
 `panelsolver.case` v1 signature. Legacy launchers replace only visible identity

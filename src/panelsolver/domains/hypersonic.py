@@ -55,8 +55,6 @@ from panelsolver.models.hypersonic.selectors import (
     normalize_windward_equation,
 )
 
-from .versions import NEWTSOLVER_COMPATIBILITY_VERSION
-
 REQUIRED = (
     "case_id",
     "stl_path",
@@ -230,7 +228,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 CASE_POLICY = ProductCasePolicy(
     product_id="newtsolver",
     model_id="hypersonic",
-    compatibility_version=NEWTSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="NEWTSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
     model_payload=_model_payload,
@@ -490,7 +487,6 @@ __all__ = (
     "DEFAULTS",
     "GUI_ADAPTERS",
     "INPUT_COLUMN_ORDER",
-    "NEWTSOLVER_COMPATIBILITY_VERSION",
     "RUNTIME_POLICY",
     "InputValidationError",
     "ValidationIssue",
