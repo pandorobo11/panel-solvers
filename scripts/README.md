@@ -12,3 +12,7 @@ already generated capture trees with the manifest's case/quantity tolerances.
 `bigtables.py` calculation snapshot to regenerate the single package-internal
 Sentman atmosphere table. Its `--check` mode prevents manual generated-data
 drift without network access.
+
+`generate_docs_angle_response_plots.py` produces the committed SVG figures
+directly from panel-solvers model output. The script and generated figures are
+project material distributed under Apache-2.0.

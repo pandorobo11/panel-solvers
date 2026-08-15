@@ -64,6 +64,12 @@ and also dedicates PDAS-added program value to the public domain. That statement
 is the software/right provenance basis for using `bigtables.py`; it is separate
 from the scientific report citation above.
 
+panel-solvers does not claim copyright in the underlying U.S. Government data
+or the PDAS public-domain program and does not relicense either as Apache-2.0.
+The project license covers the project-authored generator, integration, tests,
+documentation, and original selection or arrangement to the extent those
+elements are copyrightable.
+
 `tools/reference/pdas/bigtables_v1_5.py` is a development-only, minimal snapshot
 of the upstream constants and calculation functions needed for these four
 quantities. HTML generation, unused properties, and the upstream program's
@@ -137,7 +143,5 @@ development provenance material are outside the configured wheel package roots
 and are not included in the wheel. The reference snapshot may be included in the
 source distribution so an sdist checkout can regenerate the table offline.
 
-This evidence resolves only the US1976 data-provenance portion of Issue #153.
-It does not choose a project license, add a license grant for other migrated
-code or content, or resolve the remaining ownership, attribution, maintainer,
-and publication-metadata decisions in that issue.
+Project licensing and the consolidated third-party rights boundary are recorded
+in the root `LICENSE` and `THIRD_PARTY_NOTICES.md` files.
