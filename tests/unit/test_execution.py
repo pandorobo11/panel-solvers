@@ -11,8 +11,10 @@ from panelsolver.core import (
     ExecutionError,
     ExecutionModelError,
     LocalLoads,
+    MeshValidationPolicy,
     ModelCasePayload,
     ShieldingConfig,
+    case_execution_bucket_keys,
     execute_case,
 )
 
@@ -155,6 +157,22 @@ class ExecutionTests(unittest.TestCase):
         )
         self.assertNotEqual(first.signature.digest, second.signature.digest)
         self.assertEqual(2, model.evaluate_calls)
+
+    def test_mesh_policy_alias_has_strict_request_and_scheduler_identity(self) -> None:
+        shielding = ShieldingConfig(enabled=True, ray_backend="rtree")
+        strict = _request(
+            shielding=shielding,
+            mesh_validation_policy=MeshValidationPolicy.STRICT,
+        )
+        alias = _request(
+            shielding=shielding,
+            mesh_validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR,
+        )
+        self.assertEqual(MeshValidationPolicy.STRICT, alias.mesh_validation_policy)
+        self.assertEqual(
+            case_execution_bucket_keys((strict,))[0],
+            case_execution_bucket_keys((alias,))[0],
+        )
 
     def test_model_failures_propagate_and_invalid_outputs_are_rejected(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "model validation failed"):

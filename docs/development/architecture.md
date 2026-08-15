@@ -20,13 +20,16 @@ fmfsolver / newtsolver compatibility frontends
 |---|---|
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
-| `panelsolver.app` | case-table mechanics, product assembly, CLI/GUI orchestration, artifact and CSV serialization |
+| `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
 | `fmfsolver`, `newtsolver` | legacy names, model schemas/defaults, compatibility versions, product projection policy |
 
 Allowed dependency directions are `app -> models -> core`, `app -> core`, and
 compatibility frontends inward to those layers. Core cannot import models, app,
 GUI, or a compatibility frontend; models cannot import app, GUI, or a frontend.
 Physical equations do not belong in GUI or compatibility code.
+Product selection and compatibility environment names are resolved in the
+application/front-end boundary. Core receives product-neutral configuration
+values and does not inspect process environment variables.
 
 ## Numerical boundary
 

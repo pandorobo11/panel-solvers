@@ -18,6 +18,7 @@ from panelsolver.core import (
 from panelsolver.models import ModelRegistry
 
 from .attitude import ResolvedAttitude, resolve_attitude
+from .environment import resolve_shielding_environment
 from .execution import default_model_registry, request_from_registry
 from .legacy_signatures import (
     LegacySignaturePolicy,
@@ -37,7 +38,6 @@ class ProductCasePolicy:
     compatibility_version: str
     legacy_env_prefix: str
     mesh_validation_policy: MeshValidationPolicy
-    strict_beta_tan_domain: bool
     signature_defaults: Mapping[str, object]
     legacy_signature_policy: LegacySignaturePolicy
     model_payload: ModelPayloadBuilder
@@ -93,7 +93,6 @@ def adapt_case_row(
         float(row["alpha_deg"]),
         float(row["beta_or_bank_deg"]),
         row.get("attitude_input"),
-        strict_beta_tan_domain=policy.strict_beta_tan_domain,
     )
     common_case = CommonCasePayload(
         case_id=str(row["case_id"]),
@@ -120,9 +119,11 @@ def adapt_case_row(
         stl_paths=_stl_paths(row),
         scale_m_per_unit=float(row["stl_scale_m_per_unit"]),
         velocity_hat_stl=attitude.velocity_hat_stl,
-        shielding=ShieldingConfig(
-            enabled=bool(int(row.get("shielding_on", 0))),
-            ray_backend=str(row.get("ray_backend", "auto")),
+        shielding=resolve_shielding_environment(
+            ShieldingConfig(
+                enabled=bool(int(row.get("shielding_on", 0))),
+                ray_backend=str(row.get("ray_backend", "auto")),
+            ),
             legacy_env_prefix=policy.legacy_env_prefix,
         ),
         mesh_validation_policy=policy.mesh_validation_policy,

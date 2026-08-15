@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import multiprocessing as mp
-import os
 import sys
 import time
 import traceback
@@ -110,30 +109,13 @@ def _positive_integer(value: object, *, field: str) -> int:
 
 def resolve_parallel_chunk_cases(
     chunk_cases: int | None = None,
-    *,
-    legacy_env_prefix: str | None = None,
-    environment: Mapping[str, str] | None = None,
 ) -> int:
-    """Resolve explicit > neutral env > selected legacy env > default 8."""
-    if legacy_env_prefix not in {None, "FMFSOLVER", "NEWTSOLVER"}:
-        raise SchedulerError(
-            "legacy_env_prefix must be None, 'FMFSOLVER', or 'NEWTSOLVER'."
-        )
-    if chunk_cases is not None:
-        return _positive_integer(chunk_cases, field="chunk_cases")
-
-    values = os.environ if environment is None else environment
-    names = ["PANELSOLVER_PARALLEL_CHUNK_CASES"]
-    if legacy_env_prefix is not None:
-        names.append(f"{legacy_env_prefix}_PARALLEL_CHUNK_CASES")
-    for name in names:
-        raw = str(values.get(name, "")).strip()
-        if raw:
-            try:
-                return _positive_integer(raw, field=name)
-            except SchedulerError as exc:
-                raise SchedulerError(f"{name} must be an integer >= 1.") from exc
-    return _DEFAULT_CHUNK_CASES
+    """Validate an explicit product-neutral chunk size or return default 8."""
+    return (
+        _DEFAULT_CHUNK_CASES
+        if chunk_cases is None
+        else _positive_integer(chunk_cases, field="chunk_cases")
+    )
 
 
 def case_execution_bucket_keys(
@@ -158,7 +140,6 @@ def case_execution_bucket_keys(
                 config.ray_backend.value,
                 config.batch_size,
                 config.cache_max,
-                config.legacy_env_prefix,
             )
         )
     return tuple(keys)
@@ -687,7 +668,6 @@ def iter_case_results_parallel[CaseT, ResultT](
     execution_order: Sequence[int] | None = None,
     bucket_keys: Sequence[Hashable] | None = None,
     chunk_cases: int | None = None,
-    legacy_env_prefix: str | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     logfn: Callable[[str], None] | None = None,
     progress_cb: Callable[[SchedulerProgress], None] | None = None,
@@ -724,10 +704,7 @@ def iter_case_results_parallel[CaseT, ResultT](
 
     order = _validated_execution_order(total, execution_order)
     keys = _validated_bucket_keys(total, bucket_keys)
-    resolved_chunk_cases = resolve_parallel_chunk_cases(
-        chunk_cases,
-        legacy_env_prefix=legacy_env_prefix,
-    )
+    resolved_chunk_cases = resolve_parallel_chunk_cases(chunk_cases)
     bucket_chunks, bucket_remaining = _build_bucket_chunks(
         order,
         keys,
@@ -948,7 +925,6 @@ def iter_execution_results_parallel(
     partial_result_policy: PartialResultPolicy | str,
     execution_order: Sequence[int] | None = None,
     chunk_cases: int | None = None,
-    legacy_env_prefix: str | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     logfn: Callable[[str], None] | None = None,
     progress_cb: Callable[[SchedulerProgress], None] | None = None,
@@ -969,7 +945,6 @@ def iter_execution_results_parallel(
         execution_order=execution_order,
         bucket_keys=case_execution_bucket_keys(normalized),
         chunk_cases=chunk_cases,
-        legacy_env_prefix=legacy_env_prefix,
         cancel_cb=cancel_cb,
         logfn=logfn,
         progress_cb=progress_cb,

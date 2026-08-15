@@ -1,8 +1,9 @@
 # Environment-variable reference
 
 An explicit API/configuration argument has highest precedence. The neutral name
-then wins over the prefix for the selected product. Core never reads both legacy
-product prefixes for one run.
+then wins over the prefix for the selected product. The application or
+compatibility boundary resolves only that selected prefix and passes
+product-neutral values into core.
 
 | Neutral variable | Selected-product fallback | Domain | Default |
 |---|---|---|---:|

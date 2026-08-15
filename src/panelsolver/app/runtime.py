@@ -33,6 +33,7 @@ from panelsolver.models import ModelRegistry
 from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
+from .environment import resolve_parallel_chunk_environment
 
 type CaseRow = Mapping[str, object]
 type LogCallback = Callable[[str], None]
@@ -406,7 +407,9 @@ def run_product_cases(
             partial_result_policy=policy.partial_result_policy,
             execution_order=order,
             bucket_keys=case_execution_bucket_keys(requests),
-            legacy_env_prefix=policy.case_policy.legacy_env_prefix,
+            chunk_cases=resolve_parallel_chunk_environment(
+                legacy_env_prefix=policy.case_policy.legacy_env_prefix,
+            ),
             cancel_cb=cancel_cb,
             logfn=logger,
         )

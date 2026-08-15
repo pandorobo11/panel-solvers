@@ -41,7 +41,9 @@ class MeshLoadingTests(unittest.TestCase):
         self.assertFalse(loaded.mesh.geometry.normals_out_stl.flags.writeable)
         self.assertRegex(loaded.geometry_fingerprint, r"^[0-9a-f]{64}$")
 
-    def test_cache_is_keyed_by_content_scale_and_policy(self) -> None:
+    def test_cache_is_keyed_by_content_and_scale_with_policy_alias_normalized(
+        self,
+    ) -> None:
         path = FIXTURE_STL / "cube.stl"
         first = load_panel_mesh([path], 1.0)
         second = load_panel_mesh([path], 1.0)
@@ -55,7 +57,16 @@ class MeshLoadingTests(unittest.TestCase):
         )
         self.assertNotEqual(first.geometry_fingerprint, scaled.geometry_fingerprint)
         self.assertEqual(scaled.geometry_fingerprint, permissive.geometry_fingerprint)
-        self.assertEqual(mesh_cache_stats().misses, 3)
+        self.assertIs(scaled, permissive)
+        self.assertEqual(MeshValidationPolicy.STRICT, permissive.validation_policy)
+        self.assertEqual(
+            (1, 2, 2),
+            (
+                mesh_cache_stats().entries,
+                mesh_cache_stats().hits,
+                mesh_cache_stats().misses,
+            ),
+        )
 
     def test_cache_hit_replays_warnings_and_propagates_callback_errors(self) -> None:
         path = FIXTURE_STL / "plate.stl"

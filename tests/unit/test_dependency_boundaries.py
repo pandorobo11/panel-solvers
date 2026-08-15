@@ -117,7 +117,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(113, len(graph), "Update the recorded production module count")
+        self.assertEqual(114, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -137,6 +137,23 @@ class DependencyBoundaryTests(unittest.TestCase):
         violations = [
             f"{path.relative_to(SRC_ROOT)}: {token}"
             for path in sorted(SRC_ROOT.rglob("*.py"))
+            for token in prohibited
+            if token in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual([], violations)
+
+    def test_core_has_no_product_environment_identity_or_environment_reads(self) -> None:
+        prohibited = (
+            "FMFSOLVER_",
+            "NEWTSOLVER_",
+            "PANELSOLVER_",
+            "legacy_env_prefix",
+            "os.environ",
+            "os.getenv",
+        )
+        violations = [
+            f"{path.relative_to(SRC_ROOT)}: {token}"
+            for path in sorted((SRC_ROOT / "panelsolver" / "core").rglob("*.py"))
             for token in prohibited
             if token in path.read_text(encoding="utf-8")
         ]

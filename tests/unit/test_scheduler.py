@@ -156,39 +156,12 @@ class SchedulerTests(unittest.TestCase):
                 )
             time.sleep(0.02)
 
-    def test_chunk_environment_precedence_and_validation(self) -> None:
-        environment = {
-            "PANELSOLVER_PARALLEL_CHUNK_CASES": "3",
-            "FMFSOLVER_PARALLEL_CHUNK_CASES": "4",
-            "NEWTSOLVER_PARALLEL_CHUNK_CASES": "5",
-        }
-        self.assertEqual(2, resolve_parallel_chunk_cases(2, environment=environment))
-        self.assertEqual(
-            3,
-            resolve_parallel_chunk_cases(
-                legacy_env_prefix="FMFSOLVER",
-                environment=environment,
-            ),
-        )
-        self.assertEqual(
-            4,
-            resolve_parallel_chunk_cases(
-                legacy_env_prefix="FMFSOLVER",
-                environment={"FMFSOLVER_PARALLEL_CHUNK_CASES": "4"},
-            ),
-        )
-        self.assertEqual(
-            8,
-            resolve_parallel_chunk_cases(
-                environment={"NEWTSOLVER_PARALLEL_CHUNK_CASES": "99"}
-            ),
-        )
-        with self.assertRaisesRegex(SchedulerError, "PANELSOLVER"):
-            resolve_parallel_chunk_cases(
-                environment={"PANELSOLVER_PARALLEL_CHUNK_CASES": "0"}
-            )
-        with self.assertRaisesRegex(SchedulerError, "legacy_env_prefix"):
-            resolve_parallel_chunk_cases(legacy_env_prefix="UNKNOWN")
+    def test_chunk_value_and_default_validation(self) -> None:
+        self.assertEqual(2, resolve_parallel_chunk_cases(2))
+        self.assertEqual(8, resolve_parallel_chunk_cases())
+        for value in (0, True, "bad"):
+            with self.subTest(value=value), self.assertRaises(SchedulerError):
+                resolve_parallel_chunk_cases(value)
 
     def test_completion_progress_logs_and_ordered_snapshots(self) -> None:
         before = _worker_resource_state()
