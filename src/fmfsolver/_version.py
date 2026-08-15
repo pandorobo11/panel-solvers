@@ -1,5 +1,5 @@
-"""Frozen FMF compatibility version, independent of distribution version."""
+"""Legacy forwarding surface for the FMF compatibility version."""
 
-FMFSOLVER_COMPATIBILITY_VERSION = "1.3.8"
+from panelsolver._compat.versions import FMFSOLVER_COMPATIBILITY_VERSION
 
 __all__ = ("FMFSOLVER_COMPATIBILITY_VERSION",)

@@ -1,18 +1,13 @@
-"""newtsolver schema/signature policy for shared row adaptation."""
+"""Legacy newtsolver signature fallback around canonical case adaptation."""
 
 from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
 
-from panelsolver.app.case_adapter import (
-    AdaptedCase,
-    ProductCasePolicy,
-    adapt_case_row,
-)
 from panelsolver.app.case_io import expand_component_values
 from panelsolver.app.solver_spec import ArtifactSignatureCandidates
-from panelsolver.core import MeshValidationPolicy
+from panelsolver.domains.hypersonic import CASE_POLICY, adapt_row
 from panelsolver.models import ModelRegistry
 from panelsolver.models.hypersonic.selectors import (
     normalize_leeward_equation,
@@ -105,32 +100,6 @@ def _adapt_legacy_payload(
         component_count=component_count,
         resolver=normalize_leeward_equation,
     )
-
-
-def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
-    return {
-        "Mach": float(row["Mach"]),
-        "gamma": float(row["gamma"]),
-        "windward_eq": str(row.get("windward_eq", "newtonian")),
-        "leeward_eq": str(row.get("leeward_eq", "shield")),
-    }
-
-
-CASE_POLICY = ProductCasePolicy(
-    product_id="newtsolver",
-    model_id="hypersonic",
-    legacy_env_prefix="NEWTSOLVER",
-    mesh_validation_policy=MeshValidationPolicy.STRICT,
-    model_payload=_model_payload,
-)
-
-
-def adapt_row(
-    row: Mapping[str, object],
-    *,
-    registry: ModelRegistry | None = None,
-) -> AdaptedCase:
-    return adapt_case_row(row, CASE_POLICY, registry=registry)
 
 
 def build_signatures(

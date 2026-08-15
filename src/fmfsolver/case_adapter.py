@@ -1,18 +1,12 @@
-"""FMF schema/signature policy for shared row adaptation."""
+"""Legacy FMF signature fallback around canonical case adaptation."""
 
 from __future__ import annotations
 
 import importlib
 from collections.abc import Mapping
 
-from panelsolver.app.case_adapter import (
-    AdaptedCase,
-    ProductCasePolicy,
-    adapt_case_row,
-)
-from panelsolver.app.case_io import is_filled
 from panelsolver.app.solver_spec import ArtifactSignatureCandidates
-from panelsolver.core import MeshValidationPolicy
+from panelsolver.domains.fmf import CASE_POLICY, adapt_row
 from panelsolver.models import ModelRegistry
 
 from ._version import FMFSOLVER_COMPATIBILITY_VERSION
@@ -69,38 +63,6 @@ def _no_legacy_payload_change(
     _paths: tuple[str, ...],
 ) -> None:
     return None
-
-
-def _optional_number(row: Mapping[str, object], name: str) -> float | None:
-    value = row.get(name)
-    return float(value) if is_filled(value) else None
-
-
-def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
-    return {
-        "S": _optional_number(row, "S"),
-        "Ti_K": _optional_number(row, "Ti_K"),
-        "Mach": _optional_number(row, "Mach"),
-        "Altitude_km": _optional_number(row, "Altitude_km"),
-        "Tw_K": float(row["Tw_K"]),
-    }
-
-
-CASE_POLICY = ProductCasePolicy(
-    product_id="fmfsolver",
-    model_id="sentman",
-    legacy_env_prefix="FMFSOLVER",
-    mesh_validation_policy=MeshValidationPolicy.STRICT,
-    model_payload=_model_payload,
-)
-
-
-def adapt_row(
-    row: Mapping[str, object],
-    *,
-    registry: ModelRegistry | None = None,
-) -> AdaptedCase:
-    return adapt_case_row(row, CASE_POLICY, registry=registry)
 
 
 def build_signatures(

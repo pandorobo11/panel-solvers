@@ -19,16 +19,19 @@ provenance is the accepted pinned FMF and newtsolver legacy sources. Examples
 exercise the current canonical readers, defaults, validation, and output
 semantics; they do not copy the legacy sample matrices.
 
+The `examples/fmfsolver/` and `examples/newtsolver/` directory names are retained
+for compatibility and history; they are not canonical product identities.
+
 For the complete schemas, see the
 [FMF input reference](../docs/reference/fmfsolver-input.md) and
-[newtsolver input reference](../docs/reference/newtsolver-input.md).
+[Hypersonic input reference](../docs/reference/newtsolver-input.md).
 
 ## Running and opening results
 
-Run a table from the repository root with its command below. To inspect it in
-the GUI, launch `fmfsolver-gui` or `newtsolver-gui`, open the listed CSV, select
-a row, and choose **Run Selected Cases**. The GUI loads the saved VTP for the
-selected case.
+Run a table from the repository root with its canonical command below. To
+inspect FMF results, launch `panelsolver-gui fmf`; for Hypersonic results,
+launch `panelsolver-gui hypersonic`. Open the listed CSV, select a row, and
+choose **Run Selected Cases**. The GUI loads the saved VTP for the selected case.
 
 The CLI summary for a table is
 `examples/<solver>/outputs/<table>_result.csv`. Additional examples keep their
@@ -40,7 +43,7 @@ remain directly under `outputs/`.
 ### `fmfsolver/basic.csv`
 
 - Purpose: the unchanged minimal first run for Sentman Mode A.
-- Run: `fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/fmfsolver/basic.csv`
 - Main inputs: `plate.stl`, `S=5`, `Ti_K=Tw_K=300`, and 10-degree alpha.
 - Observe: one total row and `outputs/fmf_basic.vtp` are produced.
@@ -50,7 +53,7 @@ remain directly under `outputs/`.
 
 - Purpose: compare FMF Mode A and atmosphere-resolved Mode B at the same
   freestream state.
-- Run: `fmfsolver-cli --input examples/fmfsolver/flow_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmfsolver/flow_modes.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/fmfsolver/flow_modes.csv`
 - Main inputs: `plate.stl`, `Tw_K=300`, 5-degree alpha; Mode A uses
   `S=20.711805563427` and `Ti_K=195.081`, while Mode B uses `Mach=25` and
@@ -64,7 +67,7 @@ remain directly under `outputs/`.
 ### `fmfsolver/shielding.csv`
 
 - Purpose: compare unshielded and rtree ray-shielded loads.
-- Run: `fmfsolver-cli --input examples/fmfsolver/shielding.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmfsolver/shielding.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/fmfsolver/shielding.csv`
 - Main inputs: two aligned plates in `double_plate.stl`, `S=5`,
   `Ti_K=Tw_K=300`, zero attitude, and `ray_backend=rtree`.
@@ -76,7 +79,7 @@ remain directly under `outputs/`.
 ### `fmfsolver/components.csv`
 
 - Purpose: show ordered multi-STL input and total/component summary rows.
-- Run: `fmfsolver-cli --input examples/fmfsolver/components.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmfsolver/components.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/fmfsolver/components.csv`
 - Main inputs: `cube.stl;plate_offset_x2.stl`, `S=5`, `Ti_K=Tw_K=300`,
   `alpha_deg=15`, and `beta_or_bank_deg=10`.
@@ -90,7 +93,7 @@ remain directly under `outputs/`.
 
 - Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
   and `bank` inputs.
-- Run: `fmfsolver-cli --input examples/fmfsolver/attitude_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmfsolver/attitude_modes.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/fmfsolver/attitude_modes.csv`
 - Main inputs: `cube.stl`; `(alpha, second angle, mode)` is `(0,10,beta_tan)`,
   `(0,10,beta_sin)`, and `(10,90,bank)` with otherwise identical FMF inputs.
@@ -98,12 +101,12 @@ remain directly under `outputs/`.
   within the Sentman tolerance.
 - Output: `examples/fmfsolver/outputs/attitude_modes/`.
 
-## newtsolver
+## Hypersonic
 
 ### `newtsolver/basic.csv`
 
 - Purpose: the unchanged minimal first run using the default pressure selectors.
-- Run: `newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/newtsolver/basic.csv`
 - Main inputs: `plate.stl`, `Mach=6`, `gamma=1.4`, and 10-degree alpha; omitted
   selectors default to windward Newtonian and leeward `shield`.
@@ -114,7 +117,7 @@ remain directly under `outputs/`.
 
 - Purpose: compare all four windward equations and exercise leeward
   Prandtl–Meyer expansion.
-- Run: `newtsolver-cli --input examples/newtsolver/pressure_models.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/newtsolver/pressure_models.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/newtsolver/pressure_models.csv`
 - Main inputs: the four windward cases use `plate.stl`, `Mach=6`, `gamma=1.4`,
   leeward `shield`, and whole-vehicle `alpha_deg=75`. With this plate orientation,
@@ -130,7 +133,7 @@ remain directly under `outputs/`.
 ### `newtsolver/shielding.csv`
 
 - Purpose: compare Newtonian loads with ray shielding off and on.
-- Run: `newtsolver-cli --input examples/newtsolver/shielding.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/newtsolver/shielding.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/newtsolver/shielding.csv`
 - Main inputs: `double_plate.stl`, `Mach=6`, `gamma=1.4`, Newtonian windward,
   leeward `shield`, zero attitude, and `ray_backend=rtree`.
@@ -146,7 +149,7 @@ regardless of its windward/leeward pressure selector.
 ### `newtsolver/components.csv`
 
 - Purpose: combine multi-STL output with per-component pressure selectors.
-- Run: `newtsolver-cli --input examples/newtsolver/components.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/newtsolver/components.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/newtsolver/components.csv`
 - Main inputs: `cube.stl;plate_offset_x2.stl`, `Mach=6`, `gamma=1.4`, nonzero
   alpha/beta, `modified_newtonian;newtonian`, and
@@ -160,10 +163,17 @@ regardless of its windward/leeward pressure selector.
 
 - Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
   and `bank` inputs.
-- Run: `newtsolver-cli --input examples/newtsolver/attitude_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/newtsolver/attitude_modes.csv --workers 1 --flush-every-cases 0`
 - GUI file: `examples/newtsolver/attitude_modes.csv`
 - Main inputs: `cube.stl`, `Mach=6`, `gamma=1.4`, Newtonian windward, leeward
   `shield`; the three attitude tuples are the same as in the FMF example.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the algebraic hypersonic tolerance (`1e-10`).
 - Output: `examples/newtsolver/outputs/attitude_modes/`.
+
+## Legacy compatibility
+
+The same tables remain usable through `fmfsolver-cli` and `newtsolver-cli`, and
+the legacy GUI launchers `fmfsolver`, `fmfsolver-gui`, `newtsolver`, and
+`newtsolver-gui` retain their existing identities. New instructions should use
+the canonical domain commands above.
