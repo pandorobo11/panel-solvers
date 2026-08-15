@@ -93,10 +93,11 @@ def _source_snapshot(path_value: str | Path) -> _MeshSourceSnapshot:
 
 def _normalize_policy(value: MeshValidationPolicy | str) -> MeshValidationPolicy:
     try:
-        return MeshValidationPolicy(value)
+        MeshValidationPolicy(value)
     except (TypeError, ValueError) as exc:
         choices = ", ".join(policy.value for policy in MeshValidationPolicy)
         raise MeshLoadError(f"validation_policy must be one of: {choices}.") from exc
+    return MeshValidationPolicy.STRICT
 
 
 def _normalize_scale(value: float) -> float:

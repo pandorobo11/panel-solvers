@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import os
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
@@ -46,13 +45,12 @@ class RayBackend(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class ShieldingConfig:
-    """Unresolved shielding configuration supplied by an adapter or caller."""
+    """Product-neutral shielding configuration supplied by a caller."""
 
     enabled: bool = True
     ray_backend: RayBackend | str = RayBackend.AUTO
     batch_size: int | None = None
     cache_max: int | None = None
-    legacy_env_prefix: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, (bool, np.bool_)):
@@ -70,10 +68,6 @@ class ShieldingConfig:
                 self,
                 "cache_max",
                 _nonnegative_integer(self.cache_max, field="cache_max"),
-            )
-        if self.legacy_env_prefix not in {None, "FMFSOLVER", "NEWTSOLVER"}:
-            raise ShieldingError(
-                "legacy_env_prefix must be None, 'FMFSOLVER', or 'NEWTSOLVER'."
             )
 
 
@@ -202,40 +196,13 @@ def _nonnegative_integer(value: object, *, field: str) -> int:
     return parsed
 
 
-def _environment_value(suffix: str, legacy_prefix: str | None) -> tuple[str, str] | None:
-    names = [f"PANELSOLVER_{suffix}"]
-    if legacy_prefix is not None:
-        names.append(f"{legacy_prefix}_{suffix}")
-    for name in names:
-        raw = os.getenv(name, "").strip()
-        if raw:
-            return name, raw
-    return None
-
-
 def _resolve_cache_max(config: ShieldingConfig) -> int:
-    if config.cache_max is not None:
-        return config.cache_max
-    found = _environment_value("SHIELD_CACHE_MAX", config.legacy_env_prefix)
-    if found is None:
-        return 1
-    name, raw = found
-    try:
-        return _nonnegative_integer(raw, field=name)
-    except ShieldingError as exc:
-        raise ShieldingError(f"{name} must be an integer >= 0.") from exc
+    return 1 if config.cache_max is None else config.cache_max
 
 
 def _resolve_batch_size(config: ShieldingConfig, effective_backend: str) -> int:
     if config.batch_size is not None:
         return config.batch_size
-    found = _environment_value("SHIELD_BATCH_SIZE", config.legacy_env_prefix)
-    if found is not None:
-        name, raw = found
-        try:
-            return _positive_integer(raw, field=name)
-        except ShieldingError as exc:
-            raise ShieldingError(f"{name} must be an integer >= 1.") from exc
     return 64 if effective_backend == RayBackend.EMBREE.value else 8
 
 

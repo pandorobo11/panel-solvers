@@ -6,7 +6,6 @@ from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
 
 import fmfsolver.io.io_cases as fmf_case_module
@@ -371,10 +370,10 @@ class ProductCaseAdapterTests(unittest.TestCase):
         newt = adapt_newt_row(newt_row)
         self.assertEqual("sentman", fmf.request.model_case.model_id)
         self.assertEqual(MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy)
-        self.assertEqual("FMFSOLVER", fmf.request.shielding.legacy_env_prefix)
+        self.assertFalse(hasattr(fmf.request.shielding, "legacy_env_prefix"))
         self.assertEqual("hypersonic", newt.request.model_case.model_id)
         self.assertEqual(MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy)
-        self.assertEqual("NEWTSOLVER", newt.request.shielding.legacy_env_prefix)
+        self.assertFalse(hasattr(newt.request.shielding, "legacy_env_prefix"))
         self.assertEqual("1.3.8", FMFSOLVER_COMPATIBILITY_VERSION)
         self.assertEqual("1.0.3", NEWTSOLVER_COMPATIBILITY_VERSION)
 
@@ -420,7 +419,7 @@ class ProductCaseAdapterTests(unittest.TestCase):
                 self.assertEqual(2, len(candidates.legacy_signatures))
                 self.assertNotEqual(*candidates.legacy_signatures)
 
-    def test_equivalent_attitude_modes_keep_exact_execution_values(self) -> None:
+    def test_beta_sin_endpoint_does_not_escape_beta_tan_principal_domain(self) -> None:
         frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
         beta_sin = frame.loc[
             frame["case_id"] == "newt_beta_sin_boundary"
@@ -429,34 +428,9 @@ class ProductCaseAdapterTests(unittest.TestCase):
         beta_tan["attitude_input"] = "beta_tan"
 
         adapted_sin = adapt_newt_row(beta_sin)
-        adapted_tan = adapt_newt_row(beta_tan)
-        self.assertEqual(
-            (
-                adapted_sin.attitude.alpha_t_deg,
-                adapted_sin.attitude.beta_t_deg,
-            ),
-            (
-                adapted_tan.attitude.alpha_t_deg,
-                adapted_tan.attitude.beta_t_deg,
-            ),
-        )
-        self.assertFalse(
-            np.array_equal(
-                adapted_sin.attitude.velocity_hat_stl,
-                adapted_tan.attitude.velocity_hat_stl,
-            )
-        )
-
-        first_sin = execute_case(adapted_sin.request)
-        first_tan = execute_case(adapted_tan.request)
-
-        self.assertEqual(first_sin.signature.digest, first_tan.signature.digest)
-        self.assertFalse(
-            np.array_equal(
-                first_sin.results.local_loads.traction_coeff_stl,
-                first_tan.results.local_loads.traction_coeff_stl,
-            )
-        )
+        execute_case(adapted_sin.request)
+        with self.assertRaisesRegex(ValueError, "strictly between -90 and 90"):
+            adapt_newt_row(beta_tan)
 
 
 if __name__ == "__main__":

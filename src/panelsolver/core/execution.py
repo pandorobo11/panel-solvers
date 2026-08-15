@@ -30,7 +30,9 @@ from .frames import velocity_hat_stl_from_tangent_angles
 from .mesh import PanelMesh
 from .mesh_loading import (
     LoadedPanelMesh,
+    MeshLoadError,
     MeshValidationPolicy,
+    _normalize_policy,
     load_panel_mesh,
 )
 from .shielding import ShieldingConfig, ShieldingResult, compute_shielding
@@ -125,8 +127,8 @@ class CaseExecutionRequest:
         if not isinstance(self.shielding, ShieldingConfig):
             raise TypeError("shielding must be a ShieldingConfig instance")
         try:
-            validation_policy = MeshValidationPolicy(self.mesh_validation_policy)
-        except (TypeError, ValueError) as exc:
+            validation_policy = _normalize_policy(self.mesh_validation_policy)
+        except MeshLoadError as exc:
             raise ExecutionError("mesh_validation_policy is invalid.") from exc
 
         object.__setattr__(self, "stl_paths", stl_paths)

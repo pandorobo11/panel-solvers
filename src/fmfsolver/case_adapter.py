@@ -100,7 +100,6 @@ CASE_POLICY = ProductCasePolicy(
     compatibility_version=FMFSOLVER_COMPATIBILITY_VERSION,
     legacy_env_prefix="FMFSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
-    strict_beta_tan_domain=True,
     signature_defaults=DEFAULTS,
     legacy_signature_policy=LEGACY_SIGNATURE_POLICY,
     model_payload=_model_payload,

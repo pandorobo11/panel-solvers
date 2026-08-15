@@ -1,4 +1,4 @@
-"""Legacy attitude parsing with an explicit product domain policy."""
+"""Shared attitude parsing with one canonical supported domain."""
 
 from __future__ import annotations
 
@@ -95,10 +95,8 @@ def resolve_attitude(
     alpha_deg: float,
     beta_or_bank_deg: float,
     attitude_input: object = None,
-    *,
-    strict_beta_tan_domain: bool,
 ) -> ResolvedAttitude:
-    """Resolve a pinned public attitude while retaining the D007 policy split."""
+    """Resolve a supported attitude to the shared tangent-angle convention."""
     mode = resolve_attitude_mode(attitude_input)
     if isinstance(alpha_deg, (bool, np.bool_)) or isinstance(
         beta_or_bank_deg, (bool, np.bool_)
@@ -112,9 +110,7 @@ def resolve_attitude(
         raise ValueError("attitude angles must be finite")
 
     if mode == "beta_tan":
-        if strict_beta_tan_domain and (
-            not -90.0 < alpha_in < 90.0 or not -90.0 < beta_in < 90.0
-        ):
+        if not -90.0 < alpha_in < 90.0 or not -90.0 < beta_in < 90.0:
             raise ValueError(
                 "attitude_input='beta_tan' requires alpha_deg and "
                 "beta_or_bank_deg to be strictly between -90 and 90 degrees."

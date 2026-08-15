@@ -16,10 +16,10 @@ from panelsolver.core import (
     WorkerStartupError,
     WorkerUnexpectedExitError,
     iter_case_results_parallel,
-    resolve_parallel_chunk_cases,
 )
 
 from .attitude import resolve_attitude
+from .environment import resolve_parallel_chunk_environment
 
 
 class _LegacyCallbackError(BaseException):
@@ -38,7 +38,9 @@ def _callback_error(exc: _LegacyCallbackError) -> BaseException:
 
 def resolve_legacy_parallel_chunk_cases(legacy_env_prefix: str) -> int:
     """Resolve the product's frozen environment variable and default."""
-    return resolve_parallel_chunk_cases(legacy_env_prefix=legacy_env_prefix)
+    return resolve_parallel_chunk_environment(
+        legacy_env_prefix=legacy_env_prefix,
+    )
 
 
 def legacy_cancel_callback(
@@ -196,7 +198,6 @@ def _bucket_key(row: dict[str, object], index: int, *, strict: bool) -> tuple:
         float(row.get("alpha_deg", 0.0)),
         float(row["beta_or_bank_deg"]),
         row.get("attitude_input"),
-        strict_beta_tan_domain=strict,
     )
     return (
         "shield",
@@ -251,8 +252,10 @@ def iter_legacy_case_results_parallel(
             ),
             execution_order=execution_order,
             bucket_keys=bucket_keys,
-            chunk_cases=chunk_cases,
-            legacy_env_prefix=legacy_env_prefix,
+            chunk_cases=resolve_parallel_chunk_environment(
+                chunk_cases,
+                legacy_env_prefix=legacy_env_prefix,
+            ),
             cancel_cb=legacy_cancel_callback(cancel_cb),
             logfn=legacy_callback(logfn),
         )

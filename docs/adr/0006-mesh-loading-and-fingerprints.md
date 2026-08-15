@@ -19,20 +19,21 @@ accepted contract merely to imitate newtsolver's missing explicit check.
 
 ## Decision
 
-The shared loader exposes an explicit policy:
+The shared loader accepts two policy names:
 
 - `strict` rejects normal-repair exceptions and remaining inconsistent winding,
-  retaining the FMF behavior and serving as the neutral default;
-- `legacy_warn_repair` records warnings and continues for those two conditions,
-  retaining the observable newtsolver repair policy where the resulting mesh can
-  satisfy the shared geometry contract.
+  serving as the neutral default and effective policy;
+- `legacy_warn_repair` remains an accepted compatibility input name but
+  normalizes immediately to effective `strict` behavior under ADR 0008.
 
 Both policies reject non-finite geometry, non-unit normals, empty geometry, and
 non-positive areas through the Phase 2 contract. Compatibility frontends may
 select a repair policy; physical models never do.
 
 The process-local mesh cache key contains the loader algorithm version, resolved
-source paths, SHA-256 of every source file, SI scale, and validation policy.
+source paths, SHA-256 of every source file, SI scale, and effective validation
+policy. The compatibility alias therefore shares cache, scheduler-bucket, and
+loaded-mesh numerical identity with `strict`.
 Source bytes are read before cache lookup, avoiding stale reuse after a
 metadata-preserving replacement. Cached results are immutable Phase 2/3
 contracts.
@@ -48,7 +49,8 @@ selection.
 Phase 5 retained the two repair-failure behaviors during migration. Phase 8 now
 applies ADR 0008 strict safety to both frontends: repair exceptions and remaining
 inconsistent winding are rejected. The legacy policy enum name remains accepted
-internally but no longer enables permissive behavior. ADR 0008 no
+internally, resolves to the same effective identity, and no longer enables
+permissive behavior. ADR 0008 no
 longer treats that invalid-geometry difference as a permanent product contract;
 future convergence must retain the strict common geometry safety boundary. The
 content hash adds file-reading cost before a mesh-cache hit; correctness has

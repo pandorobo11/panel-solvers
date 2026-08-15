@@ -28,6 +28,9 @@ Positive `alpha_t` points the freestream toward `+Z_stl`; positive `beta_t`
 points it toward `-Y_stl`. `beta_sin` and included-angle/bank inputs resolve to
 the same explicit vector before panel calculations. Reader domains are listed in
 [Case files](../user-guide/case-files.md).
+Canonical runtime resolution applies that same documented domain to both
+physical models; in particular, `beta_tan` uses the principal open interval
+(-90°, 90°) for both input angles.
 
 ## Loads and normalization
 

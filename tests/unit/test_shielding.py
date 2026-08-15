@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import unittest
 from unittest.mock import patch
 
@@ -206,67 +205,6 @@ class ShieldingTests(unittest.TestCase):
         )
         np.testing.assert_array_equal(first.shielded, second.shielded)
 
-    def test_neutral_environment_precedes_selected_legacy_prefix(self) -> None:
-        intersector = _CountingIntersector()
-        environment = {
-            "PANELSOLVER_SHIELD_BATCH_SIZE": "5",
-            "FMFSOLVER_SHIELD_BATCH_SIZE": "3",
-            "PANELSOLVER_SHIELD_CACHE_MAX": "0",
-            "FMFSOLVER_SHIELD_CACHE_MAX": "7",
-        }
-        with (
-            patch.dict(os.environ, environment, clear=True),
-            patch(
-                "panelsolver.core.shielding._resolve_intersector",
-                return_value=(intersector, "rtree"),
-            ),
-        ):
-            result = compute_shielding(
-                self.mesh,
-                np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(legacy_env_prefix="FMFSOLVER"),
-            )
-        self.assertEqual(5, result.config.batch_size)
-        self.assertEqual(0, result.config.cache_max)
-
-    def test_legacy_fallback_and_invalid_environment_are_explicit(self) -> None:
-        intersector = _CountingIntersector()
-        with (
-            patch.dict(
-                os.environ,
-                {
-                    "NEWTSOLVER_SHIELD_BATCH_SIZE": "6",
-                    "NEWTSOLVER_SHIELD_CACHE_MAX": "2",
-                },
-                clear=True,
-            ),
-            patch(
-                "panelsolver.core.shielding._resolve_intersector",
-                return_value=(intersector, "rtree"),
-            ),
-        ):
-            result = compute_shielding(
-                self.mesh,
-                np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(legacy_env_prefix="NEWTSOLVER"),
-            )
-        self.assertEqual((6, 2), (result.config.batch_size, result.config.cache_max))
-
-        for name, value in (
-            ("PANELSOLVER_SHIELD_BATCH_SIZE", "0"),
-            ("PANELSOLVER_SHIELD_CACHE_MAX", "-1"),
-            ("PANELSOLVER_SHIELD_CACHE_MAX", "bad"),
-        ):
-            with self.subTest(name=name, value=value):
-                clear_shielding_cache()
-                with patch.dict(os.environ, {name: value}, clear=True):
-                    with self.assertRaisesRegex(ShieldingError, name):
-                        compute_shielding(
-                            self.mesh,
-                            np.array([1.0, 0.0, 0.0]),
-                            ShieldingConfig(ray_backend="rtree"),
-                        )
-
     def test_explicit_unavailable_embree_does_not_fallback(self) -> None:
         with (
             patch("panelsolver.core.shielding.has_embree", False),
@@ -305,7 +243,6 @@ class ShieldingTests(unittest.TestCase):
             {"batch_size": 0},
             {"cache_max": -1},
             {"ray_backend": "bad"},
-            {"legacy_env_prefix": "OTHER"},
             {"enabled": 1},
         ):
             with self.subTest(kwargs=kwargs):

@@ -14,6 +14,8 @@ from panelsolver.core import (
     compute_shielding,
 )
 
+from .environment import resolve_shielding_environment
+
 
 def _panel_mesh(mesh: trimesh.Trimesh, centers_m: np.ndarray) -> PanelMesh:
     centers = np.asarray(centers_m, dtype=np.float64)
@@ -44,9 +46,11 @@ def compute_legacy_shield_mask_with_backend(
     result = compute_shielding(
         _panel_mesh(mesh, centers_m),
         np.asarray(Vhat, dtype=np.float64),
-        ShieldingConfig(
-            ray_backend=ray_backend,
-            batch_size=batch_size,
+        resolve_shielding_environment(
+            ShieldingConfig(
+                ray_backend=ray_backend,
+                batch_size=batch_size,
+            ),
             legacy_env_prefix=legacy_env_prefix,
         ),
     )

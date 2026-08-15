@@ -109,8 +109,14 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
                     alpha,
                     beta,
                     "beta_tan",
-                    strict_beta_tan_domain=True,
                 )
+
+    def test_beta_tan_uses_one_canonical_principal_domain(self) -> None:
+        for alpha, beta in ((-90.0, 0.0), (90.0, 0.0), (0.0, -90.0), (0.0, 90.0)):
+            with self.subTest(alpha=alpha, beta=beta), self.assertRaisesRegex(
+                ValueError, "strictly between -90 and 90"
+            ):
+                resolve_attitude(alpha, beta, "beta_tan")
 
 
 if __name__ == "__main__":

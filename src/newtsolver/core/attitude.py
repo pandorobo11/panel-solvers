@@ -17,7 +17,6 @@ def resolve_attitude_to_vhat(
         alpha_deg,
         beta_deg,
         attitude_input,
-        strict_beta_tan_domain=False,
     )
     return (
         resolved.velocity_hat_stl,
