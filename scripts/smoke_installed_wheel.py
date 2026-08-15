@@ -168,6 +168,8 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
 def _smoke_canonical_gui_entrypoint() -> None:
     from PySide6 import QtCore, QtWidgets
 
+    from fmfsolver.gui_spec import solver_spec as legacy_fmf_spec
+    from newtsolver.gui_spec import solver_spec as legacy_hypersonic_spec
     from panelsolver import gui as canonical_gui
     from panelsolver.app.gui_bootstrap import create_main_window
     from panelsolver.app.main_window import MainWindow
@@ -229,6 +231,26 @@ def _smoke_canonical_gui_entrypoint() -> None:
         canonical_gui.run_gui = original
     if constructed != list(expected.values()):
         raise RuntimeError(f"canonical GUI identity changed: {constructed!r}")
+
+    legacy_expected = (
+        ("fmfsolver", "sentman", "Sentman FMF Solver (GUI)"),
+        ("newtsolver", "hypersonic", "newtsolver (GUI)"),
+    )
+    legacy_constructed: list[tuple[str, str, str]] = []
+    for spec in (legacy_fmf_spec(), legacy_hypersonic_spec()):
+        window = create_main_window(
+            spec,
+            window_factory=lambda selected: MainWindow(
+                selected,
+                viewer_panel=OffscreenViewer(),
+            ),
+        )
+        legacy_constructed.append(
+            (spec.product_id, spec.model_id, window.windowTitle())
+        )
+        window.close()
+    if tuple(legacy_constructed) != legacy_expected:
+        raise RuntimeError(f"legacy GUI identity changed: {legacy_constructed!r}")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:

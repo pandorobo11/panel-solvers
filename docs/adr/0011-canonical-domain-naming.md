@@ -37,6 +37,13 @@ Physical equation names remain where equations or method selection are being
 described. No general naming framework, universal case hierarchy, or public
 model registry is introduced by this decision.
 
+Current domain-specific application composition is owned under
+`panelsolver.domains`. This includes case-table schemas and adaptation,
+runtime/projection/output policies, and canonical CLI/GUI composition. The
+legacy `fmfsolver` and `newtsolver` packages delegate inward and retain only
+compatibility identities, translations, and legacy artifact-signature fallback.
+Production `panelsolver` code does not import either legacy package.
+
 ## Consequences
 
 Users choose a flow domain with one consistent vocabulary, while documentation

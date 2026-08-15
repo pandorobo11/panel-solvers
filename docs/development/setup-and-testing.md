@@ -71,6 +71,6 @@ than file bytes. Per-quantity tolerances and provenance live in
 
 ## Versions
 
-`pyproject.toml` owns the shared distribution version, currently `0.1.0`. FMF
-`1.3.8` and newtsolver `1.0.3` are independent compatibility values. Release and
+`pyproject.toml` owns the shared distribution version, currently `0.1.0`.
+fmfsolver `1.3.8` and newtsolver `1.0.3` are independent compatibility values. Release and
 rollback procedures are in [Release and rollback](release-and-rollback.md).

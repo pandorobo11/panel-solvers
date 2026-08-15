@@ -5,19 +5,15 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Callable
-from dataclasses import replace
 
-from fmfsolver.gui_spec import solver_spec as _fmf_compatibility_spec
-from newtsolver.gui_spec import solver_spec as _hypersonic_compatibility_spec
 from panelsolver.app.gui_bootstrap import run_gui
 from panelsolver.app.solver_spec import SolverSpec
+from panelsolver.domains.fmf import gui_spec as _fmf_spec
+from panelsolver.domains.hypersonic import gui_spec as _hypersonic_spec
 
-_DOMAIN_SPECS: dict[str, tuple[Callable[[], SolverSpec], str]] = {
-    "fmf": (_fmf_compatibility_spec, "Panel Solver — FMF"),
-    "hypersonic": (
-        _hypersonic_compatibility_spec,
-        "Panel Solver — Hypersonic",
-    ),
+_DOMAIN_SPECS: dict[str, Callable[[], SolverSpec]] = {
+    "fmf": _fmf_spec,
+    "hypersonic": _hypersonic_spec,
 }
 
 
@@ -40,12 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def canonical_gui_spec(domain: str) -> SolverSpec:
-    """Return a domain-identified view of one existing GUI composition policy."""
+    """Return the canonical GUI composition for one flow domain."""
     try:
-        factory, title = _DOMAIN_SPECS[domain]
+        factory = _DOMAIN_SPECS[domain]
     except KeyError as exc:
         raise ValueError(f"unknown flow domain: {domain!r}") from exc
-    return replace(factory(), product_id=domain, window_title=title)
+    return factory()
 
 
 def main(argv: list[str] | None = None) -> int:

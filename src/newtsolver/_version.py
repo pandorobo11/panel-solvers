@@ -1,5 +1,5 @@
-"""Frozen newtsolver compatibility version, independent of distribution version."""
+"""Legacy forwarding surface for the newtsolver compatibility version."""
 
-NEWTSOLVER_COMPATIBILITY_VERSION = "1.0.3"
+from panelsolver.domains.versions import NEWTSOLVER_COMPATIBILITY_VERSION
 
 __all__ = ("NEWTSOLVER_COMPATIBILITY_VERSION",)

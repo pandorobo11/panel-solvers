@@ -8,14 +8,20 @@ physical models, and thin compatibility frontends.
 panelsolver CLI / panelsolver-gui / stable in-memory API
                     |
                     v
+        panelsolver.domains
+          /             \
+        FMF          Hypersonic
+          \             /
+           panelsolver.app
+             /       \
+panelsolver.models   panelsolver.core
+          |
+    panelsolver.core
+
 fmfsolver / newtsolver compatibility frontends
           |                         |
-          v                         v
-panelsolver._compat ----------> panelsolver.app
-          |                    /          \
-          +---------> panelsolver.models   panelsolver.core
-                            |
-                      panelsolver.core
+          +----> panelsolver domains/app/models/core
+          +----> panelsolver._compat (legacy behavior only)
 ```
 
 ## Layer ownership
@@ -23,19 +29,22 @@ panelsolver._compat ----------> panelsolver.app
 | Layer | Owns |
 |---|---|
 | `panelsolver` root/API | small stable domain-specific in-memory solve surface and canonical flow-domain command selection |
+| `panelsolver.domains` | current FMF/Hypersonic case schemas, adaptation, runtime/projection policies, output validation, and CLI/GUI composition |
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
 | `panelsolver._compat` | private legacy adapters, result/mesh/shielding translation, D015 scheduler/error translation, and D017/D018 signature reconstruction |
-| `fmfsolver`, `newtsolver` | legacy names, model schemas/defaults, compatibility versions, product projection policy |
+| `fmfsolver`, `newtsolver` | legacy import/command identities, GUI titles, direct-Python translations, and legacy signature fallback |
 
-Allowed dependency directions are `app -> models -> core`, `app -> core`, and
-compatibility frontends inward to those layers. Core cannot import models, app,
-GUI, or a compatibility frontend; models cannot import app, GUI, or a frontend.
-Physical equations do not belong in GUI or compatibility code.
-Product selection and compatibility environment names are resolved in the
-application/front-end boundary. Core receives product-neutral configuration
-values and does not inspect process environment variables.
+Allowed dependency directions are canonical user surfaces to `panelsolver.domains`,
+domains to `app/models/core`, `app -> models -> core`, `app -> core`, and
+compatibility frontends inward to those layers. Production `panelsolver` code
+never imports `fmfsolver` or `newtsolver`. Core cannot import models, app, GUI,
+domains, or a compatibility frontend; models cannot import app, GUI, domains, or
+a frontend. Physical equations do not belong in domains, GUI, or compatibility
+code. Product selection and compatibility environment names are resolved in the
+domain/application boundary. Core receives product-neutral configuration values
+and does not inspect process environment variables.
 
 `panelsolver._compat` depends inward on app, models, or core. Core, models, app,
 and the shared GUI never import `_compat`; normal shared runtime therefore does
@@ -61,11 +70,16 @@ shielding, evaluates a registered model, integrates totals/components, and
 returns a canonical signature with immutable results. The spawn scheduler wraps
 that engine and rebuilds snapshots in input order.
 
-CSV and VTP projections receive explicit product policy. Shared code does
+CSV and VTP projections receive explicit domain-owned policy. Shared code does
 not branch on a concrete model name to invent a universal schema. Compatibility
-frontends supply only model-specific input/output additions and version policy.
-The in-memory API stops at the common execution result and performs no artifact
-serialization.
+versions remain neutral constants used by canonical serialization policy and
+forwarded by the legacy packages. The in-memory API stops at the common
+execution result and performs no artifact serialization.
+
+Canonical GUI artifact matching constructs only the current
+`panelsolver.case` v1 signature. Legacy launchers replace only visible identity
+and the signature callback so D017/D018 fallbacks remain a compatibility
+responsibility.
 
 Canonical selectors and high-level case names use the FMF and Hypersonic flow
 domains. Sentman and Newtonian-family names identify physical models or methods;
