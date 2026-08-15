@@ -20,6 +20,10 @@ Exactly one mode must be supplied:
   most-probable speed with `V_mp = sqrt(pi) / 2 * V_mean`, and resolves
   `S = V_inf / V_mp` and `Ti_K` without a total-temperature conversion.
 
+The bundled table's scientific, software-right, regeneration, rounding, and
+full-grid equivalence evidence is recorded in
+[US1976 Sentman atmosphere data provenance](../reference/us1976-data-provenance.md).
+
 Both modes require positive wall temperature `Tw_K`. The reflected Sentman term
 uses `sqrt(Tw_K / Ti_K)`; because there is no separate reflected-gas temperature
 or accommodation input, FMF uses the wall temperature as the diffusely
