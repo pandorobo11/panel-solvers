@@ -24,6 +24,7 @@ try:
         wheel_identity,
     )
     from smoke_installed_wheel import (
+        EXPECTED_COMPATIBILITY_ENTRY_POINTS,
         EXPECTED_ENTRY_POINTS,
         _prepare_current_inputs,
         _smoke_subprocess_environment,
@@ -37,6 +38,7 @@ except ModuleNotFoundError:
         wheel_identity,
     )
     from scripts.smoke_installed_wheel import (
+        EXPECTED_COMPATIBILITY_ENTRY_POINTS,
         EXPECTED_ENTRY_POINTS,
         _prepare_current_inputs,
         _smoke_subprocess_environment,
@@ -190,15 +192,18 @@ def _command_path(python: Path, name: str) -> Path:
     return python.parent / f"{name}{suffix}"
 
 
-def _assert_commands(python: Path) -> list[str]:
+def _assert_commands(
+    python: Path,
+    expected: dict[str, str] = EXPECTED_ENTRY_POINTS,
+) -> list[str]:
     missing = [
         name
-        for name in EXPECTED_ENTRY_POINTS
+        for name in expected
         if not _command_path(python, name).is_file()
     ]
     if missing:
         raise RuntimeError(f"missing installed commands: {missing}")
-    return list(EXPECTED_ENTRY_POINTS)
+    return list(expected)
 
 
 def _assert_distribution(
@@ -361,7 +366,10 @@ def probe(
         )
         for spec in LEGACY_SPECS:
             _assert_distribution(python, spec.name, spec.version)
-        rollback_commands = _assert_commands(python)
+        rollback_commands = _assert_commands(
+            python,
+            EXPECTED_COMPATIBILITY_ENTRY_POINTS,
+        )
 
         environment = _smoke_subprocess_environment(work / "command-smoke")
         legacy_samples = {

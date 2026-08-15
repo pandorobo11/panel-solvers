@@ -1,11 +1,36 @@
 # Python API support policy
 
-The supported product compatibility surface is the CLI, normal GUI operation,
-documented case files, and documented Summary CSV/VTP semantics. There is currently
-no promised high-level `panelsolver` Python convenience API; the package root
-intentionally exports no names.
+## Stable high-level API
 
-## Neutral modules
+The `panelsolver` package root exports only the first-release in-memory API:
+
+```python
+from panelsolver import (
+    HypersonicCase,
+    ResolvedAttitude,
+    SentmanCase,
+    SolveResult,
+    resolve_attitude,
+    solve_hypersonic,
+    solve_sentman,
+)
+```
+
+`SentmanCase` and `HypersonicCase` are separate types with separate required
+physical inputs. Both state their ordered STL paths, STL scale, reference area,
+moment reference in STL axes, three reference lengths, and a
+`ResolvedAttitude`. `SentmanCase` uses resolved Mode A inputs (`speed_ratio`,
+translational temperature, and wall temperature); atmosphere-based Mode B
+resolution remains available through the lower-level model API.
+
+`solve_sentman()` and `solve_hypersonic()` call the existing shared numerical
+pipeline. They do not create Summary CSV, VTP, PNG, temporary output directories,
+or any other filesystem artifact. `SolveResult.coefficients` exposes integrated
+coefficients; components, geometry, shielding state, per-face traction and model
+scalars remain available on the same in-memory result. Filesystem-producing
+batch work is an explicit CLI operation, not a side effect of these functions.
+
+## Lower-level architecture API
 
 `panelsolver.core`, `panelsolver.models`, and `panelsolver.app` expose typed
 contracts and composition functions used by the applications. They are useful
@@ -14,7 +39,9 @@ is recorded in [ADR 0002](../adr/0002-panel-load-vector-contract.md). They remai
 lower-level architecture surfaces: callers must construct validated geometry,
 flow, model, signature, and execution policy objects explicitly.
 
-## Compatibility modules
+These modules are not re-exported wholesale from the package root.
+
+## Best-effort compatibility API
 
 Legacy paths under `fmfsolver` and `newtsolver`, including `run_case`,
 `run_cases`, exporters, mesh/shielding helpers, and model-specific helpers, remain

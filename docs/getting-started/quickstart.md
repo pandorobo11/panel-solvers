@@ -6,8 +6,10 @@ shared mesh at `examples/geometry/plate.stl`; they are not regression fixtures.
 ## Run FMF
 
 ```bash
-fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
 ```
+
+The compatibility form remains `fmfsolver-cli` with the same options.
 
 This is a Sentman Mode A case using `S=5`, `Ti_K=300 K`, and `Tw_K=300 K`.
 Its summary and VTP output are written to `examples/fmfsolver/outputs/`.
@@ -15,8 +17,10 @@ Its summary and VTP output are written to `examples/fmfsolver/outputs/`.
 ## Run newtsolver
 
 ```bash
-newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
 ```
+
+The compatibility form remains `newtsolver-cli` with the same options.
 
 This is a `Mach=6`, `gamma=1.4` case. Omitted equation columns select the
 defaults: Newtonian on windward panels and zero pressure (`shield`) on leeward

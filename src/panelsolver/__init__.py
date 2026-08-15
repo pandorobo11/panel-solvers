@@ -1,8 +1,21 @@
-"""Shared panel-solver platform.
+"""Stable high-level in-memory API for the shared panel-solver platform."""
 
-The Phase 2 central API is exported from :mod:`panelsolver.core`. The package
-root intentionally remains empty so future compatibility and convenience
-exports require an explicit decision.
-"""
+from panelsolver.app.attitude import ResolvedAttitude, resolve_attitude
 
-__all__: tuple[str, ...] = ()
+from .api import (
+    HypersonicCase,
+    SentmanCase,
+    SolveResult,
+    solve_hypersonic,
+    solve_sentman,
+)
+
+__all__ = (
+    "HypersonicCase",
+    "ResolvedAttitude",
+    "SentmanCase",
+    "SolveResult",
+    "resolve_attitude",
+    "solve_hypersonic",
+    "solve_sentman",
+)

@@ -24,6 +24,7 @@ rayaccel = [
 ]
 
 [project.scripts]
+panelsolver = "panelsolver.cli:main"
 fmfsolver = "fmfsolver.app.gui_app:main"
 fmfsolver-gui = "fmfsolver.app.gui_app:main"
 fmfsolver-cli = "fmfsolver.app.cli_app:main"

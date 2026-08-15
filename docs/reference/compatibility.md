@@ -3,6 +3,8 @@
 [ADR 0008](../adr/0008-supported-domain-compatibility.md) defines compatibility
 inside the supported domain. The current supported surfaces are:
 
+- canonical batch commands `panelsolver fmf` and
+  `panelsolver hypersonic`;
 - all six commands: `fmfsolver`, `fmfsolver-gui`, `fmfsolver-cli`,
   `newtsolver`, `newtsolver-gui`, and `newtsolver-cli`;
 - normal launcher-driven GUI operation;
@@ -15,6 +17,9 @@ Direct Python implementation details are best effort as described in
 [Python API support](python-api.md). Invalid-input quirks, exact exceptions and
 tracebacks, object identity, pickle globals, and cache internals are not frozen
 product differences.
+
+The canonical `fmf` token selects the free-molecular-flow domain and its Sentman
+model. It does not identify the legacy `fmfsolver` product or distribution.
 
 Best-effort implementation lives in private `panelsolver._compat`, which points
 only inward to the shared layers. Supported CLI/GUI runtime does not import that

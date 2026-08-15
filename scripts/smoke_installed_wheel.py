@@ -20,13 +20,17 @@ import numpy as np
 import pandas as pd
 import pyvista as pv
 
-EXPECTED_ENTRY_POINTS = {
+EXPECTED_COMPATIBILITY_ENTRY_POINTS = {
     "fmfsolver": "fmfsolver.app.gui_app:main",
     "fmfsolver-gui": "fmfsolver.app.gui_app:main",
     "fmfsolver-cli": "fmfsolver.app.cli_app:main",
     "newtsolver": "newtsolver.app.gui_app:main",
     "newtsolver-gui": "newtsolver.app.gui_app:main",
     "newtsolver-cli": "newtsolver.app.cli_app:main",
+}
+EXPECTED_ENTRY_POINTS = {
+    "panelsolver": "panelsolver.cli:main",
+    **EXPECTED_COMPATIBILITY_ENTRY_POINTS,
 }
 
 EXPECTED_PANEL_CORE_ALL = [
@@ -90,6 +94,59 @@ EXPECTED_CLI_DESCRIPTIONS = {
     "newtsolver": "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
 }
 _TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
+
+
+def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
+    from panelsolver import (
+        HypersonicCase,
+        SentmanCase,
+        SolveResult,
+        resolve_attitude,
+        solve_hypersonic,
+        solve_sentman,
+    )
+
+    common = {
+        "stl_paths": (inputs / "stl" / "plate.stl",),
+        "stl_scale_m_per_unit": 1.0,
+        "attitude": resolve_attitude(0.0, 0.0),
+        "Aref_m2": 1.0,
+        "moment_reference_stl_m": (0.0, 0.0, 0.0),
+        "Lref_Cl_m": 1.0,
+        "Lref_Cm_m": 1.0,
+        "Lref_Cn_m": 1.0,
+    }
+    work = staging / "high-level-api"
+    work.mkdir()
+    previous = Path.cwd()
+    os.chdir(work)
+    try:
+        sentman = solve_sentman(
+            SentmanCase(
+                case_id="api_sentman",
+                **common,
+                speed_ratio=5.0,
+                translational_temperature_k=300.0,
+                wall_temperature_k=300.0,
+            )
+        )
+        hypersonic = solve_hypersonic(
+            HypersonicCase(
+                case_id="api_hypersonic",
+                **common,
+                mach=6.0,
+                gamma=1.4,
+            )
+        )
+    finally:
+        os.chdir(previous)
+    if not isinstance(sentman, SolveResult) or not isinstance(hypersonic, SolveResult):
+        raise TypeError("high-level solve returned an unexpected type")
+    if list(work.iterdir()):
+        raise RuntimeError("high-level in-memory solve wrote filesystem artifacts")
+    for result in (sentman, hypersonic):
+        if result.local_loads.n_faces < 1 or len(result.case_signature) != 64:
+            raise RuntimeError("high-level solve result is incomplete")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
@@ -509,8 +566,108 @@ def main() -> int:
         )
         _prepare_current_inputs(inputs)
         excel_inputs = _prepare_current_excel_inputs(inputs)
+        _smoke_high_level_api(staging, inputs)
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
+        canonical = _command_path("panelsolver")
+        canonical_help = subprocess.run(
+            [canonical, "--help"],
+            cwd=staging,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=subprocess_environment,
+        )
+        if canonical_help.returncode != 0 or "{fmf,hypersonic}" not in (
+            canonical_help.stdout
+        ):
+            raise RuntimeError(
+                "canonical help failed:\n"
+                f"stdout={canonical_help.stdout!r}\nstderr={canonical_help.stderr!r}"
+            )
+        canonical_cases = {
+            "fmf": ("fmfsolver", "fmf_zero_plate"),
+            "hypersonic": ("newtsolver", "newt_zero_newtonian"),
+        }
+        for domain, (product, case_id) in canonical_cases.items():
+            domain_help = subprocess.run(
+                [canonical, domain, "--help"],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
+            if (
+                domain_help.returncode != 0
+                or f"usage: panelsolver {domain}" not in domain_help.stdout
+                or "Input cases file (.csv/.xlsx/.xlsm)" not in domain_help.stdout
+            ):
+                raise RuntimeError(
+                    f"canonical {domain} help failed:\n"
+                    f"stdout={domain_help.stdout!r}\nstderr={domain_help.stderr!r}"
+                )
+            output = staging / f"canonical_{domain}_results.csv"
+            canonical_run = subprocess.run(
+                [
+                    canonical,
+                    domain,
+                    "--input",
+                    inputs / f"{product}_cases.csv",
+                    "--output",
+                    output,
+                    "--cases",
+                    case_id,
+                    "--workers",
+                    "1",
+                    "--flush-every-cases",
+                    "0",
+                ],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
+            if canonical_run.returncode != 0 or not output.is_file():
+                raise RuntimeError(
+                    f"canonical {domain} run failed:\n"
+                    f"stdout={canonical_run.stdout!r}\n"
+                    f"stderr={canonical_run.stderr!r}"
+                )
+            header = output.read_text(encoding="utf-8").splitlines()[0]
+            if "npz" in header.casefold():
+                raise RuntimeError(f"canonical {domain} restored NPZ output")
+            for suffix, input_path in excel_inputs[product].items():
+                format_output = (
+                    staging / "canonical-format-smoke" / domain / f"{suffix[1:]}.csv"
+                )
+                format_output.parent.mkdir(parents=True, exist_ok=True)
+                format_run = subprocess.run(
+                    [
+                        canonical,
+                        domain,
+                        "--input",
+                        input_path,
+                        "--output",
+                        format_output,
+                        "--workers",
+                        "1",
+                        "--flush-every-cases",
+                        "0",
+                    ],
+                    cwd=staging,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env=subprocess_environment,
+                )
+                if format_run.returncode != 0 or not format_output.is_file():
+                    raise RuntimeError(
+                        f"canonical {domain} {suffix} run failed:\n"
+                        f"stdout={format_run.stdout!r}\n"
+                        f"stderr={format_run.stderr!r}"
+                    )
         for product in ("fmfsolver", "newtsolver"):
             command = _command_path(f"{product}-cli")
             help_result = subprocess.run(
