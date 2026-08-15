@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import trimesh
 
+from panelsolver.app.environment import resolve_shielding_environment
 from panelsolver.core import (
     MeshComponent,
     PanelGeometry,
@@ -13,8 +14,6 @@ from panelsolver.core import (
     clear_shielding_cache,
     compute_shielding,
 )
-
-from .environment import resolve_shielding_environment
 
 
 def _panel_mesh(mesh: trimesh.Trimesh, centers_m: np.ndarray) -> PanelMesh:

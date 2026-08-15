@@ -1,6 +1,6 @@
 """FMF shielding signature over the shared core engine."""
 
-from panelsolver.app.legacy_shielding import (
+from panelsolver._compat.legacy_shielding import (
     clear_shielding_cache,
     compute_legacy_shield_mask,
     compute_legacy_shield_mask_with_backend,

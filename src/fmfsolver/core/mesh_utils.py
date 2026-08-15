@@ -1,9 +1,9 @@
 """FMF mesh return-shape policy over the shared loader."""
 
-from panelsolver.app.legacy_mesh import (
+from panelsolver._compat.legacy_mesh import (
     LegacyMeshData as MeshData,
 )
-from panelsolver.app.legacy_mesh import (
+from panelsolver._compat.legacy_mesh import (
     MeshCacheStats,
     clear_legacy_mesh_cache,
     load_legacy_meshes,

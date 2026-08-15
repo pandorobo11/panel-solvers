@@ -13,18 +13,12 @@ from panelsolver.core import (
     MeshValidationPolicy,
     ModelCasePayload,
     ShieldingConfig,
-    prepare_case_signature,
 )
 from panelsolver.models import ModelRegistry
 
 from .attitude import ResolvedAttitude, resolve_attitude
 from .environment import resolve_shielding_environment
 from .execution import default_model_registry, request_from_registry
-from .legacy_signatures import (
-    LegacySignaturePolicy,
-    build_legacy_signature_candidates,
-)
-from .solver_spec import ArtifactSignatureCandidates
 
 type ModelPayloadBuilder = Callable[[Mapping[str, object]], Mapping[str, object]]
 
@@ -38,8 +32,6 @@ class ProductCasePolicy:
     compatibility_version: str
     legacy_env_prefix: str
     mesh_validation_policy: MeshValidationPolicy
-    signature_defaults: Mapping[str, object]
-    legacy_signature_policy: LegacySignaturePolicy
     model_payload: ModelPayloadBuilder
 
     def __post_init__(self) -> None:
@@ -49,10 +41,6 @@ class ProductCasePolicy:
             raise TypeError("mesh_validation_policy must be MeshValidationPolicy")
         if not callable(self.model_payload):
             raise TypeError("model_payload must be callable")
-        if self.legacy_signature_policy.compatibility_version != (
-            self.compatibility_version
-        ):
-            raise ValueError("legacy and product compatibility versions must match")
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,27 +119,9 @@ def adapt_case_row(
     return AdaptedCase(request, attitude)
 
 
-def build_artifact_signature_candidates(
-    row: Mapping[str, object],
-    policy: ProductCasePolicy,
-    *,
-    registry: ModelRegistry | None = None,
-) -> ArtifactSignatureCandidates:
-    """Build primary execution identity followed by opaque pinned fallbacks."""
-    adapted = adapt_case_row(row, policy, registry=registry)
-    primary = prepare_case_signature(adapted.request)
-    legacy = build_legacy_signature_candidates(
-        row,
-        defaults=policy.signature_defaults,
-        policy=policy.legacy_signature_policy,
-    )
-    return ArtifactSignatureCandidates(primary, legacy)
-
-
 __all__ = (
     "AdaptedCase",
     "ModelPayloadBuilder",
     "ProductCasePolicy",
     "adapt_case_row",
-    "build_artifact_signature_candidates",
 )

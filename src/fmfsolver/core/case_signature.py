@@ -1,6 +1,6 @@
 """Frozen FMF case signature call."""
 
-from panelsolver.app.legacy_signatures import build_legacy_case_signature
+from panelsolver._compat.legacy_signatures import build_legacy_case_signature
 
 from ..case_adapter import LEGACY_SIGNATURE_POLICY
 

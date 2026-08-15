@@ -117,7 +117,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(114, len(graph), "Update the recorded production module count")
+        self.assertEqual(115, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -169,8 +169,50 @@ class DependencyBoundaryTests(unittest.TestCase):
             ("panelsolver.app", *FRONTEND_ROOTS),
         )
         self.assert_edges_avoid(("panelsolver.app",), FRONTEND_ROOTS)
+        self.assert_edges_avoid(
+            (
+                "panelsolver.core",
+                "panelsolver.models",
+                "panelsolver.app",
+                "panelsolver.gui",
+            ),
+            ("panelsolver._compat",),
+        )
         self.assert_edges_avoid(("fmfsolver",), ("newtsolver",))
         self.assert_edges_avoid(("newtsolver",), ("fmfsolver",))
+
+    def test_compatibility_implementation_is_isolated_in_private_package(self) -> None:
+        old_modules = sorted((SRC_ROOT / "panelsolver" / "app").glob("legacy_*.py"))
+        self.assertEqual([], old_modules)
+        expected = {
+            "legacy_adapter.py",
+            "legacy_mesh.py",
+            "legacy_results.py",
+            "legacy_scheduler.py",
+            "legacy_shielding.py",
+            "legacy_signatures.py",
+        }
+        actual = {
+            path.name
+            for path in (SRC_ROOT / "panelsolver" / "_compat").glob("legacy_*.py")
+        }
+        self.assertEqual(expected, actual)
+
+    def test_private_compatibility_dependencies_point_only_inward(self) -> None:
+        allowed = (
+            "panelsolver._compat",
+            "panelsolver.app",
+            "panelsolver.models",
+            "panelsolver.core",
+        )
+        violations = [
+            f"{source} -> {target}"
+            for source, targets in internal_dependency_graph().items()
+            if _matches(source, ("panelsolver._compat",))
+            for target in sorted(targets)
+            if not _matches(target, allowed)
+        ]
+        self.assertEqual([], violations)
 
     def test_models_do_not_own_filesystem_or_execution_infrastructure(self) -> None:
         prohibited = (

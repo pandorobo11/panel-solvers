@@ -9,7 +9,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from .case_io import is_filled, split_semicolon_tokens
+from panelsolver.app.case_io import is_filled, split_semicolon_tokens
+from panelsolver.app.solver_spec import ArtifactSignatureCandidates
+from panelsolver.core import CaseSignature
 
 type LegacyPayloadAdapter = Callable[
     [dict[str, object], Mapping[str, object], tuple[str, ...]],
@@ -126,9 +128,26 @@ def build_legacy_signature_candidates(
     return (direct,) if direct == normalized_digest else (direct, normalized_digest)
 
 
+def build_artifact_signature_candidates(
+    row: Mapping[str, object],
+    *,
+    primary: CaseSignature,
+    defaults: Mapping[str, object],
+    policy: LegacySignaturePolicy,
+) -> ArtifactSignatureCandidates:
+    """Combine canonical identity with ordered opaque D017/D018 candidates."""
+    legacy = build_legacy_signature_candidates(
+        row,
+        defaults=defaults,
+        policy=policy,
+    )
+    return ArtifactSignatureCandidates(primary, legacy)
+
+
 __all__ = (
     "LegacyPayloadAdapter",
     "LegacySignaturePolicy",
+    "build_artifact_signature_candidates",
     "build_legacy_case_signature",
     "build_legacy_signature_candidates",
 )

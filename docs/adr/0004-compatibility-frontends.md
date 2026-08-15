@@ -22,6 +22,12 @@ and implementation details best effort; removing a supported command, normal GUI
 operation, file field, or numerical behavior still needs a separate accepted
 plan.
 
+Compatibility implementation is isolated in private `panelsolver._compat`,
+whose dependencies point inward to app/models/core. Shared layers do not import
+that package. The former internal `panelsolver.app.legacy_*` paths are not
+retained because forwarders there would reverse the accepted dependency
+direction; product frontend paths remain the best-effort import surface.
+
 ## Consequences
 
 Legacy users can migrate independently of internal refactoring. Compatibility
