@@ -1,32 +1,17 @@
-"""FMF policy selector for the shared batch command."""
+"""Legacy FMF command identity over canonical FMF CLI policy."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from pathlib import Path
+from dataclasses import replace
 
-from panelsolver.app.cli import ProductCliPolicy, run_cli
 from panelsolver.app.cli import build_parser as build_product_parser
+from panelsolver.app.cli import run_cli
+from panelsolver.domains.fmf import CANONICAL_CLI_POLICY
 
-from ..csv_adapter import validate_results_output_path
-from ..io.io_cases import read_cases
-from ..runtime import RUNTIME_POLICY
-
-
-def _validate_output(
-    output_path: str | Path,
-    input_path: str | Path,
-    rows: Sequence[Mapping[str, object]],
-) -> Path:
-    return validate_results_output_path(output_path, input_path, rows)
-
-
-CLI_POLICY = ProductCliPolicy(
+CLI_POLICY = replace(
+    CANONICAL_CLI_POLICY,
     program="fmfsolver-cli",
     description="Run FMF solver from CSV/XLSX/XLSM input without GUI.",
-    runtime_policy=RUNTIME_POLICY,
-    read_cases=read_cases,
-    validate_output_path=_validate_output,
 )
 
 

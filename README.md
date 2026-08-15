@@ -81,7 +81,7 @@ The FMF/Hypersonic integration and Phase 8 audit are complete. One
 `panel-solvers` distribution (currently `0.1.0`) provides the canonical
 `panelsolver` and `panelsolver-gui` command namespaces plus all six legacy
 compatibility command names. Product-facing
-compatibility versions remain FMF `1.3.8` and
+compatibility versions remain fmfsolver `1.3.8` and
 newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
 and documented Summary CSV/VTP semantics are compatibility surfaces. The small
 `panelsolver` package-root Python API is stable; lower-level architecture APIs,
