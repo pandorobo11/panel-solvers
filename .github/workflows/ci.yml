@@ -93,6 +93,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --extra rayaccel --group docs
 
+      - name: Verify generated US1976 Sentman table
+        run: >-
+          uv run --no-sync python
+          scripts/generate_us1976_sentman_table.py --check
+
       - name: Verify generated documentation plots
         run: >-
           uv run --no-sync python
