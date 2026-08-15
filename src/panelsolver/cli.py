@@ -4,25 +4,16 @@ from __future__ import annotations
 
 import argparse
 import sys
-from dataclasses import replace
 
-from fmfsolver.app.cli_app import CLI_POLICY as _FMF_POLICY
-from newtsolver.app.cli_app import CLI_POLICY as _HYPERSONIC_POLICY
 from panelsolver.app.cli import ProductCliPolicy, run_cli
+from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as _FMF_POLICY
+from panelsolver.domains.hypersonic import (
+    CANONICAL_CLI_POLICY as _HYPERSONIC_POLICY,
+)
 
 _POLICIES: dict[str, ProductCliPolicy] = {
-    "fmf": replace(
-        _FMF_POLICY,
-        program="panelsolver fmf",
-        description=(
-            "Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input."
-        ),
-    ),
-    "hypersonic": replace(
-        _HYPERSONIC_POLICY,
-        program="panelsolver hypersonic",
-        description="Run hypersonic panel models from CSV/XLSX/XLSM input.",
-    ),
+    "fmf": _FMF_POLICY,
+    "hypersonic": _HYPERSONIC_POLICY,
 }
 
 

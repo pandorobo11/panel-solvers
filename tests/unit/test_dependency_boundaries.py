@@ -119,7 +119,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(121, len(graph), "Update the recorded production module count")
+        self.assertEqual(126, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -171,11 +171,14 @@ class DependencyBoundaryTests(unittest.TestCase):
             ("panelsolver.app", *FRONTEND_ROOTS),
         )
         self.assert_edges_avoid(("panelsolver.app",), FRONTEND_ROOTS)
+        self.assert_edges_avoid(("panelsolver",), FRONTEND_ROOTS)
         self.assert_edges_avoid(
             (
                 "panelsolver.core",
                 "panelsolver.models",
                 "panelsolver.app",
+                "panelsolver.domains",
+                "panelsolver.cli",
                 "panelsolver.gui",
             ),
             ("panelsolver._compat",),
@@ -220,7 +223,8 @@ class DependencyBoundaryTests(unittest.TestCase):
         code = (
             "import sys; import panelsolver.cli; "
             "loaded=sorted(name for name in sys.modules "
-            "if name.startswith('panelsolver._compat')); "
+            "if name.startswith(('fmfsolver', 'newtsolver', "
+            "'panelsolver._compat'))); "
             "assert loaded == [], loaded"
         )
         subprocess.run([sys.executable, "-c", code], check=True)
@@ -229,7 +233,8 @@ class DependencyBoundaryTests(unittest.TestCase):
         code = (
             "import sys; import panelsolver; "
             "loaded=sorted(name for name in sys.modules "
-            "if name.startswith('panelsolver._compat')); "
+            "if name.startswith(('fmfsolver', 'newtsolver', "
+            "'panelsolver._compat'))); "
             "assert loaded == [], loaded"
         )
         subprocess.run([sys.executable, "-c", code], check=True)
@@ -238,7 +243,26 @@ class DependencyBoundaryTests(unittest.TestCase):
         code = (
             "import sys; import panelsolver.gui; "
             "loaded=sorted(name for name in sys.modules "
-            "if name.startswith('panelsolver._compat')); "
+            "if name.startswith(('fmfsolver', 'newtsolver', "
+            "'panelsolver._compat'))); "
+            "assert loaded == [], loaded"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
+
+    def test_canonical_domain_composition_does_not_load_legacy_packages(self) -> None:
+        code = (
+            "import sys; "
+            "from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as f_cli, "
+            "gui_spec as f_gui; "
+            "from panelsolver.domains.hypersonic import "
+            "CANONICAL_CLI_POLICY as h_cli, gui_spec as h_gui; "
+            "assert f_cli.program == 'panelsolver fmf'; "
+            "assert h_cli.program == 'panelsolver hypersonic'; "
+            "assert f_gui().window_title == 'Panel Solver — FMF'; "
+            "assert h_gui().window_title == 'Panel Solver — Hypersonic'; "
+            "loaded=sorted(name for name in sys.modules "
+            "if name.startswith(('fmfsolver', 'newtsolver', "
+            "'panelsolver._compat'))); "
             "assert loaded == [], loaded"
         )
         subprocess.run([sys.executable, "-c", code], check=True)

@@ -43,9 +43,11 @@ newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'
 ```
 
-The distribution version is currently `0.1.0`. The values exposed by
-`fmfsolver.__version__` (`1.3.8`) and `newtsolver.__version__` (`1.0.3`) are
-separate compatibility versions.
+The distribution version is currently `0.1.0` and is the `solver_version`
+recorded by newly generated FMF and Hypersonic Summary CSV/VTP artifacts. The
+values exposed by best-effort legacy `fmfsolver.__version__` (`1.3.8`) and
+`newtsolver.__version__` (`1.0.3`) identify migration baselines for direct-Python
+compatibility; they are not current domain versions.
 
 ## Legacy-distribution coexistence
 

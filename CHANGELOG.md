@@ -1,10 +1,19 @@
 # Changelog
 
-This file is the source of truth for `panel-solvers` release notes. Product
-compatibility versions are tracked separately under ADR 0007.
+This file is the source of truth for `panel-solvers` release notes. Legacy
+migration baselines and runtime artifact version semantics are recorded in ADR
+0007 and ADR 0012.
 
 ## [Unreleased]
 
+- Adopt the Apache License 2.0 for project-owned code, documentation, examples,
+  and generated material; record author, maintainer, project URLs, PEP 639
+  license metadata, and US1976/PDAS/dependency rights boundaries.
+- Change Summary CSV and VTP `solver_version` provenance to the installed
+  `panel-solvers` distribution version for both FMF and Hypersonic. The legacy
+  `fmfsolver 1.3.8` and `newtsolver 1.0.3` values remain migration baselines for
+  legacy signatures and best-effort direct-Python compatibility; numerical
+  results and case signatures are unchanged.
 - Add canonical `panelsolver fmf` and `panelsolver hypersonic` batch selectors
   plus `panelsolver-gui fmf` and `panelsolver-gui hypersonic`, while retaining
   all six legacy compatibility commands. Add the small domain-specific

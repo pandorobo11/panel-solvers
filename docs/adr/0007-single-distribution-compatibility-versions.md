@@ -3,6 +3,11 @@
 - Status: Accepted
 - Date: 2026-08-12
 
+The Summary CSV and VTP version-metadata portion of this decision is superseded
+by [ADR 0012](0012-runtime-artifact-distribution-version.md). Its packaging,
+release-tag, legacy-signature, and best-effort Python compatibility decisions
+remain in force.
+
 ## Context
 
 ADR 0001 places the shared engine, application, models, and compatibility

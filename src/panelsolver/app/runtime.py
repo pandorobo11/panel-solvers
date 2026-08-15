@@ -34,6 +34,7 @@ from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from .environment import resolve_parallel_chunk_environment
+from .versioning import panel_solvers_distribution_version
 
 type CaseRow = Mapping[str, object]
 type LogCallback = Callable[[str], None]
@@ -234,11 +235,12 @@ def _run_prepared_product_case(
         raise TypeError(
             "build_projection_additions must return ProductProjectionAdditions"
         )
+    solver_version = panel_solvers_distribution_version()
     artifact_policy = ArtifactProjectionPolicy(
         attitude_input_used=prepared.adapted.attitude.input_mode,
         case_signature=execution.signature.digest,
         ray_backend_used=execution.shielding.config.effective_backend,
-        solver_version=prepared.policy.case_policy.compatibility_version,
+        solver_version=solver_version,
         vtp_field_data=additions.vtp_field_data,
     )
     if save_vtp:
@@ -248,7 +250,7 @@ def _run_prepared_product_case(
         )
     finished_at = _utc_now()
     run_values: dict[str, CsvCell] = {
-        "solver_version": prepared.policy.case_policy.compatibility_version,
+        "solver_version": solver_version,
         "case_signature": execution.signature.digest,
         "run_started_at_utc": started_at,
         "run_finished_at_utc": finished_at,

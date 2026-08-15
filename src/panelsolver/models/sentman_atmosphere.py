@@ -7,30 +7,22 @@ import math
 import numpy as np
 import pandas as pd
 
-from ._sentman_atmosphere_data import (
-    ALTITUDE_KM,
-    MEAN_MOLECULAR_SPEED_MS,
-    SPEED_OF_SOUND_MS,
-    TEMPERATURE_K,
-)
+from ._sentman_atmosphere_data import US1976_SENTMAN_TABLE
 
-_ALTITUDE_KM = np.asarray(ALTITUDE_KM, dtype=np.float64)
-_TEMPERATURE_K = np.asarray(TEMPERATURE_K, dtype=np.float64)
-_SPEED_OF_SOUND_MS = np.asarray(SPEED_OF_SOUND_MS, dtype=np.float64)
-_MEAN_MOLECULAR_SPEED_MS = np.asarray(
-    MEAN_MOLECULAR_SPEED_MS,
-    dtype=np.float64,
-)
+_TABLE = np.asarray(US1976_SENTMAN_TABLE, dtype=np.float64)
 
-if not (
-    _ALTITUDE_KM.shape
-    == _TEMPERATURE_K.shape
-    == _SPEED_OF_SOUND_MS.shape
-    == _MEAN_MOLECULAR_SPEED_MS.shape
-):
-    raise RuntimeError("pinned US1976 columns must have equal lengths")
+if _TABLE.ndim != 2 or _TABLE.shape[1] != 4:
+    raise RuntimeError("generated US1976 Sentman table must have four columns")
+if not np.isfinite(_TABLE).all():
+    raise RuntimeError("generated US1976 Sentman table must contain finite values")
+_TABLE.setflags(write=False)
+_ALTITUDE_KM = _TABLE[:, 0]
+_TEMPERATURE_K = _TABLE[:, 1]
+_SPEED_OF_SOUND_MS = _TABLE[:, 2]
+_MEAN_MOLECULAR_SPEED_MS = _TABLE[:, 3]
+
 if not np.all(np.diff(_ALTITUDE_KM) > 0.0):
-    raise RuntimeError("pinned US1976 altitudes must be strictly increasing")
+    raise RuntimeError("generated US1976 altitudes must be strictly increasing")
 
 
 def altitude_range_km() -> tuple[float, float]:
@@ -63,7 +55,7 @@ def mean_to_most_probable_speed(mean_speed_ms: float) -> float:
 
 
 def load_us1976_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Return defensive DataFrame copies with the frozen legacy column names."""
+    """Return defensive legacy-shaped views of the single canonical table."""
     return (
         pd.DataFrame(
             {"Z": _ALTITUDE_KM, "T": _TEMPERATURE_K, "c": _SPEED_OF_SOUND_MS}

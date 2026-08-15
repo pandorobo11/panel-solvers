@@ -57,7 +57,7 @@ newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-c
 Case tables may be CSV, XLSX, or XLSM files.
 
 The six `fmfsolver` / `newtsolver` commands remain legacy compatibility entry
-points with unchanged versions, behavior, and GUI titles.
+points with unchanged command behavior and GUI titles.
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains the files and the main
 CLI options.
@@ -80,12 +80,21 @@ CLI options.
 The FMF/Hypersonic integration and Phase 8 audit are complete. One
 `panel-solvers` distribution (currently `0.1.0`) provides the canonical
 `panelsolver` and `panelsolver-gui` command namespaces plus all six legacy
-compatibility command names. Product-facing
-compatibility versions remain FMF `1.3.8` and
-newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
+compatibility command names. Summary CSV and VTP artifacts record the installed
+`panel-solvers` distribution version for both domains. FMF `fmfsolver 1.3.8`
+and Hypersonic `newtsolver 1.0.3` remain documented migration baselines and
+private legacy-compatibility inputs, not current domain versions. Supported
+commands, normal GUI use, documented case files,
 and documented Summary CSV/VTP semantics are compatibility surfaces. The small
 `panelsolver` package-root Python API is stable; lower-level architecture APIs,
 legacy direct-Python compatibility, and private implementation have distinct
 support levels. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+panel-solvers code, documentation, examples, and project-generated material are
+licensed under the [Apache License 2.0](LICENSE). Third-party and public-domain
+rights and provenance, including US1976 and PDAS, are documented in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
