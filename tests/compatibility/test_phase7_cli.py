@@ -17,12 +17,36 @@ from newtsolver.app.cli_app import build_parser as build_newt_parser
 from newtsolver.app.cli_app import main as newt_main
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.cli import parse_case_ids
+from panelsolver.cli import build_parser as build_canonical_parser
+from panelsolver.cli import main as canonical_main
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 
 
 class Phase7CliTests(unittest.TestCase):
+    def test_canonical_help_names_flow_domains_and_delegated_program(self) -> None:
+        with patch.dict(os.environ, {"COLUMNS": "80"}):
+            help_text = build_canonical_parser().format_help()
+            self.assertIn("usage: panelsolver", help_text)
+            self.assertIn("fmf", help_text)
+            self.assertIn("hypersonic", help_text)
+            for domain, description in (
+                ("fmf", "Sentman free-molecular-flow model"),
+                ("hypersonic", "hypersonic panel models"),
+            ):
+                with self.subTest(domain=domain):
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout):
+                        with self.assertRaises(SystemExit) as caught:
+                            canonical_main([domain, "--help"])
+                    self.assertEqual(0, caught.exception.code)
+                    delegated = stdout.getvalue()
+                    self.assertIn(f"usage: panelsolver {domain}", delegated)
+                    self.assertIn(description, delegated)
+                    self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", delegated)
+                    self.assertNotIn(".xls)", delegated)
+
     def test_help_and_explicit_empty_cases_use_common_cardinality(self) -> None:
         with patch.dict(os.environ, {"COLUMNS": "80"}):
             for program, description, builder in (

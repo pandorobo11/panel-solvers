@@ -17,8 +17,9 @@ class Phase6GuiPackageTests(unittest.TestCase):
             with self.subTest(module=module_name):
                 self.assertIsNotNone(importlib.import_module(module_name))
 
-    def test_all_phase7_legacy_commands_are_registered(self) -> None:
-        legacy_commands = {
+    def test_canonical_and_all_phase7_legacy_commands_are_registered(self) -> None:
+        expected_commands = {
+            "panelsolver": "panelsolver.cli:main",
             "fmfsolver": "fmfsolver.app.gui_app:main",
             "fmfsolver-gui": "fmfsolver.app.gui_app:main",
             "fmfsolver-cli": "fmfsolver.app.cli_app:main",
@@ -32,7 +33,7 @@ class Phase6GuiPackageTests(unittest.TestCase):
             for entry in distribution.entry_points
             if entry.group == "console_scripts"
         }
-        self.assertEqual(legacy_commands, registered)
+        self.assertEqual(expected_commands, registered)
 
 
 if __name__ == "__main__":

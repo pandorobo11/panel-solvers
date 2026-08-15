@@ -38,6 +38,9 @@ Return to the shared distribution in the opposite order:
 ```bash
 python -m pip uninstall fmfsolver newtsolver
 python -m pip install /path/to/panel_solvers-<version>-py3-none-any.whl
+panelsolver --help
+panelsolver fmf --help
+panelsolver hypersonic --help
 fmfsolver-cli --help
 newtsolver-cli --help
 ```

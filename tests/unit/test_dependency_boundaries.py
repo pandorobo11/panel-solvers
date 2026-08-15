@@ -1,4 +1,6 @@
 import ast
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -117,7 +119,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(115, len(graph), "Update the recorded production module count")
+        self.assertEqual(119, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -213,6 +215,15 @@ class DependencyBoundaryTests(unittest.TestCase):
             if not _matches(target, allowed)
         ]
         self.assertEqual([], violations)
+
+    def test_canonical_cli_import_does_not_load_private_compatibility(self) -> None:
+        code = (
+            "import sys; import panelsolver.cli; "
+            "loaded=sorted(name for name in sys.modules "
+            "if name.startswith('panelsolver._compat')); "
+            "assert loaded == [], loaded"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
 
     def test_models_do_not_own_filesystem_or_execution_infrastructure(self) -> None:
         prohibited = (

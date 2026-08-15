@@ -153,7 +153,8 @@ jobs:
           assert callable(newt_gui_main)
           assert prepare_gui_spec(fmf_solver_spec()).model_id == "sentman"
           assert prepare_gui_spec(newt_solver_spec()).model_id == "hypersonic"
-          legacy = {
+          expected = {
+              "panelsolver": "panelsolver.cli:main",
               "fmfsolver": "fmfsolver.app.gui_app:main",
               "fmfsolver-gui": "fmfsolver.app.gui_app:main",
               "fmfsolver-cli": "fmfsolver.app.cli_app:main",
@@ -166,7 +167,7 @@ jobs:
               for entry in importlib.metadata.distribution("panel-solvers").entry_points
               if entry.group == "console_scripts"
           }
-          assert legacy == scripts
+          assert expected == scripts
           PY
 
       - name: Smoke installed commands outside repository

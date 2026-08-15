@@ -5,6 +5,10 @@ compatibility versions are tracked separately under ADR 0007.
 
 ## [Unreleased]
 
+- Add canonical `panelsolver fmf` and `panelsolver hypersonic` batch selectors
+  while retaining all six compatibility commands. Add the small model-specific
+  `SentmanCase`/`HypersonicCase` in-memory solve API at the package root; it
+  writes no artifacts.
 - **Breaking:** Remove legacy Excel 97–2003 BIFF `.xls` input support and the
   `xlrd` runtime dependency. Convert `.xls` case files to `.xlsx` or CSV before
   using the current release. CSV, XLSX, and XLSM behavior is unchanged, and

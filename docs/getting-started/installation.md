@@ -32,6 +32,9 @@ Commands in that environment can be prefixed with `uv run`.
 ## Verify the installation
 
 ```bash
+panelsolver --help
+panelsolver fmf --help
+panelsolver hypersonic --help
 fmfsolver-cli --help
 newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'

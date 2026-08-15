@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Mapping
 
-from panelsolver._compat.legacy_signatures import (
-    LegacySignaturePolicy,
-    build_artifact_signature_candidates,
-)
 from panelsolver.app.case_adapter import (
     AdaptedCase,
     ProductCasePolicy,
@@ -15,11 +12,12 @@ from panelsolver.app.case_adapter import (
 )
 from panelsolver.app.case_io import is_filled
 from panelsolver.app.solver_spec import ArtifactSignatureCandidates
-from panelsolver.core import MeshValidationPolicy, prepare_case_signature
+from panelsolver.core import MeshValidationPolicy
 from panelsolver.models import ModelRegistry
 
 from ._version import FMFSOLVER_COMPATIBILITY_VERSION
-from .io.io_cases import DEFAULTS
+
+LEGACY_SIGNATURE_POLICY: object
 
 _SIGNATURE_KEYS = (
     "case_id",
@@ -88,14 +86,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
     }
 
 
-LEGACY_SIGNATURE_POLICY = LegacySignaturePolicy(
-    keys=_SIGNATURE_KEYS,
-    numeric_keys=_NUMERIC_SIGNATURE_KEYS,
-    compatibility_version=FMFSOLVER_COMPATIBILITY_VERSION,
-    file_identity_style="fmf",
-    signature_schema_version=2,
-    adapt_payload=_no_legacy_payload_change,
-)
 CASE_POLICY = ProductCasePolicy(
     product_id="fmfsolver",
     model_id="sentman",
@@ -119,13 +109,15 @@ def build_signatures(
     *,
     registry: ModelRegistry | None = None,
 ) -> ArtifactSignatureCandidates:
-    primary = prepare_case_signature(adapt_row(row, registry=registry).request)
-    return build_artifact_signature_candidates(
-        row,
-        primary=primary,
-        defaults=DEFAULTS,
-        policy=LEGACY_SIGNATURE_POLICY,
-    )
+    adapter = importlib.import_module(f"{__package__}.signature_adapter")
+    return adapter.build_signatures(row, registry=registry)
+
+
+def __getattr__(name: str):
+    if name == "LEGACY_SIGNATURE_POLICY":
+        adapter = importlib.import_module(f"{__package__}.signature_adapter")
+        return adapter.LEGACY_SIGNATURE_POLICY
+    raise AttributeError(name)
 
 
 __all__ = (

@@ -1,6 +1,28 @@
 # CLI guide
 
-The two batch commands share the same options:
+The canonical batch entry point selects a physical flow domain:
+
+```text
+panelsolver fmf --input PATH [--output PATH] [--workers N]
+                [--cases ID [ID ...]] [--flush-every-cases N]
+panelsolver hypersonic --input PATH [--output PATH] [--workers N]
+                       [--cases ID [ID ...]] [--flush-every-cases N]
+```
+
+Here `fmf` means the free-molecular-flow domain selector. It is not the legacy
+`fmfsolver` distribution or product identity. The selected physical model is
+Sentman; the stable Python API names that model explicitly as `SentmanCase` and
+`solve_sentman()`.
+
+| Selector | Flow-domain identity | Physical model identity | Reused case schema |
+|---|---|---|---|
+| `fmf` | free molecular flow | Sentman | FMF case table |
+| `hypersonic` | hypersonic pressure approximation | Newtonian-family selection | newtsolver case table |
+
+The final column is a schema/application-service reuse choice, not the identity
+of the canonical command.
+
+The existing compatibility batch commands remain and share the same options:
 
 ```text
 fmfsolver-cli --input PATH [--output PATH] [--workers N]
@@ -8,6 +30,10 @@ fmfsolver-cli --input PATH [--output PATH] [--workers N]
 newtsolver-cli --input PATH [--output PATH] [--workers N]
                [--cases ID [ID ...]] [--flush-every-cases N]
 ```
+
+All four batch forms use the same case-table reader and application service.
+They accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the
+only formal outputs; legacy BIFF `.xls` and NPZ are not supported.
 
 | Option | Meaning | Default |
 |---|---|---|

@@ -50,10 +50,11 @@ uv build
 ```
 
 For installed-interface or packaging changes, install the built wheel into a
-clean environment and test imports plus both CLI `--help` commands outside the
-checkout. For GUI changes, add headless-safe tests where practical and record a
-manual smoke test. For shielding or numerical work, run the applicable golden
-cases with both supported ray paths.
+clean environment and test imports, canonical `panelsolver` and subcommand help,
+plus both compatibility CLI `--help` commands outside the checkout. For GUI
+changes, add headless-safe tests where practical and record a manual smoke test.
+For shielding or numerical work, run the applicable golden cases with both
+supported ray paths.
 
 ## Test layout
 

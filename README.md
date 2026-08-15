@@ -43,9 +43,16 @@ newtsolver-gui
 Run the same examples without the GUI:
 
 ```bash
+panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+
+# Compatibility commands remain available:
 fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
 newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
 ```
+
+`fmf` is the free-molecular-flow domain selector; it is not the legacy
+`fmfsolver` product identity. The selected physical model is Sentman.
 
 Case tables may be CSV, XLSX, or XLSM files.
 
@@ -70,8 +77,9 @@ CLI options.
 ## Status and compatibility
 
 The FMF/newtsolver integration and Phase 8 audit are complete. One
-`panel-solvers` distribution (currently `0.1.0`) provides all six compatible
-command names. Product-facing compatibility versions remain FMF `1.3.8` and
+`panel-solvers` distribution (currently `0.1.0`) provides the canonical
+`panelsolver` command and all six compatible command names. Product-facing
+compatibility versions remain FMF `1.3.8` and
 newtsolver `1.0.3`. Supported commands, normal GUI use, documented case files,
 and documented Summary CSV/VTP semantics are compatibility surfaces; direct Python
 implementation details are best effort. See the

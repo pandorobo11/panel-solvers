@@ -1,10 +1,13 @@
 # Architecture
 
-The completed software ships one distribution with a shared model-neutral engine
-and application layer, two independent physical models, and thin compatibility
-frontends.
+The completed software ships one distribution with a small canonical CLI and
+in-memory API, a shared model-neutral engine/application layer, two independent
+physical models, and thin compatibility frontends.
 
 ```text
+panelsolver CLI / stable in-memory API
+                    |
+                    v
 fmfsolver / newtsolver compatibility frontends
           |                         |
           v                         v
@@ -19,6 +22,7 @@ panelsolver._compat ----------> panelsolver.app
 
 | Layer | Owns |
 |---|---|
+| `panelsolver` root/API | small stable model-specific in-memory solve surface and canonical flow-domain command selection |
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
@@ -60,6 +64,8 @@ that engine and rebuilds snapshots in input order.
 CSV and VTP projections receive explicit product policy. Shared code does
 not branch on a concrete model name to invent a universal schema. Compatibility
 frontends supply only model-specific input/output additions and version policy.
+The in-memory API stops at the common execution result and performs no artifact
+serialization.
 
 ## Stable decisions
 
