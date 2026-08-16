@@ -335,9 +335,10 @@ class ReleaseToolTests(unittest.TestCase):
                     (docs_root / "index.html").write_text("changed", encoding="utf-8")
                     entries = [
                         (path.relative_to(docs_root).as_posix(), path)
-                        for path in sorted(docs_root.rglob("*"))
+                        for path in docs_root.rglob("*")
                         if path.is_file()
                     ]
+                    entries.sort(key=lambda item: item[0])
                     write_deterministic_zip(docs_zip, entries)
 
                     def update_hash(value, archive_path=docs_zip):
