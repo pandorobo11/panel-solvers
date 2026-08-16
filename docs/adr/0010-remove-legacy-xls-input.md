@@ -39,7 +39,7 @@ not changed or regenerated.
 
 This change does not alter numerical behavior, solver models, VTP semantics,
 Summary CSV semantics, case signatures, shielding, mesh behavior, scheduling,
-cancellation, caches, GUI viewing, or output paths. The `panelsolver`
+cancellation, caches, GUI viewing, or output paths. The `panel-solvers`
 distribution version and the FMF/newtsolver compatibility versions are not
 changed by this implementation PR.
 
@@ -51,5 +51,5 @@ column order, defaults, path resolution, unknown-column behavior, calculations,
 and outputs.
 
 Users with historical `.xls` case files perform a one-time resave to `.xlsx` or
-CSV export before using a current `panelsolver` release. A pinned legacy
+CSV export before using a current `panel-solvers` release. A pinned legacy
 version remains available when reproducing historical `.xls` behavior.
