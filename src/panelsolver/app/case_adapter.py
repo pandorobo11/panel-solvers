@@ -25,7 +25,7 @@ type ModelPayloadBuilder = Callable[[Mapping[str, object]], Mapping[str, object]
 
 @dataclass(frozen=True, slots=True)
 class ProductCasePolicy:
-    """Independent FMF/newtsolver choices needed at the execution boundary."""
+    """Independent domain choices needed at the execution boundary."""
 
     product_id: str
     model_id: str

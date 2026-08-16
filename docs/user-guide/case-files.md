@@ -3,8 +3,8 @@
 Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
 Legacy Excel 97–2003 BIFF `.xls` input is not supported; resave the workbook as
 `.xlsx` or export it as CSV. Exact columns and defaults are defined in the
-[FMF input reference](../reference/fmfsolver-input.md) and
-[Hypersonic input reference](../reference/newtsolver-input.md).
+[FMF input reference](../reference/fmf-input.md) and
+[Hypersonic input reference](../reference/hypersonic-input.md).
 
 ## Paths and components
 
@@ -22,7 +22,7 @@ moment reference point, and reference lengths.
 
 For Hypersonic, a surface-equation cell may contain one selector applied to all
 components or exactly one semicolon-separated selector per STL. See
-[Hypersonic](../solvers/newtsolver.md).
+[Hypersonic](../solvers/hypersonic.md).
 
 ## Attitude modes
 

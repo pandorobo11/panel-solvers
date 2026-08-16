@@ -1,4 +1,4 @@
-# Hypersonic
+# Hypersonic Panel Methods
 
 The Hypersonic domain evaluates pressure-only panel traction for
 Newtonian-family flow models. The local load is `-Cp` times the outward panel
@@ -354,7 +354,7 @@ $\delta=+90^\circ$ it faces directly into the flow.
 
 #### Windward response
 
-![Windward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-windward-cp-vs-angle.svg)
+![Windward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/hypersonic-windward-cp-vs-angle.svg)
 
 **Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
 shielding and `leeward_eq=shield`. Solid Tangent segments are attached weak
@@ -375,7 +375,7 @@ model accuracy.
 
 #### Leeward response
 
-![Leeward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/newtsolver-leeward-cp-vs-angle.svg)
+![Leeward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/hypersonic-leeward-cp-vs-angle.svg)
 
 **Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
 `windward_eq=newtonian` and no ray shielding. The leeward `shield` equation
@@ -406,7 +406,7 @@ approximations do not model viscous effects, full shock interaction, or general
 three-dimensional CFD physics. Select them only within a justified engineering
 approximation regime.
 
-See the [Hypersonic input reference](../reference/newtsolver-input.md) and
+See the [Hypersonic input reference](../reference/hypersonic-input.md) and
 [numerical conventions](../reference/numerical-conventions.md).
 
 ## References

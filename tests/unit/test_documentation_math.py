@@ -6,8 +6,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOLVER_DOCS = (
-    ROOT / "docs" / "solvers" / "fmfsolver.md",
-    ROOT / "docs" / "solvers" / "newtsolver.md",
+    ROOT / "docs" / "solvers" / "fmf.md",
+    ROOT / "docs" / "solvers" / "hypersonic.md",
 )
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 WHOLE_EMPHASIS_RE = re.compile(r"\*(?!\*)[\s\S]*\*")

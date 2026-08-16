@@ -13,7 +13,7 @@ output, CLI, and GUI platform for two independent panel-load models. Start with
 | Model input | `S` + `Ti_K`, or `Mach` + `Altitude_km`; always `Tw_K` | `Mach`, `gamma`, and surface equations |
 | Panel load | Sentman normal and tangential traction | Pressure-only normal traction |
 | Equation selection | Sentman Mode A or Mode B | Per-component windward/leeward equations |
-| Read next | [FMF](solvers/fmfsolver.md) | [Hypersonic](solvers/newtsolver.md) |
+| Read next | [FMF](solvers/fmf.md) | [Hypersonic](solvers/hypersonic.md) |
 
 These are engineering panel methods, not general-purpose CFD. Confirm that the
 assumptions documented on the solver page match the intended flow regime and
@@ -30,8 +30,8 @@ geometry before interpreting coefficients.
 
 ## Reference
 
-- [FMF input columns](reference/fmfsolver-input.md)
-- [Hypersonic input columns](reference/newtsolver-input.md)
+- [FMF input columns](reference/fmf-input.md)
+- [Hypersonic input columns](reference/hypersonic-input.md)
 - [Output formats](reference/output-formats.md)
 - [Environment variables](reference/environment-variables.md)
 - [Numerical conventions](reference/numerical-conventions.md)

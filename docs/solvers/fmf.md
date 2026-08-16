@@ -1,4 +1,4 @@
-# FMF solver
+# Free Molecular Flow (FMF)
 
 FMF evaluates free-molecular-flow panel loads with the Sentman model. Unlike a
 pressure-only model, its local nondimensional traction retains both normal and
@@ -206,7 +206,7 @@ pinned atmosphere table and does not accept extrapolation beyond its altitude
 range. It does not become a continuum-flow model merely because Mach is used to
 derive speed ratio.
 
-See the [FMF input reference](../reference/fmfsolver-input.md) and
+See the [FMF input reference](../reference/fmf-input.md) and
 [numerical conventions](../reference/numerical-conventions.md).
 
 ## Reference
