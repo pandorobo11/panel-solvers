@@ -1,30 +1,30 @@
 # Quickstart
 
-The repository includes one small, runnable case for each solver. Both use the
+The repository includes one small, runnable case for each flow domain. Both use the
 shared mesh at `examples/geometry/plate.stl`; they are not regression fixtures.
 
 ## Run FMF
 
 ```bash
-panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver fmf --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
 ```
 
 The legacy compatibility form remains `fmfsolver-cli` with the same options.
 
 This is a Sentman Mode A case using `S=5`, `Ti_K=300 K`, and `Tw_K=300 K`.
-Its summary and VTP output are written to `examples/fmfsolver/outputs/`.
+Its summary and VTP output are written to `examples/fmf/outputs/`.
 
 ## Run Hypersonic
 
 ```bash
-panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
 ```
 
 The legacy compatibility form remains `newtsolver-cli` with the same options.
 
 This is a `Mach=6`, `gamma=1.4` case. Omitted equation columns select the
 defaults: Newtonian on windward panels and zero pressure (`shield`) on leeward
-panels. Its outputs are written to `examples/newtsolver/outputs/`.
+panels. Its outputs are written to `examples/hypersonic/outputs/`.
 
 ## Use the GUI
 
@@ -53,8 +53,8 @@ See [Outputs](../user-guide/outputs.md) for semantics and
 ## Try the feature examples next
 
 After the basic run, try `flow_modes.csv`, `shielding.csv`, `components.csv`,
-or `attitude_modes.csv` under `examples/fmfsolver/`. The matching Hypersonic
-examples under `examples/newtsolver/` provide `pressure_models.csv`,
+or `attitude_modes.csv` under `examples/fmf/`. The matching Hypersonic
+examples under `examples/hypersonic/` provide `pressure_models.csv`,
 `shielding.csv`, `components.csv`,
 and `attitude_modes.csv`. Run each with the same CLI command pattern, replacing
 the input path. Commands, expected relationships, GUI files, and output

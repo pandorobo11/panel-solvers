@@ -21,6 +21,10 @@ INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
 
 
+def _runtime_product_id(legacy_product: str) -> str:
+    return {"fmfsolver": "fmf", "newtsolver": "hypersonic"}[legacy_product]
+
+
 def _backend_hint(*, embree: bool) -> str:
     if embree:
         return "[INFO] Ray backend: Embree (ray_pyembree)."
@@ -88,7 +92,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                             [_backend_hint(embree=True)],
                             empty_logs,
                         )
-                        self.assertEqual({product}, hinted)
+                        self.assertEqual({_runtime_product_id(product)}, hinted)
 
                         hot_logs: list[str] = []
                         self.assertTrue(run_many(pd.DataFrame(), hot_logs.append).empty)
@@ -202,7 +206,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                         ],
                         cold_logs,
                     )
-                    self.assertEqual({product}, hinted)
+                    self.assertEqual({_runtime_product_id(product)}, hinted)
 
                     hot_logs: list[str] = []
                     run_many(frame, hot_logs.append, workers=1)
@@ -240,7 +244,9 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     )
                     self.assertEqual(set(), hinted)
 
-                    runtime_module._RAY_ACCEL_HINTED_PRODUCTS.add(product)
+                    runtime_module._RAY_ACCEL_HINTED_PRODUCTS.add(
+                        _runtime_product_id(product)
+                    )
                     with self.assertRaises(TypeError) as hot:
                         run_many(frame, None, workers=1)
                     self.assertEqual(
@@ -278,7 +284,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     retry_logs: list[str] = []
                     self.assertTrue(run_many(pd.DataFrame(), retry_logs.append).empty)
                     self.assertEqual([_backend_hint(embree=True)], retry_logs)
-                    self.assertEqual({product}, hinted)
+                    self.assertEqual({_runtime_product_id(product)}, hinted)
 
     def test_empty_required_logger_failure_does_not_consume_hint(self) -> None:
         for product, _reader, _run_one, run_many, _filename in self.products():
@@ -315,7 +321,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                 logs: list[str] = []
                 self.assertTrue(run_many(pd.DataFrame(), logs.append).empty)
                 self.assertEqual([_backend_hint(embree=True)], logs)
-            self.assertEqual({"fmfsolver", "newtsolver"}, hinted)
+            self.assertEqual({"fmf", "hypersonic"}, hinted)
             for product, _reader, _run_one, run_many, _filename in products:
                 with self.subTest(product=product, point="hot"):
                     logs: list[str] = []

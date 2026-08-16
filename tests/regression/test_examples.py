@@ -9,11 +9,8 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from fmfsolver.runtime import RUNTIME_POLICY as FMF_POLICY
-from newtsolver.io.io_cases import read_cases as read_newt_cases
-from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
 from panelsolver.app import run_and_write_product_cases
+from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 EXAMPLES_ROOT = REPOSITORY_ROOT / "examples"
@@ -39,19 +36,19 @@ class ExampleRegressionTests(unittest.TestCase):
         cls.artifacts: dict[str, Path] = {}
         cls.raw_rows: dict[tuple[str, str], tuple[dict[str, str], ...]] = {}
 
-        products = (
-            ("fmfsolver", read_fmf_cases, FMF_POLICY),
-            ("newtsolver", read_newt_cases, NEWT_POLICY),
+        domains = (
+            ("fmf", fmf.read_cases, fmf.RUNTIME_POLICY),
+            ("hypersonic", hypersonic.read_cases, hypersonic.RUNTIME_POLICY),
         )
-        for product, reader, policy in products:
-            for table in sorted((cls.root / product).glob("*.csv")):
-                key = (product, table.stem)
+        for domain, reader, policy in domains:
+            for table in sorted((cls.root / domain).glob("*.csv")):
+                key = (domain, table.stem)
                 with table.open(encoding="utf-8", newline="") as stream:
                     cls.raw_rows[key] = tuple(csv.DictReader(stream))
                 frame = reader(table)
                 cls.frames[key] = frame
                 result_path = (
-                    cls.root / product / "test-results" / f"{table.stem}_result.csv"
+                    cls.root / domain / "test-results" / f"{table.stem}_result.csv"
                 )
                 result = run_and_write_product_cases(
                     tuple(frame.to_dict(orient="records")),
@@ -65,10 +62,10 @@ class ExampleRegressionTests(unittest.TestCase):
                 ):
                     cls.artifacts[str(row["case_id"])] = Path(case_result.vtp_path)
 
-    def _total_rows(self, product: str, table: str):
+    def _total_rows(self, domain: str, table: str):
         return tuple(
             row
-            for row in self.results[(product, table)].csv.rows
+            for row in self.results[(domain, table)].csv.rows
             if row["scope"] == "total"
         )
 
@@ -90,16 +87,16 @@ class ExampleRegressionTests(unittest.TestCase):
 
     def test_tables_are_portable_unique_and_canonical(self) -> None:
         case_ids: list[str] = []
-        for (product, table), raw_rows in self.raw_rows.items():
-            frame = self.frames[(product, table)]
-            self.assertEqual(len(raw_rows), len(frame), msg=f"{product}/{table}")
+        for (domain, table), raw_rows in self.raw_rows.items():
+            frame = self.frames[(domain, table)]
+            self.assertEqual(len(raw_rows), len(frame), msg=f"{domain}/{table}")
             for raw_row in raw_rows:
                 case_ids.append(raw_row["case_id"])
                 self.assertNotIn("save_npz_on", raw_row)
                 for raw_path in raw_row["stl_path"].split(";"):
                     self.assertFalse(Path(raw_path).is_absolute())
                     self.assertTrue(
-                        ((self.root / product) / raw_path).resolve().is_file()
+                        ((self.root / domain) / raw_path).resolve().is_file()
                     )
             for resolved_paths in frame["stl_path"]:
                 for resolved_path in str(resolved_paths).split(";"):
@@ -118,7 +115,7 @@ class ExampleRegressionTests(unittest.TestCase):
         self.assertEqual([], list(self.root.rglob("*.npz")))
 
     def test_fmf_flow_modes_resolve_to_matching_coefficients(self) -> None:
-        mode_a, mode_b = self._total_rows("fmfsolver", "flow_modes")
+        mode_a, mode_b = self._total_rows("fmf", "flow_modes")
         self.assertEqual("A", mode_a["mode"])
         self.assertEqual("B", mode_b["mode"])
         np.testing.assert_allclose(
@@ -133,12 +130,12 @@ class ExampleRegressionTests(unittest.TestCase):
         )
 
     def test_ray_shielding_masks_rear_faces_and_halves_force(self) -> None:
-        for product, tolerance in (
-            ("fmfsolver", SENTMAN_ATOL),
-            ("newtsolver", HYPERSONIC_ATOL),
+        for domain, tolerance in (
+            ("fmf", SENTMAN_ATOL),
+            ("hypersonic", HYPERSONIC_ATOL),
         ):
-            with self.subTest(product=product):
-                off, on = self._total_rows(product, "shielding")
+            with self.subTest(domain=domain):
+                off, on = self._total_rows(domain, "shielding")
                 self.assertEqual(0, off["shielded_faces"])
                 self.assertEqual(2, on["shielded_faces"])
                 np.testing.assert_allclose(
@@ -155,12 +152,12 @@ class ExampleRegressionTests(unittest.TestCase):
 
     def test_component_rows_sum_to_total_and_follow_stl_order(self) -> None:
         expected_names = ("cube.stl", "plate_offset_x2.stl")
-        for product, tolerance in (
-            ("fmfsolver", SENTMAN_ATOL),
-            ("newtsolver", PRANDTL_MEYER_ATOL),
+        for domain, tolerance in (
+            ("fmf", SENTMAN_ATOL),
+            ("hypersonic", PRANDTL_MEYER_ATOL),
         ):
-            with self.subTest(product=product):
-                rows = self.results[(product, "components")].csv.rows
+            with self.subTest(domain=domain):
+                rows = self.results[(domain, "components")].csv.rows
                 total = next(row for row in rows if row["scope"] == "total")
                 components = tuple(
                     row for row in rows if row["scope"] == "component"
@@ -177,8 +174,8 @@ class ExampleRegressionTests(unittest.TestCase):
                     atol=tolerance,
                 )
 
-        newt_total = self._total_rows("newtsolver", "components")[0]
-        poly = pv.read(self.artifacts[str(newt_total["case_id"])])
+        hypersonic_total = self._total_rows("hypersonic", "components")[0]
+        poly = pv.read(self.artifacts[str(hypersonic_total["case_id"])])
         self.assertEqual(
             "modified_newtonian;newtonian",
             str(poly.field_data["windward_eq_used"][0]),
@@ -193,12 +190,12 @@ class ExampleRegressionTests(unittest.TestCase):
         )
 
     def test_attitude_input_modes_produce_matching_coefficients(self) -> None:
-        for product, tolerance in (
-            ("fmfsolver", SENTMAN_ATOL),
-            ("newtsolver", HYPERSONIC_ATOL),
+        for domain, tolerance in (
+            ("fmf", SENTMAN_ATOL),
+            ("hypersonic", HYPERSONIC_ATOL),
         ):
-            with self.subTest(product=product):
-                rows = self._total_rows(product, "attitude_modes")
+            with self.subTest(domain=domain):
+                rows = self._total_rows(domain, "attitude_modes")
                 reference = [rows[0][name] for name in COEFFICIENTS]
                 for row in rows[1:]:
                     np.testing.assert_allclose(
@@ -208,8 +205,8 @@ class ExampleRegressionTests(unittest.TestCase):
                         atol=tolerance,
                     )
 
-    def test_newtsolver_pressure_models_are_distinct_and_finite(self) -> None:
-        rows = self._total_rows("newtsolver", "pressure_models")
+    def test_hypersonic_pressure_models_are_distinct_and_finite(self) -> None:
+        rows = self._total_rows("hypersonic", "pressure_models")
         for row in rows:
             self.assertTrue(
                 np.isfinite([float(row[name]) for name in COEFFICIENTS]).all()

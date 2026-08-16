@@ -226,7 +226,7 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 
 
 CASE_POLICY = ProductCasePolicy(
-    product_id="newtsolver",
+    product_id="hypersonic",
     model_id="hypersonic",
     legacy_env_prefix="NEWTSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
@@ -326,7 +326,7 @@ def _projection_additions(
 
 
 RUNTIME_POLICY = ProductRuntimePolicy(
-    product_id="newtsolver",
+    product_id="hypersonic",
     case_policy=CASE_POLICY,
     csv_projection_policy=CSV_PROJECTION_POLICY,
     csv_write_policy=CSV_WRITE_POLICY,

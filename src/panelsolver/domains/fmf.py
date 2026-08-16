@@ -197,7 +197,7 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 
 
 CASE_POLICY = ProductCasePolicy(
-    product_id="fmfsolver",
+    product_id="fmf",
     model_id="sentman",
     legacy_env_prefix="FMFSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
@@ -301,7 +301,7 @@ def _projection_additions(
 
 
 RUNTIME_POLICY = ProductRuntimePolicy(
-    product_id="fmfsolver",
+    product_id="fmf",
     case_policy=CASE_POLICY,
     csv_projection_policy=CSV_PROJECTION_POLICY,
     csv_write_policy=CSV_WRITE_POLICY,
