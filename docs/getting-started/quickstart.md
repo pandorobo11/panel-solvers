@@ -2,6 +2,10 @@
 
 The repository includes one small, runnable case for each flow domain. Both use the
 shared mesh at `examples/geometry/plate.stl`; they are not regression fixtures.
+The same canonical `examples/fmf/`, `examples/hypersonic/`, and
+`examples/geometry/` tree is available in
+`panelsolver-examples-v<version>.zip`. Run commands from the directory that
+contains the extracted `examples/` folder.
 
 ## Run FMF
 

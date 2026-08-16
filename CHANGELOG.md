@@ -6,6 +6,9 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Add the first-release foundation: strict offline documentation bundled in the
+  wheel, shared GUI Help/About, deterministic documentation and examples ZIPs,
+  manifest schema v2, and build-once release verification.
 - Unify the canonical repository, distribution, package, and command namespace
   as `panelsolver`; the human-readable product name is Panel Solver. Preserve
   the `fmfsolver` and `newtsolver` packages and commands as legacy compatibility

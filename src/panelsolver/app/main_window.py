@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from PySide6 import QtCore, QtWidgets
+from importlib.metadata import PackageNotFoundError
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from panelsolver.docs_site import DocumentationSite
 
 from .cases_panel import CasesPanel
 from .solver_spec import SolverSpec
+from .versioning import panelsolver_distribution_version
 from .viewer import ViewerPanel
 
 
@@ -18,11 +23,13 @@ class MainWindow(QtWidgets.QMainWindow):
         *,
         cases_panel: QtWidgets.QWidget | None = None,
         viewer_panel: QtWidgets.QWidget | None = None,
+        documentation_site: DocumentationSite | None = None,
     ) -> None:
         if not isinstance(spec, SolverSpec):
             raise TypeError("spec must be a SolverSpec")
         super().__init__()
         self.spec = spec
+        self._documentation_site = documentation_site or DocumentationSite()
         self.setWindowTitle(spec.window_title)
         self.resize(1480, 900)
 
@@ -38,6 +45,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.splitter.addWidget(self.viewer_panel)
         self.splitter.setStretchFactor(1, 4)
         self._close_when_run_finishes = False
+        self._build_help_menu()
 
         self.viewer_panel.log_message.connect(self.cases_panel.logln)
         self.cases_panel.vtp_loaded.connect(self.viewer_panel.load_vtp)
@@ -46,6 +54,64 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cases_panel.run_finished.connect(self._on_case_run_finished)
         self.viewer_panel.save_selected_images_requested.connect(
             self._on_save_selected_images
+        )
+
+    def _build_help_menu(self) -> None:
+        self.help_menu = self.menuBar().addMenu("Help")
+        self.documentation_action = QtGui.QAction("Documentation", self)
+        self.documentation_action.triggered.connect(
+            lambda: self._open_documentation("index.html")
+        )
+        self.help_menu.addAction(self.documentation_action)
+
+        self.domain_documentation_action = QtGui.QAction(
+            "Current Domain Documentation",
+            self,
+        )
+        self.domain_documentation_action.triggered.connect(
+            lambda: self._open_documentation(self.spec.documentation_page)
+        )
+        self.help_menu.addAction(self.domain_documentation_action)
+        self.help_menu.addSeparator()
+
+        self.about_action = QtGui.QAction("About", self)
+        self.about_action.triggered.connect(self._show_about)
+        self.help_menu.addAction(self.about_action)
+
+    def _open_documentation(self, page: str) -> None:
+        try:
+            target = self._documentation_site.resolve(page)
+            opened = QtGui.QDesktopServices.openUrl(
+                QtCore.QUrl.fromLocalFile(str(target))
+            )
+            if not opened:
+                raise RuntimeError(
+                    "The default browser did not accept the local documentation URL."
+                )
+        except Exception as exc:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Panel Solver documentation error",
+                str(exc),
+            )
+
+    @QtCore.Slot()
+    def _show_about(self) -> None:
+        try:
+            version = panelsolver_distribution_version()
+        except PackageNotFoundError:
+            version = "not installed"
+        QtWidgets.QMessageBox.about(
+            self,
+            "About Panel Solver",
+            "\n".join(
+                (
+                    "Panel Solver",
+                    f"version {version}",
+                    f"Domain: {self.spec.domain_name}",
+                    "License: Apache-2.0",
+                )
+            ),
         )
 
     @QtCore.Slot()
@@ -69,6 +135,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
             event.ignore()
             return
+        self._documentation_site.close()
         super().closeEvent(event)
 
     @QtCore.Slot()

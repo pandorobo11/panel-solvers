@@ -66,6 +66,8 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             staged = Path(temp_dir) / "fixture"
             shutil.copytree(FIXTURE_ROOT / "inputs", staged)
+            for retired_npz in staged.rglob("*.npz"):
+                retired_npz.unlink()
             roots = {staged.resolve(): "<fixture-root>"}
 
             for product, filename, reader, signatures, policy, count in products:

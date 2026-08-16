@@ -1,32 +1,112 @@
 # Release and rollback
 
-One release always contains the shared engine, both physical models, both
-compatibility packages, and all six console commands.
+One Panel Solver release contains the shared engine, both physical models, both
+compatibility packages, the canonical commands, and all six legacy commands.
 
-## Prepare a release
+## Version and release identity
 
-1. Set `project.version` in `pyproject.toml` and run `uv lock`.
-2. Move applicable `CHANGELOG.md` entries from `[Unreleased]` to a dated version
-   section and retain a fresh `[Unreleased]` section.
-3. Update current distribution-version references in README and current docs.
-   Runtime artifacts for both domains will record the new distribution version.
-   Do not change the FMF `1.3.8` or newtsolver `1.0.3` migration-baseline
-   constants used by legacy signatures without a separate accepted decision.
-4. Run the locked unit/regression/compatibility/GUI suite, Ruff, build, and clean
-   installed-wheel smoke tests for both products.
-5. Tag only the protected accepted `main` commit as `v<project.version>`.
+`project.version` in `pyproject.toml` is the only distribution-version source of
+truth. The `panelsolver` entry in `uv.lock` must match it. `CHANGELOG.md` is the
+release-note source. A release tag is exactly `v<project.version>`, must be an
+annotated tag, and must target the exact latest protected `origin/main` commit.
 
-`CHANGELOG.md` is the source of truth for release notes. CI publishes the exact
-tested artifacts only after all platform and artifact gates pass.
+FMF `1.3.8` and newtsolver `1.0.3` remain historical compatibility baselines;
+they are not distribution versions. Runtime lookup uses
+`importlib.metadata.version("panelsolver")`.
+
+## Build-once artifact contract
+
+The artifact job builds and uploads exactly this set once:
+
+1. `panelsolver-<version>-py3-none-any.whl`;
+2. `panelsolver-<version>.tar.gz`;
+3. `panelsolver-docs-v<version>.zip`;
+4. `panelsolver-examples-v<version>.zip`;
+5. `manifest.json`.
+
+The wheel and sdist filenames are taken from the build backend output. The
+documentation ZIP is created from the already-built wheel's bundled
+`panelsolver/_docs_site/` tree, so it is byte-equivalent to GUI Help. The
+examples ZIP contains only current `examples/fmf/`, `examples/hypersonic/`,
+`examples/geometry/`, `examples/README.md`, `LICENSE`, and
+`THIRD_PARTY_NOTICES.md`; generated outputs, caches, NPZ, legacy `.xls`, test
+fixtures, and historical migration inputs are excluded.
+
+Both ZIPs normalize ordering, timestamps, permissions, separators, compression,
+and metadata. Rebuilding either from identical source must produce an identical
+SHA-256 digest.
+
+Test and release jobs download the internal
+`panelsolver-dist-${{ github.run_id }}` artifact, verify it, and reuse it. They
+must not run `uv build`, `mkdocs build`, or rebuild either ZIP. The sdist rebuild
+is an isolated verification artifact and is never published in place of the
+original wheel.
+
+## Manifest schema v2
+
+`manifest.json` uses `panelsolver.dist-manifest` schema version 2. Its ordered
+`artifacts` array contains exactly `wheel`, `sdist`, `docs`, and `examples`, each
+with the exact filename and SHA-256; the wheel record also includes its METADATA
+name and version. `github_commit_sha` binds the set to the workflow commit.
+
+Verification rejects missing or extra artifacts, duplicate or reordered kinds,
+duplicate or unexpected filenames, hash or commit changes, wheel Name/Version or
+`project.version` mismatch, and any difference between the documentation ZIP and
+the wheel-bundled site.
+
+The wheel and sdist checks also require Apache-2.0 metadata, author or maintainer,
+the canonical `pandorobo11/panelsolver` project URL, license/notice files, docs
+sources, MkDocs configuration, build helpers, examples, and the deterministic
+US1976 generator and generated source. MkDocs and LaTeX-to-MathML tooling are
+build/development dependencies, not runtime dependencies.
+
+## Release gates
+
+Before publishing, CI verifies:
+
+- generated US1976 and documentation-plot sources;
+- strict offline docs, local assets, links, and MathML rendering;
+- the original wheel in a fresh dependency-installed environment outside the
+  checkout, including canonical/legacy commands, stable Python API, actual FMF
+  and Hypersonic solves, all representative release examples, packaged docs,
+  and offscreen GUI construction;
+- an isolated wheel rebuild from the sdist, followed by install, resource,
+  metadata, and canonical command smoke checks;
+- unchanged regression, compatibility, scheduler, rtree, and available Embree
+  behavior on Ubuntu, Windows, and macOS;
+- annotated tag, matching version and lock, nonempty matching CHANGELOG section,
+  exact protected-main target, and completely successful exact-main push CI;
+- repository identity `pandorobo11/panelsolver`, zero open non-PR issues, and
+  zero open pull requests.
+
+Only after those gates does the release job publish the downloaded verified set.
+The matching CHANGELOG section supplies release notes. A version containing an
+alpha, beta, or RC marker such as `0.1.0rc1` creates a GitHub prerelease; a stable
+version such as `0.1.0` creates a normal release.
+
+## Next step: prepare `0.1.0rc1`
+
+After this foundation is merged and the exact-main CI is green:
+
+1. create an RC preparation branch from latest protected main;
+2. set `project.version = 0.1.0rc1`;
+3. run `uv lock` and verify the `uv.lock` `panelsolver` version;
+4. move current Unreleased notes into a dated `[0.1.0rc1]` section;
+5. create a fresh `[Unreleased]` section;
+6. run the full CI and merge the independent RC preparation PR;
+7. confirm the merged exact-main CI is completely successful;
+8. create annotated tag `v0.1.0rc1` on that exact main commit;
+9. verify the resulting GitHub prerelease and its exact five attachments.
+
+This foundation does not change `0.1.0`, create a tag, or publish a release.
 
 ## Distribution licensing boundary
 
 The Python wheel declares runtime dependencies but does not vendor their source
 or binaries. This includes PySide6 and Qt, which pip installs as separate
 distributions under their upstream terms. Before publishing a standalone bundle
-that embeds Qt or any other dependency, perform a separate license and notice
-audit for the exact bundled files; the wheel audit does not cover such a
-distribution.
+that embeds Qt or another dependency, perform a separate audit for those exact
+files. The root `LICENSE` and `THIRD_PARTY_NOTICES.md` remain authoritative.
 
 ## Roll back to pinned legacy implementations
 
@@ -43,7 +123,7 @@ python -m pip uninstall panelsolver
 python -m pip install /path/to/fmfsolver-1.3.8-*.whl /path/to/newtsolver-1.0.3-*.whl
 ```
 
-Return to the shared distribution in the opposite order:
+Return to Panel Solver in the opposite order:
 
 ```bash
 python -m pip uninstall fmfsolver newtsolver
@@ -55,14 +135,7 @@ fmfsolver-cli --help
 newtsolver-cli --help
 ```
 
-Keep input and output data during rollback, but do not treat data retention as
-full input/output schema compatibility. The pinned legacy releases expose their
-historical `.xls` input and NPZ output again. Before returning an old case table
-to the current `panelsolver` release, convert `.xls` to `.xlsx` or CSV and
-remove the `save_npz_on` column.
-
-Current Summary CSV output does not contain `save_npz_on` or `npz_path`, and the
-current release does not create NPZ files. Existing VTP, NPZ, and CSV files are
-left untouched during rollback and return. Exact audited build hashes and the
-full transition probe are preserved in the
-[Phase 8 execution record](../history/audits/PHASE8_EXECUTION_RECORD.md).
+Pinned legacy releases expose their historical `.xls` input and NPZ output
+again. Before returning an old case to Panel Solver, convert `.xls` to `.xlsx`
+or CSV and remove `save_npz_on`. Current Summary CSV has no `save_npz_on` or
+`npz_path`, and Panel Solver does not create NPZ. Existing files are not deleted.

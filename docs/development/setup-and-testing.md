@@ -18,7 +18,8 @@ Install the documentation-only plotting dependency, regenerate the committed
 SVG plots, or verify that they are synchronized with the current models:
 
 ```bash
-uv sync --locked --group docs
+uv sync --locked --extra rayaccel --group docs
+uv run mkdocs build --strict
 uv run --group docs python scripts/generate_docs_angle_response_plots.py
 uv run --group docs python scripts/generate_docs_angle_response_plots.py --check
 ```
@@ -45,7 +46,7 @@ or change expected values merely to make tests pass.
 
 ```bash
 uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts
+uv run ruff check src tests scripts hatch_build.py
 uv build
 ```
 

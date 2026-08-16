@@ -31,7 +31,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes libegl1
 
       - name: Install dependencies
-        run: uv sync --locked --extra rayaccel
+        run: uv sync --locked --extra rayaccel --group docs
 
       - name: Download verified distributions
         uses: actions/download-artifact@v4
@@ -64,7 +64,7 @@ jobs:
           --iterations 10 --timeout-seconds 90
 
       - name: Static checks
-        run: uv run ruff check src tests scripts
+        run: uv run ruff check src tests scripts hatch_build.py
 
       - name: Reinstall exact verified wheel
         run: >-
@@ -72,7 +72,9 @@ jobs:
           --dist-dir dist
 
       - name: Smoke installed commands outside repository
-        run: uv run --no-sync python scripts/smoke_installed_wheel.py .
+        run: >-
+          uv run --no-sync python scripts/smoke_installed_wheel.py .
+          --dist-dir dist
 
   artifact:
     runs-on: ubuntu-latest
@@ -103,14 +105,33 @@ jobs:
           uv run --no-sync python
           scripts/generate_docs_angle_response_plots.py --check
 
+      - name: Build offline documentation strictly
+        run: uv run --no-sync mkdocs build --strict
+
       - name: Build distributions
         run: uv build
+
+      - name: Verify wheel, sdist, and isolated sdist wheel rebuild
+        run: >-
+          uv run --no-sync python scripts/release_tools.py
+          verify-distributions . --dist-dir dist
+
+      - name: Create deterministic release archives
+        run: >-
+          uv run --no-sync python scripts/release_tools.py
+          create-release-archives . --dist-dir dist
 
       - name: Create and verify distribution manifest
         run: >-
           uv run --no-sync python scripts/release_tools.py create-manifest .
           --commit-sha "${{ github.sha }}" --output dist/manifest.json
           --dist-dir dist
+
+      - name: Verify exact release artifact set
+        run: >-
+          uv run --no-sync python scripts/release_tools.py verify-manifest .
+          --manifest dist/manifest.json --dist-dir dist
+          --expected-commit "${{ github.sha }}"
 
       - name: Verify release tag against protected main
         if: startsWith(github.ref, 'refs/tags/')
@@ -121,6 +142,11 @@ jobs:
           EXPECTED_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
           uv run --no-sync python scripts/release_tools.py verify-tag . "$TAG" \
             --expected-commit "$EXPECTED_COMMIT"
+          uv run --no-sync python scripts/release_tools.py verify-github-state . \
+            --repository-name pandorobo11/panelsolver \
+            --expected-commit "$EXPECTED_COMMIT"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Dry-run a hypothetical release version
         run: >-
@@ -177,7 +203,9 @@ jobs:
           PY
 
       - name: Smoke installed commands outside repository
-        run: uv run --no-sync python scripts/smoke_installed_wheel.py .
+        run: >-
+          uv run --no-sync python scripts/smoke_installed_wheel.py .
+          --dist-dir dist
 
       - name: Upload verified distributions
         uses: actions/upload-artifact@v4
@@ -186,8 +214,47 @@ jobs:
           path: dist
           if-no-files-found: error
 
+  clean-install:
+    needs: artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux GUI runtime
+        run: sudo apt-get update && sudo apt-get install --yes libegl1
+
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: panelsolver-dist-${{ github.run_id }}
+          path: dist
+
+      - name: Verify downloaded release artifact set
+        run: >-
+          python scripts/release_tools.py verify-manifest .
+          --manifest dist/manifest.json --dist-dir dist
+          --expected-commit "${{ github.sha }}"
+
+      - name: Install exact wheel with dependencies into an empty environment
+        shell: bash
+        run: |
+          CLEAN_VENV="${RUNNER_TEMP}/panelsolver-clean"
+          WHEEL="$(python scripts/release_tools.py verify-wheel . --dist-dir dist)"
+          uv venv --python 3.12 "${CLEAN_VENV}"
+          uv pip install --python "${CLEAN_VENV}/bin/python" "${WHEEL}"
+          cd "${RUNNER_TEMP}"
+          QT_QPA_PLATFORM=offscreen "${CLEAN_VENV}/bin/python" \
+            "${GITHUB_WORKSPACE}/scripts/smoke_installed_wheel.py" \
+            "${GITHUB_WORKSPACE}" --dist-dir "${GITHUB_WORKSPACE}/dist"
+
   release:
-    needs: [test, artifact]
+    needs: [test, artifact, clean-install]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -217,16 +284,31 @@ jobs:
           EXPECTED_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
           python scripts/release_tools.py verify-tag . "$TAG" \
             --expected-commit "$EXPECTED_COMMIT"
+          python scripts/release_tools.py verify-github-state . \
+            --repository-name pandorobo11/panelsolver \
+            --expected-commit "$EXPECTED_COMMIT"
           python scripts/release_tools.py verify-manifest . \
             --manifest dist/manifest.json --dist-dir dist \
             --expected-commit "${{ github.sha }}"
           python scripts/release_tools.py release-notes . --output release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Infer GitHub prerelease state
+        id: release-metadata
+        shell: bash
+        run: >-
+          echo "prerelease=$(python scripts/release_tools.py prerelease .)"
+          >> "${GITHUB_OUTPUT}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: release-notes.md
+          prerelease: ${{ steps.release-metadata.outputs.prerelease }}
           files: |
             dist/*.whl
             dist/*.tar.gz
+            dist/panelsolver-docs-v*.zip
+            dist/panelsolver-examples-v*.zip
             dist/manifest.json
