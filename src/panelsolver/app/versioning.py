@@ -2,12 +2,12 @@
 
 from importlib.metadata import version
 
-_DISTRIBUTION_NAME = "panel-solvers"
+_DISTRIBUTION_NAME = "panelsolver"
 
 
-def panel_solvers_distribution_version() -> str:
-    """Return the installed panel-solvers distribution version."""
+def panelsolver_distribution_version() -> str:
+    """Return the installed panelsolver distribution version."""
     return version(_DISTRIBUTION_NAME)
 
 
-__all__ = ("panel_solvers_distribution_version",)
+__all__ = ("panelsolver_distribution_version",)

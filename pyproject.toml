@@ -1,5 +1,5 @@
 [project]
-name = "panel-solvers"
+name = "panelsolver"
 version = "0.1.0"
 description = "Shared panel-solver platform for free-molecular and hypersonic flow models"
 readme = "README.md"
@@ -26,9 +26,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pandorobo11/panel-solvers"
-Repository = "https://github.com/pandorobo11/panel-solvers"
-Issues = "https://github.com/pandorobo11/panel-solvers/issues"
+Homepage = "https://github.com/pandorobo11/panelsolver"
+Repository = "https://github.com/pandorobo11/panelsolver"
+Issues = "https://github.com/pandorobo11/panelsolver/issues"
 
 [project.optional-dependencies]
 rayaccel = [

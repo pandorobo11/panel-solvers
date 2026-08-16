@@ -20,7 +20,7 @@ type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
 FLAG_COLUMNS = ("shielding_on", "save_vtp_on")
 _REMOVED_NPZ_MESSAGE = (
     "save_npz_on has been removed. Delete this field; "
-    "panel-solvers no longer writes NPZ files."
+    "Panel Solver no longer writes NPZ files."
 )
 _REMOVED_XLS_MESSAGE = (
     "Legacy .xls input is no longer supported. "

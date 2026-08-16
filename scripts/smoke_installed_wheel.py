@@ -194,7 +194,7 @@ def _smoke_canonical_gui_entrypoint() -> None:
     _application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     entry = next(
         item
-        for item in importlib.metadata.distribution("panel-solvers").entry_points
+        for item in importlib.metadata.distribution("panelsolver").entry_points
         if item.group == "console_scripts" and item.name == "panelsolver-gui"
     )
     launcher = entry.load()
@@ -286,7 +286,7 @@ def _expected_backend_hint(*, embree: bool) -> str:
     return (
         "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
         "available: uv sync --extra rayaccel (or pip install "
-        '"panel-solvers[rayaccel]").'
+        '"panelsolver[rayaccel]").'
     )
 
 
@@ -589,16 +589,16 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
 def main() -> int:
     repository = Path(sys.argv[1]).resolve()
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
-    installed_version = importlib.metadata.version("panel-solvers")
+    installed_version = importlib.metadata.version("panelsolver")
     legacy_artifact_versions = {"1.3.8", "1.0.3"}
     installed = {
         entry.name: entry.value
-        for entry in importlib.metadata.distribution("panel-solvers").entry_points
+        for entry in importlib.metadata.distribution("panelsolver").entry_points
         if entry.group == "console_scripts"
     }
     if installed != EXPECTED_ENTRY_POINTS:
         raise RuntimeError(f"Unexpected console scripts: {installed}")
-    requirements = importlib.metadata.distribution("panel-solvers").requires or ()
+    requirements = importlib.metadata.distribution("panelsolver").requires or ()
     if any("xlrd" in requirement.casefold() for requirement in requirements):
         raise RuntimeError("installed wheel still requires removed xlrd dependency")
 

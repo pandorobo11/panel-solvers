@@ -44,7 +44,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
         cls.comparator = _load_comparator_module()
 
     def test_all_cases_serialize_to_current_csv_and_frozen_vtp_semantics(self) -> None:
-        installed_version = importlib.metadata.version("panel-solvers")
+        installed_version = importlib.metadata.version("panelsolver")
         products = (
             (
                 "fmfsolver",

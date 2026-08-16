@@ -27,12 +27,12 @@ class ReleaseToolTests(unittest.TestCase):
         repository = root / "repository"
         repository.mkdir()
         (repository / "pyproject.toml").write_text(
-            "[project]\nname = \"panel-solvers\"\n"
+            "[project]\nname = \"panelsolver\"\n"
             f'version = "{version}"\n',
             encoding="utf-8",
         )
         (repository / "uv.lock").write_text(
-            'version = 1\n\n[[package]]\nname = "panel-solvers"\n'
+            'version = 1\n\n[[package]]\nname = "panelsolver"\n'
             f'version = "{version}"\n',
             encoding="utf-8",
         )
@@ -47,14 +47,14 @@ class ReleaseToolTests(unittest.TestCase):
         self,
         repository: Path,
         *,
-        name: str = "panel-solvers",
+        name: str = "panelsolver",
         version: str = "2.3.4",
         filename: str | None = None,
     ) -> Path:
         dist = repository / "dist"
         dist.mkdir(exist_ok=True)
-        wheel = dist / (filename or f"panel_solvers-{version}-py3-none-any.whl")
-        metadata_path = f"panel_solvers-{version}.dist-info/METADATA"
+        wheel = dist / (filename or f"panelsolver-{version}-py3-none-any.whl")
+        metadata_path = f"panelsolver-{version}.dist-info/METADATA"
         with zipfile.ZipFile(wheel, "w") as archive:
             archive.writestr(
                 metadata_path,
@@ -66,7 +66,7 @@ class ReleaseToolTests(unittest.TestCase):
         self,
         repository: Path,
         *,
-        filename: str = "panel_solvers-2.3.4.tar.gz",
+        filename: str = "panelsolver-2.3.4.tar.gz",
         content: bytes = b"sdist",
     ) -> Path:
         dist = repository / "dist"
@@ -117,7 +117,7 @@ class ReleaseToolTests(unittest.TestCase):
     def test_wheel_rejects_name_and_version_mismatch(self) -> None:
         for field, name, version in (
             ("name", "different", "2.3.4"),
-            ("version", "panel-solvers", "2.3.5"),
+            ("version", "panelsolver", "2.3.5"),
         ):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temp_dir:
                 repository = self.make_repository(Path(temp_dir))
@@ -139,8 +139,16 @@ class ReleaseToolTests(unittest.TestCase):
                 manifest_path,
             )
 
+            self.assertEqual(
+                {"name": "panelsolver.dist-manifest", "version": 1},
+                manifest["schema"],
+            )
             self.assertEqual(commit, manifest["github_commit_sha"])
             self.assertEqual(wheel.name, manifest["wheel"]["filename"])
+            self.assertEqual(
+                {"name": "panelsolver", "version": "2.3.4"},
+                manifest["wheel"]["metadata"],
+            )
             self.assertEqual(sdist.name, manifest["sdist"]["filename"])
             self.assertEqual(
                 manifest,
@@ -203,7 +211,7 @@ class ReleaseToolTests(unittest.TestCase):
             self.write_wheel(repository)
             self.write_sdist(repository)
             self.assertEqual(
-                "panel_solvers-2.3.4.tar.gz",
+                "panelsolver-2.3.4.tar.gz",
                 select_built_sdist(repository).name,
             )
             self.write_sdist(repository, filename="duplicate.tar.gz")
@@ -317,7 +325,7 @@ class ReleaseToolTests(unittest.TestCase):
             self.commit_file(
                 repository,
                 "uv.lock",
-                'version = 1\n\n[[package]]\nname = "panel-solvers"\n'
+                'version = 1\n\n[[package]]\nname = "panelsolver"\n'
                 'version = "2.3.5"\n',
             )
             self.git(repository, "tag", "-a", "v2.3.4", "-m", "wrong lock")

@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-08-15
 
+The distribution-name sentence in this record is superseded by
+[ADR 0013](0013-canonical-project-identity.md). Its domain, package, CLI, and
+legacy-identity decisions remain in force.
+
 ## Context
 
 The distribution contains two physical-model families and two legacy product

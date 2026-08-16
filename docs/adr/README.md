@@ -16,6 +16,10 @@ Accepted ADRs are retained as decision records:
     surfaces](0011-canonical-domain-naming.md)
 12. [Use the panel-solvers distribution version in runtime
     artifacts](0012-runtime-artifact-distribution-version.md)
+13. [Use panelsolver as the canonical project
+    identity](0013-canonical-project-identity.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).
+ADR 0013 defines the current project identity; older ADRs retain the
+`panel-solvers` spelling where it is part of the decision record they supersede.

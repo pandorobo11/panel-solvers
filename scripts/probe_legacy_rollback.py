@@ -298,11 +298,11 @@ def _prepare_panel_wheel(
     else:
         candidate = supplied_wheel.resolve()
         if not candidate.is_file():
-            raise RuntimeError(f"panel-solvers candidate wheel is missing: {candidate}")
+            raise RuntimeError(f"panelsolver candidate wheel is missing: {candidate}")
         copied = panel_dist / candidate.name
         shutil.copy2(candidate, copied)
         if sha256_file(copied) != sha256_file(candidate):
-            raise RuntimeError("copied panel-solvers candidate wheel hash mismatch")
+            raise RuntimeError("copied panelsolver candidate wheel hash mismatch")
     return select_built_wheel(repository, panel_dist)
 
 
@@ -340,7 +340,7 @@ def probe(
             legacy_sources[spec.name] = archive
             legacy_records[spec.name] = record
 
-        panel_dist = artifact_dir / "panel-solvers"
+        panel_dist = artifact_dir / "panelsolver"
         panel_wheel = _prepare_panel_wheel(repository, panel_dist, panel_wheel)
         panel_name, panel_version = wheel_identity(panel_wheel)
         expected_panel_name, expected_panel_version = project_identity(repository)
@@ -348,17 +348,17 @@ def probe(
             expected_panel_name,
             expected_panel_version,
         ):
-            raise RuntimeError("panel-solvers candidate wheel identity mismatch")
+            raise RuntimeError("panelsolver candidate wheel identity mismatch")
 
         venv = work / "rollback-venv"
         _run(["uv", "venv", "--python", sys.executable, venv])
         python = _venv_python(venv)
         _install(python, panel_wheel)
-        _assert_distribution(python, "panel-solvers", panel_version)
+        _assert_distribution(python, "panelsolver", panel_version)
         initial_commands = _assert_commands(python)
 
-        _uninstall(python, "panel-solvers")
-        _assert_distribution_absent(python, "panel-solvers")
+        _uninstall(python, "panelsolver")
+        _assert_distribution_absent(python, "panelsolver")
         _install(
             python,
             legacy_wheels["fmfsolver"],
@@ -386,7 +386,7 @@ def probe(
 
         _uninstall(python, "fmfsolver", "newtsolver")
         _install(python, panel_wheel, no_deps=True)
-        _assert_distribution(python, "panel-solvers", panel_version)
+        _assert_distribution(python, "panelsolver", panel_version)
         returned_commands = _assert_commands(python)
         panel_inputs = _stage_current_panel_inputs(repository, work)
         returned_samples = {
@@ -409,7 +409,7 @@ def probe(
         }
 
     return {
-        "schema": "panel-solvers.phase8.rollback.v1",
+        "schema": "panelsolver.phase8.rollback.v1",
         "legacy": legacy_records,
         "panel_candidate": {
             "wheel": str(panel_wheel.relative_to(artifact_dir)),

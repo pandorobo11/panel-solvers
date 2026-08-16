@@ -19,7 +19,8 @@ from pathlib import Path
 
 _CANONICAL_SEPARATOR = re.compile(r"[-_.]+")
 _COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
-_DIST_MANIFEST_NAME = "panel-solvers.dist-manifest"
+_DISTRIBUTION_NAME = "panelsolver"
+_DIST_MANIFEST_NAME = "panelsolver.dist-manifest"
 _DIST_MANIFEST_VERSION = 1
 
 
@@ -239,11 +240,11 @@ def verify_dist_manifest(
 def verify_lock_version(repository: Path, version: str) -> None:
     with (repository / "uv.lock").open("rb") as stream:
         packages = tomllib.load(stream)["package"]
-    matches = [item for item in packages if item.get("name") == "panel-solvers"]
+    matches = [item for item in packages if item.get("name") == _DISTRIBUTION_NAME]
     if len(matches) != 1 or matches[0].get("version") != version:
         found = [item.get("version") for item in matches]
         raise RuntimeError(
-            f"uv.lock panel-solvers version mismatch: expected {version}, found {found}"
+            f"uv.lock panelsolver version mismatch: expected {version}, found {found}"
         )
 
 
@@ -315,7 +316,7 @@ def verify_release_tag(
     expected_commit: str | None = None,
 ) -> str:
     name, version = project_identity(repository)
-    if canonical_distribution_name(name) != "panel-solvers":
+    if canonical_distribution_name(name) != _DISTRIBUTION_NAME:
         raise RuntimeError(f"unexpected project name: {name}")
     verify_tag(tag, version)
     verify_lock_version(repository, version)
@@ -344,7 +345,7 @@ def release_notes(repository: Path, version: str) -> str:
 def reinstall_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
     wheel = select_built_wheel(repository, dist_dir)
     subprocess.run(
-        ["uv", "pip", "uninstall", "panel-solvers"],
+        ["uv", "pip", "uninstall", _DISTRIBUTION_NAME],
         cwd=repository,
         check=True,
     )
@@ -353,7 +354,7 @@ def reinstall_built_wheel(repository: Path, dist_dir: Path | None = None) -> Pat
         cwd=repository,
         check=True,
     )
-    installed = importlib.metadata.version("panel-solvers")
+    installed = importlib.metadata.version(_DISTRIBUTION_NAME)
     expected = project_identity(repository)[1]
     if installed != expected:
         raise RuntimeError(
@@ -374,7 +375,7 @@ def _replace_version(repository: Path, old: str, new: str) -> None:
     lock = repository / "uv.lock"
     text = lock.read_text(encoding="utf-8")
     pattern = re.compile(
-        r'(\[\[package\]\]\nname = "panel-solvers"\nversion = ")[^"]+("\n)'
+        rf'(\[\[package\]\]\nname = "{_DISTRIBUTION_NAME}"\nversion = ")[^"]+("\n)'
     )
     text, replacements = pattern.subn(rf"\g<1>{new}\g<2>", text)
     if replacements != 1:
@@ -404,7 +405,7 @@ def dry_run(repository: Path, version: str | None = None) -> None:
     version = version or hypothetical_next_version(current_version)
     if version == current_version:
         raise RuntimeError("dry-run version must differ from project.version")
-    if canonical_distribution_name(current_name) != "panel-solvers":
+    if canonical_distribution_name(current_name) != _DISTRIBUTION_NAME:
         raise RuntimeError(f"unexpected project name: {current_name}")
 
     with tempfile.TemporaryDirectory(prefix="panel_release_dry_run_") as temp_dir:
@@ -452,7 +453,7 @@ def dry_run(repository: Path, version: str | None = None) -> None:
                 "-c",
                 (
                     "import importlib.metadata as m; "
-                    f"assert m.version('panel-solvers') == {version!r}"
+                    f"assert m.version('{_DISTRIBUTION_NAME}') == {version!r}"
                 ),
             ],
             cwd=root,

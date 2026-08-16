@@ -1,6 +1,6 @@
-# panel-solvers
+# Panel Solver
 
-`panel-solvers` is a single Python distribution for two STL panel-method flow
+`panelsolver` is a single Python distribution for two STL panel-method flow
 domains:
 
 | Canonical domain | Use it for | Physical model or methods |
@@ -15,7 +15,14 @@ modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
 
 ## Requirements and installation
 
-Python 3.12 or newer is required. From a checkout:
+Python 3.12 or newer is required. Install the published distribution with:
+
+```bash
+python -m pip install panelsolver
+python -m pip install 'panelsolver[rayaccel]'  # optional Embree backend
+```
+
+From a checkout:
 
 ```bash
 python -m pip install .
@@ -27,7 +34,7 @@ For the optional accelerated Embree ray backend:
 python -m pip install '.[rayaccel]'
 ```
 
-The built-in `rtree` backend remains supported. Do not install `panel-solvers`
+The built-in `rtree` backend remains supported. Do not install `panelsolver`
 beside the legacy `fmfsolver` or `newtsolver` distributions because their package
 and command names overlap. See the [installation guide](docs/getting-started/installation.md).
 
@@ -78,10 +85,10 @@ CLI options.
 ## Status and compatibility
 
 The FMF/Hypersonic integration and Phase 8 audit are complete. One
-`panel-solvers` distribution (currently `0.1.0`) provides the canonical
+`panelsolver` distribution (currently `0.1.0`) provides the canonical
 `panelsolver` and `panelsolver-gui` command namespaces plus all six legacy
 compatibility command names. Summary CSV and VTP artifacts record the installed
-`panel-solvers` distribution version for both domains. FMF `fmfsolver 1.3.8`
+`panelsolver` distribution version for both domains. FMF `fmfsolver 1.3.8`
 and Hypersonic `newtsolver 1.0.3` remain documented migration baselines and
 private legacy-compatibility inputs, not current domain versions. Supported
 commands, normal GUI use, documented case files,
@@ -94,7 +101,7 @@ support levels. See the
 
 ## License
 
-panel-solvers code, documentation, examples, and project-generated material are
+Panel Solver code, documentation, examples, and project-generated material are
 licensed under the [Apache License 2.0](LICENSE). Third-party and public-domain
 rights and provenance, including US1976 and PDAS, are documented in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

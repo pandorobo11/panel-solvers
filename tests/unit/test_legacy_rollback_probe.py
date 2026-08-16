@@ -56,21 +56,21 @@ class LegacyRollbackProbeTests(unittest.TestCase):
             repository = root / "repository"
             repository.mkdir()
             (repository / "pyproject.toml").write_text(
-                '[project]\nname = "panel-solvers"\nversion = "2.3.4"\n',
+                '[project]\nname = "panelsolver"\nversion = "2.3.4"\n',
                 encoding="utf-8",
             )
-            supplied = root / "download" / "panel_solvers-2.3.4-py3-none-any.whl"
+            supplied = root / "download" / "panelsolver-2.3.4-py3-none-any.whl"
             supplied.parent.mkdir()
             with zipfile.ZipFile(supplied, "w") as archive:
                 archive.writestr(
-                    "panel_solvers-2.3.4.dist-info/METADATA",
-                    "Metadata-Version: 2.4\nName: panel-solvers\nVersion: 2.3.4\n",
+                    "panelsolver-2.3.4.dist-info/METADATA",
+                    "Metadata-Version: 2.4\nName: panelsolver\nVersion: 2.3.4\n",
                 )
 
             with patch("scripts.probe_legacy_rollback._run") as run:
                 selected = _prepare_panel_wheel(
                     repository,
-                    root / "artifacts" / "panel-solvers",
+                    root / "artifacts" / "panelsolver",
                     supplied,
                 )
 

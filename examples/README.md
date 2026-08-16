@@ -16,7 +16,7 @@ moment reference lengths. These simple global references make component rows
 add directly to the total row for all eight coefficients. The four meshes in
 `geometry/` are simple geometric fixtures created by the maintainer for the
 legacy projects and carried forward byte-identically from the small Phase 1
-inputs. The current example CSVs were created for panel-solvers; they do not
+inputs. The current example CSVs were created for Panel Solver; they do not
 copy the legacy sample matrices. These files are project material distributed
 under Apache-2.0. Examples exercise the current canonical readers, defaults,
 validation, and output semantics.

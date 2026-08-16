@@ -4,6 +4,10 @@
 - Date: 2026-08-15
 - Supersedes: ADR 0007's Summary CSV and VTP version-metadata decision
 
+The distribution-name spelling in this record is superseded by
+[ADR 0013](0013-canonical-project-identity.md). The `solver_version` provenance,
+schema, value, and case-signature decisions remain in force.
+
 ## Context
 
 During integration of the legacy products, the `fmfsolver` `1.3.8` and

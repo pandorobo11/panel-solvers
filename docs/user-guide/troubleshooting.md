@@ -41,7 +41,7 @@ canceled runs as partial state.
 
 ## Legacy imports or versions are surprising
 
-The installed distribution is `panel-solvers`; its version appears in newly
+The installed distribution is `panelsolver`; its version appears in newly
 generated FMF and Hypersonic Summary CSV/VTP artifacts. Best-effort legacy
 `fmfsolver.__version__` and `newtsolver.__version__` retain the `1.3.8` and
 `1.0.3` migration-baseline values for direct-Python compatibility. Do not

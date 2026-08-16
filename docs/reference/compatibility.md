@@ -34,10 +34,10 @@ legacy direct-Python translation.
 
 ## Distribution version and migration baselines
 
-The single distribution is `panel-solvers`, currently version `0.1.0`. It owns
+The single distribution is `panelsolver`, currently version `0.1.0`. It owns
 all three top-level packages and uses one version across both domains. Summary
 CSV and VTP `solver_version` record the installed distribution version that
-generated them. If only FMF behavior changes in `panel-solvers 0.2.0`, newly
+generated them. If only FMF behavior changes in `panelsolver 0.2.0`, newly
 generated FMF and Hypersonic artifacts both record `solver_version=0.2.0`;
 release notes identify the domain or model that changed.
 
@@ -48,7 +48,7 @@ The original implementations used for compatibility and migration work were:
 | FMF | `fmfsolver 1.3.8` |
 | Hypersonic | `newtsolver 1.0.3` |
 
-Use `importlib.metadata.version("panel-solvers")` for the installed distribution
+Use `importlib.metadata.version("panelsolver")` for the installed distribution
 version. The baseline values are not current solver or domain versions. They
 remain in private compatibility code only where legacy signature reconstruction
 or best-effort direct-Python `__version__` behavior requires them. Detailed

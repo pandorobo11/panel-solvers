@@ -15,7 +15,7 @@ from newtsolver.runtime import RUNTIME_POLICY as LEGACY_HYPERSONIC_RUNTIME_POLIC
 from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
-INSTALLED_VERSION = version("panel-solvers")
+INSTALLED_VERSION = version("panelsolver")
 
 
 class DomainOwnershipTests(unittest.TestCase):
