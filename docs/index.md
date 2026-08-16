@@ -37,6 +37,7 @@ geometry before interpreting coefficients.
 - [Numerical conventions](reference/numerical-conventions.md)
 - [Compatibility policy](reference/compatibility.md)
 - [Python API policy](reference/python-api.md)
+- [License and third-party notices](reference/license-and-third-party-notices.md)
 
 ## Development and history
 

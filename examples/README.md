@@ -21,6 +21,12 @@ copy the legacy sample matrices. These files are project material distributed
 under Apache-2.0. Examples exercise the current canonical readers, defaults,
 validation, and output semantics.
 
+The first-release examples archive is named
+`panelsolver-examples-v<version>.zip`. It preserves this `examples/` layout and
+adds `LICENSE` and `THIRD_PARTY_NOTICES.md` at the archive root. Generated
+outputs, caches, NPZ, legacy `.xls`, test fixtures, and migration inputs are not
+release examples.
+
 The current example directories use the canonical flow-domain names
 `examples/fmf/` and `examples/hypersonic/`. Legacy compatibility commands can
 read the same tables without changing their paths.

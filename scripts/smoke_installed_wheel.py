@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import csv
 import importlib
@@ -15,6 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -103,6 +106,7 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
     from panelsolver import (
         FMFCase,
         HypersonicCase,
+        ResolvedAttitude,
         SolveResult,
         resolve_attitude,
         solve_fmf,
@@ -122,6 +126,8 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
         raise RuntimeError(f"unexpected stable API surface: {panelsolver.__all__!r}")
     if hasattr(panelsolver, "SentmanCase") or hasattr(panelsolver, "solve_sentman"):
         raise RuntimeError("removed package-root Sentman API aliases remain")
+    if not isinstance(resolve_attitude(0.0, 0.0), ResolvedAttitude):
+        raise TypeError("resolve_attitude returned an unexpected stable API type")
 
     common = {
         "stl_paths": (inputs / "stl" / "plate.stl",),
@@ -219,6 +225,13 @@ def _smoke_canonical_gui_entrypoint() -> None:
             ),
         )
         constructed.append((spec.product_id, spec.model_id, window.windowTitle()))
+        if [action.text() for action in window.help_menu.actions()] != [
+            "Documentation",
+            "Current Domain Documentation",
+            "",
+            "About",
+        ]:
+            raise RuntimeError("canonical GUI Help menu changed")
         window.close()
         return 0
 
@@ -249,6 +262,8 @@ def _smoke_canonical_gui_entrypoint() -> None:
         legacy_constructed.append(
             (spec.product_id, spec.model_id, window.windowTitle())
         )
+        if not hasattr(window, "domain_documentation_action"):
+            raise RuntimeError("legacy GUI does not share documentation infrastructure")
         window.close()
     if tuple(legacy_constructed) != legacy_expected:
         raise RuntimeError(f"legacy GUI identity changed: {legacy_constructed!r}")
@@ -298,6 +313,8 @@ def _command_path(name: str) -> Path:
 
 def _prepare_current_inputs(inputs: Path) -> None:
     """Remove the retired column from staged historical sample evidence."""
+    for historical_npz in inputs.rglob("*.npz"):
+        historical_npz.unlink()
     for path in (inputs / "fmfsolver_cases.csv", inputs / "newtsolver_cases.csv"):
         with path.open(encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream)
@@ -586,8 +603,123 @@ def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
             raise RuntimeError(f"{product} parallel missing STL succeeded")
 
 
-def main() -> int:
-    repository = Path(sys.argv[1]).resolve()
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("repository", type=Path)
+    parser.add_argument("--dist-dir", type=Path)
+    return parser.parse_args(argv)
+
+
+def _smoke_packaged_documentation() -> None:
+    from panelsolver.docs_site import DocumentationSite
+
+    with DocumentationSite() as site:
+        root = site.resolve().parent
+        for page in ("index.html", "solvers/fmf.html", "solvers/hypersonic.html"):
+            if not site.resolve(page).is_file():
+                raise RuntimeError(f"installed documentation page is missing: {page}")
+        for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
+            if not (root / legal_name).is_file():
+                raise RuntimeError(f"installed documentation file is missing: {legal_name}")
+
+
+def _extract_release_archives(
+    repository: Path,
+    dist_dir: Path,
+    staging: Path,
+) -> Path:
+    with (repository / "pyproject.toml").open("rb") as stream:
+        version = str(tomllib.load(stream)["project"]["version"])
+    docs_zip = dist_dir / f"panelsolver-docs-v{version}.zip"
+    examples_zip = dist_dir / f"panelsolver-examples-v{version}.zip"
+    destinations = (staging / "offline-docs", staging / "release-examples")
+    for archive_path, destination in zip((docs_zip, examples_zip), destinations, strict=True):
+        with zipfile.ZipFile(archive_path) as archive:
+            for name in archive.namelist():
+                member = Path(name)
+                if member.is_absolute() or ".." in member.parts or "\\" in name:
+                    raise RuntimeError(f"unsafe release archive member: {name}")
+            archive.extractall(destination)
+    if not (destinations[0] / "index.html").is_file():
+        raise RuntimeError("docs ZIP does not extract with index.html at its root")
+    return destinations[1]
+
+
+def _smoke_release_examples(
+    examples_root: Path,
+    staging: Path,
+    environment: dict[str, str],
+) -> None:
+    cases = (
+        ("fmf", "basic.csv"),
+        ("fmf", "flow_modes.csv"),
+        ("fmf", "attitude_modes.csv"),
+        ("fmf", "shielding.csv"),
+        ("hypersonic", "basic.csv"),
+        ("hypersonic", "pressure_models.csv"),
+        ("hypersonic", "attitude_modes.csv"),
+        ("hypersonic", "shielding.csv"),
+    )
+    command = _command_path("panelsolver")
+    results = staging / "release-example-results"
+    results.mkdir()
+    for domain, filename in cases:
+        result = subprocess.run(
+            [
+                command,
+                domain,
+                "--input",
+                examples_root / "examples" / domain / filename,
+                "--output",
+                results / f"{domain}-{Path(filename).stem}.csv",
+                "--workers",
+                "1",
+                "--flush-every-cases",
+                "0",
+            ],
+            cwd=examples_root,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=environment,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"release example failed: {domain}/{filename}\n"
+                f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
+            )
+
+
+def _cli_input_for_available_backends(
+    source: Path,
+    *,
+    product: str,
+) -> tuple[Path, set[str]]:
+    runtime = importlib.import_module("panelsolver.app.runtime")
+    if runtime.trimesh_ray.has_embree:
+        return source, set()
+    with source.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream)
+        rows = list(reader)
+        fieldnames = list(reader.fieldnames or ())
+    excluded = {
+        str(row.get("case_id", ""))
+        for row in rows
+        if str(row.get("ray_backend", "")).strip().casefold() == "embree"
+    }
+    selected = [row for row in rows if str(row.get("case_id", "")) not in excluded]
+    filtered = source.with_name(f"{product}_installed_supported.csv")
+    with filtered.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(selected)
+    return filtered, excluded
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    repository = args.repository.resolve()
+    dist_dir = args.dist_dir.resolve() if args.dist_dir is not None else None
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
     installed_version = importlib.metadata.version("panelsolver")
     legacy_artifact_versions = {"1.3.8", "1.0.3"}
@@ -601,6 +733,11 @@ def main() -> int:
     requirements = importlib.metadata.distribution("panelsolver").requires or ()
     if any("xlrd" in requirement.casefold() for requirement in requirements):
         raise RuntimeError("installed wheel still requires removed xlrd dependency")
+    if any(
+        requirement.casefold().startswith(("mkdocs", "latex2mathml"))
+        for requirement in requirements
+    ):
+        raise RuntimeError("documentation build dependency leaked into runtime")
 
     contract_data = {
         product: json.loads(
@@ -678,9 +815,13 @@ def main() -> int:
         _prepare_current_inputs(inputs)
         excel_inputs = _prepare_current_excel_inputs(inputs)
         _smoke_high_level_api(staging, inputs)
+        _smoke_packaged_documentation()
         _smoke_canonical_gui_entrypoint()
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)
+        if dist_dir is not None:
+            release_examples = _extract_release_archives(repository, dist_dir, staging)
+            _smoke_release_examples(release_examples, staging, subprocess_environment)
         canonical = _command_path("panelsolver")
         canonical_gui = _command_path("panelsolver-gui")
         for arguments in (("--help",), ("fmf", "--help"), ("hypersonic", "--help")):
@@ -813,6 +954,10 @@ def main() -> int:
                     )
         for product in ("fmfsolver", "newtsolver"):
             command = _command_path(f"{product}-cli")
+            cli_input, excluded_cases = _cli_input_for_available_backends(
+                inputs / f"{product}_cases.csv",
+                product=product,
+            )
             help_result = subprocess.run(
                 [command, "--help"],
                 cwd=staging,
@@ -852,7 +997,7 @@ def main() -> int:
                 [
                     command,
                     "--input",
-                    inputs / f"{product}_cases.csv",
+                    cli_input,
                     "--output",
                     output,
                     "--workers",
@@ -892,7 +1037,12 @@ def main() -> int:
             if not legacy_artifact_versions.isdisjoint(current_versions):
                 raise RuntimeError(f"{product} emitted a legacy artifact version")
             case_order = [row["case_id"] for row in rows if row["scope"] == "total"]
-            if case_order != contract["case_order"]:
+            expected_case_order = [
+                case_id
+                for case_id in contract["case_order"]
+                if case_id not in excluded_cases
+            ]
+            if case_order != expected_case_order:
                 raise RuntimeError(f"{product} case order changed: {case_order}")
             semantic_csv = comparator._read_semantic_csv(
                 output,

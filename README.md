@@ -71,6 +71,12 @@ CLI options.
 
 ## Documentation
 
+Every wheel includes a self-contained offline HTML site. In either canonical or
+legacy GUI, use **Help → Documentation** or **Help → Current Domain
+Documentation**. Release attachments also include
+`panelsolver-docs-v<version>.zip`; open its root `index.html` directly with no
+server or network access.
+
 - [Documentation home](docs/index.md)
 - [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
 - [Case-file guide](docs/user-guide/case-files.md)

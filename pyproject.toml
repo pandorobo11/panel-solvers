@@ -48,11 +48,37 @@ newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
 dev = ["ruff"]
-docs = ["matplotlib"]
+docs = [
+  "latex2mathml>=3.78,<4",
+  "matplotlib",
+  "mkdocs>=1.6,<2",
+]
 
 [build-system]
-requires = ["hatchling>=1.27"]
+requires = [
+  "hatchling>=1.27",
+  "latex2mathml>=3.78,<4",
+  "mkdocs>=1.6,<2",
+]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/CHANGELOG.md",
+  "/LICENSE",
+  "/README.md",
+  "/THIRD_PARTY_NOTICES.md",
+  "/docs",
+  "/examples",
+  "/hatch_build.py",
+  "/mkdocs.yml",
+  "/pyproject.toml",
+  "/scripts/generate_us1976_sentman_table.py",
+  "/src",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/panelsolver", "src/fmfsolver", "src/newtsolver"]

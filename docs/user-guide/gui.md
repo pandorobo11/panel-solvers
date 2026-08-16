@@ -13,6 +13,23 @@ uses the Sentman physical model; Hypersonic provides Newtonian-family methods.
 The legacy compatibility commands `fmfsolver`, `fmfsolver-gui`, `newtsolver`,
 and `newtsolver-gui` remain available with their existing titles and behavior.
 
+## Offline help
+
+Every launcher uses the shared **Help** menu:
+
+- **Documentation** opens the bundled offline site home;
+- **Current Domain Documentation** opens the FMF Sentman page or the
+  Hypersonic pressure-model page selected by the domain specification;
+- **About** shows Panel Solver, the installed `panelsolver` distribution
+  version, the active FMF or Hypersonic domain, and the Apache-2.0 license.
+
+Pages are opened as local `file://` URLs through the desktop browser. The wheel
+contains the complete site, so Help does not use the network or require MkDocs
+at runtime. If the installed resource is missing or the browser rejects the
+local URL, the GUI reports an error. An editable checkout may build a temporary
+site with the docs dependency group installed; that temporary resource remains
+alive for the lifetime of the window.
+
 ## Run cases
 
 1. Choose **Select Input File** and open a CSV, XLSX, or XLSM case table.

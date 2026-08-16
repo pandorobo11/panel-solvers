@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from panelsolver.core import CaseSignature, match_case_signature
+from panelsolver.docs_site import validate_documentation_page
 
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
@@ -154,6 +155,8 @@ class SolverSpec:
     product_id: str
     model_id: str
     window_title: str
+    domain_name: str
+    documentation_page: str
     case_columns: tuple[str, ...]
     preferred_scalars: tuple[str, ...]
     format_case: FormatCaseCallback
@@ -174,6 +177,16 @@ class SolverSpec:
             self,
             "window_title",
             _nonempty_text(self.window_title, field="SolverSpec.window_title"),
+        )
+        object.__setattr__(
+            self,
+            "domain_name",
+            _nonempty_text(self.domain_name, field="SolverSpec.domain_name"),
+        )
+        object.__setattr__(
+            self,
+            "documentation_page",
+            validate_documentation_page(self.documentation_page),
         )
         object.__setattr__(
             self,

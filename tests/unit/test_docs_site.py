@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import re
+import tempfile
+import unittest
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+
+from panelsolver.docs_site import (
+    DocumentationSite,
+    build_documentation_site,
+    validate_documentation_page,
+)
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+class _ResourceParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.resources: list[str] = []
+        self.links: list[str] = []
+        self.ids: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if values.get("id"):
+            self.ids.add(str(values["id"]))
+        if tag == "a" and values.get("href"):
+            self.links.append(str(values["href"]))
+        if tag in {"img", "script", "source"} and values.get("src"):
+            self.resources.append(str(values["src"]))
+        if (
+            tag == "link"
+            and "stylesheet" in str(values.get("rel", ""))
+            and values.get("href")
+        ):
+            self.resources.append(str(values["href"]))
+
+
+class DocumentationSiteTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temporary = tempfile.TemporaryDirectory(prefix="panelsolver docs ünicode ")
+        cls.site = Path(cls.temporary.name) / "offline site"
+        build_documentation_site(ROOT, cls.site)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.temporary.cleanup()
+
+    def test_strict_site_has_current_pages_and_legal_files(self) -> None:
+        for relative in (
+            "index.html",
+            "solvers/fmf.html",
+            "solvers/hypersonic.html",
+            "reference/fmf-input.html",
+            "reference/hypersonic-input.html",
+            "LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+        ):
+            with self.subTest(relative=relative):
+                self.assertTrue((self.site / relative).is_file())
+        self.assertEqual((ROOT / "LICENSE").read_bytes(), (self.site / "LICENSE").read_bytes())
+        self.assertEqual(
+            (ROOT / "THIRD_PARTY_NOTICES.md").read_bytes(),
+            (self.site / "THIRD_PARTY_NOTICES.md").read_bytes(),
+        )
+
+    def test_html_and_css_require_no_network_resources(self) -> None:
+        for html in self.site.rglob("*.html"):
+            parser = _ResourceParser()
+            parser.feed(html.read_text(encoding="utf-8"))
+            for value in parser.resources:
+                with self.subTest(page=html.relative_to(self.site), resource=value):
+                    split = urlsplit(value)
+                    self.assertEqual("", split.scheme)
+                    self.assertEqual("", split.netloc)
+                    target = html.parent / unquote(split.path)
+                    self.assertTrue(target.is_file(), target)
+        for css in self.site.rglob("*.css"):
+            for value in re.findall(r"url\(([^)]+)\)", css.read_text(encoding="utf-8")):
+                value = value.strip(" \t\"'")
+                if not value or value.startswith(("data:", "#")):
+                    continue
+                with self.subTest(stylesheet=css.relative_to(self.site), resource=value):
+                    split = urlsplit(value)
+                    self.assertEqual("", split.scheme)
+                    self.assertEqual("", split.netloc)
+                    self.assertTrue((css.parent / unquote(split.path)).is_file())
+
+    def test_internal_links_resolve_from_file_urls(self) -> None:
+        parsed: dict[Path, _ResourceParser] = {}
+        for html in self.site.rglob("*.html"):
+            parser = _ResourceParser()
+            parser.feed(html.read_text(encoding="utf-8"))
+            parsed[html.resolve()] = parser
+        for html, parser in parsed.items():
+            for value in parser.links:
+                split = urlsplit(value)
+                if split.scheme or split.netloc:
+                    continue
+                target = (
+                    html
+                    if not split.path
+                    else (html.parent / unquote(split.path)).resolve()
+                )
+                with self.subTest(
+                    page=html.relative_to(self.site.resolve()),
+                    link=value,
+                ):
+                    self.assertTrue(target.is_file(), target)
+                    if split.fragment and target.suffix == ".html":
+                        self.assertIn(unquote(split.fragment), parsed[target].ids)
+
+    def test_math_is_prerendered_as_self_contained_mathml(self) -> None:
+        for relative in ("solvers/fmf.html", "solvers/hypersonic.html"):
+            html = (self.site / relative).read_text(encoding="utf-8")
+            with self.subTest(relative=relative):
+                self.assertIn("<math", html)
+                self.assertIn('display="block"', html)
+                self.assertIn('display="inline"', html)
+                self.assertNotIn("```math", html)
+                self.assertNotIn("mathjax", html.casefold())
+                self.assertNotIn("<{http://www.w3.org/1998/Math/MathML}", html)
+
+    def test_page_validation_accepts_only_normalized_relative_html(self) -> None:
+        self.assertEqual(
+            "solvers/fmf.html",
+            validate_documentation_page(" solvers/fmf.html "),
+        )
+        for value in (
+            None,
+            "",
+            "/index.html",
+            "C:\\index.html",
+            "../index.html",
+            "solvers/../index.html",
+            "solvers\\index.html",
+            "solvers//fmf.html",
+            "solvers/fmf.md",
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_documentation_page(value)
+
+    def test_editable_fallback_keeps_temporary_site_alive_until_close(self) -> None:
+        site = DocumentationSite()
+        index = site.resolve()
+        root = index.parent
+        self.assertTrue(index.is_file())
+        self.assertEqual(root, site.resolve().parent)
+        self.assertTrue(site.resolve("solvers/hypersonic.html").is_file())
+        site.close()
+        self.assertFalse(root.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
