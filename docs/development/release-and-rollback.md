@@ -39,7 +39,7 @@ rollback wheels from clean local sources or official HTTPS URLs.
 Operational order:
 
 ```bash
-python -m pip uninstall panel-solvers
+python -m pip uninstall panelsolver
 python -m pip install /path/to/fmfsolver-1.3.8-*.whl /path/to/newtsolver-1.0.3-*.whl
 ```
 
@@ -47,7 +47,7 @@ Return to the shared distribution in the opposite order:
 
 ```bash
 python -m pip uninstall fmfsolver newtsolver
-python -m pip install /path/to/panel_solvers-<version>-py3-none-any.whl
+python -m pip install /path/to/panelsolver-<version>-py3-none-any.whl
 panelsolver --help
 panelsolver fmf --help
 panelsolver hypersonic --help
@@ -58,7 +58,7 @@ newtsolver-cli --help
 Keep input and output data during rollback, but do not treat data retention as
 full input/output schema compatibility. The pinned legacy releases expose their
 historical `.xls` input and NPZ output again. Before returning an old case table
-to the current `panel-solvers` release, convert `.xls` to `.xlsx` or CSV and
+to the current `panelsolver` release, convert `.xls` to `.xlsx` or CSV and
 remove the `save_npz_on` column.
 
 Current Summary CSV output does not contain `save_npz_on` or `npz_path`, and the

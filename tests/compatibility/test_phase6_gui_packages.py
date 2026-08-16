@@ -29,7 +29,7 @@ class Phase6GuiPackageTests(unittest.TestCase):
             "newtsolver-gui": "newtsolver.app.gui_app:main",
             "newtsolver-cli": "newtsolver.app.cli_app:main",
         }
-        distribution = importlib.metadata.distribution("panel-solvers")
+        distribution = importlib.metadata.distribution("panelsolver")
         registered = {
             entry.name: entry.value
             for entry in distribution.entry_points

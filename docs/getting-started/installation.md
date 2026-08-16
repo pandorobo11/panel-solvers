@@ -7,15 +7,27 @@
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - An STL mesh and a CSV, XLSX, or XLSM case table
 
-## Install from a checkout
+## Install
 
-For normal use:
+For normal use, install the canonical distribution:
+
+```bash
+python -m pip install panelsolver
+```
+
+To add the platform-specific Embree binding used by the accelerated ray backend:
+
+```bash
+python -m pip install 'panelsolver[rayaccel]'
+```
+
+From a checkout:
 
 ```bash
 python -m pip install .
 ```
 
-To add the platform-specific Embree binding used by the accelerated ray backend:
+The equivalent checkout install with Embree is:
 
 ```bash
 python -m pip install '.[rayaccel]'
@@ -40,7 +52,7 @@ panelsolver-gui fmf --help
 panelsolver-gui hypersonic --help
 fmfsolver-cli --help
 newtsolver-cli --help
-python -c 'import importlib.metadata as m; print(m.version("panel-solvers"))'
+python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
 ```
 
 The distribution version is currently `0.1.0` and is the `solver_version`

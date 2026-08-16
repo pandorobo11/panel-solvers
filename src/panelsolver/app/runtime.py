@@ -34,7 +34,7 @@ from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from .environment import resolve_parallel_chunk_environment
-from .versioning import panel_solvers_distribution_version
+from .versioning import panelsolver_distribution_version
 
 type CaseRow = Mapping[str, object]
 type LogCallback = Callable[[str], None]
@@ -46,7 +46,7 @@ type ProjectionAdditionsBuilder = Callable[
 ]
 
 _RAY_ACCEL_HINTED_PRODUCTS: set[str] = set()
-_RAY_ACCEL_INSTALL_TARGET = "panel-solvers[rayaccel]"
+_RAY_ACCEL_INSTALL_TARGET = "panelsolver[rayaccel]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,7 +159,7 @@ def prepare_product_cases(
     if any("save_npz_on" in row for row in records):
         raise ValueError(
             "save_npz_on has been removed. Delete this field; "
-            "panel-solvers no longer writes NPZ files."
+            "Panel Solver no longer writes NPZ files."
         )
     if registry is None:
         from .execution import default_model_registry
@@ -235,7 +235,7 @@ def _run_prepared_product_case(
         raise TypeError(
             "build_projection_additions must return ProductProjectionAdditions"
         )
-    solver_version = panel_solvers_distribution_version()
+    solver_version = panelsolver_distribution_version()
     artifact_policy = ArtifactProjectionPolicy(
         attitude_input_used=prepared.adapted.attitude.input_mode,
         case_signature=execution.signature.digest,

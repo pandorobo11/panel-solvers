@@ -1,1 +1,1 @@
-"""Panel-solvers test suite."""
+"""Panel Solver test suite."""

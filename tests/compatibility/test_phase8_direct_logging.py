@@ -27,7 +27,7 @@ def _backend_hint(*, embree: bool) -> str:
     return (
         "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
         "available: uv sync --extra rayaccel (or pip install "
-        '"panel-solvers[rayaccel]").'
+        '"panelsolver[rayaccel]").'
     )
 
 
@@ -368,7 +368,7 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                     logs: list[str] = []
                     self.assertTrue(run_many(pd.DataFrame(), logs.append).empty)
                     self.assertEqual([_backend_hint(embree=False)], logs)
-                    self.assertIn("panel-solvers[rayaccel]", logs[0])
+                    self.assertIn("panelsolver[rayaccel]", logs[0])
                     self.assertNotIn("fmfsolver[rayaccel]", logs[0])
                     self.assertNotIn("newtsolver[rayaccel]", logs[0])
 

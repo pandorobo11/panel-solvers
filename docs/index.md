@@ -1,6 +1,6 @@
-# panel-solvers documentation
+# Panel Solver documentation
 
-`panel-solvers` provides a shared geometry, execution, shielding, integration,
+`panelsolver` provides a shared geometry, execution, shielding, integration,
 output, CLI, and GUI platform for two independent panel-load models. Start with
 [installation](getting-started/installation.md), then run the
 [quickstart](getting-started/quickstart.md).

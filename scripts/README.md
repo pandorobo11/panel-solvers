@@ -14,5 +14,5 @@ Sentman atmosphere table. Its `--check` mode prevents manual generated-data
 drift without network access.
 
 `generate_docs_angle_response_plots.py` produces the committed SVG figures
-directly from panel-solvers model output. The script and generated figures are
+directly from Panel Solver model output. The script and generated figures are
 project material distributed under Apache-2.0.

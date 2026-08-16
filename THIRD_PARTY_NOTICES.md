@@ -1,7 +1,7 @@
 # Third-party and public-domain notices
 
 This file records material and dependencies that are not relicensed by the
-panel-solvers Apache License 2.0. It is informational and is not an Apache
+Panel Solver Apache License 2.0. It is informational and is not an Apache
 `NOTICE` file.
 
 ## U.S. Standard Atmosphere, 1976
@@ -13,7 +13,7 @@ panel-solvers Apache License 2.0. It is informational and is not an Apache
 - NTRS rights record: `Distribution Limits: Public`; `Copyright: Work of the
   US Gov. Public Use Permitted`
 
-panel-solvers uses a generated 201-row table of geometric altitude,
+Panel Solver uses a generated 201-row table of geometric altitude,
 temperature, speed of sound, and mean molecular speed for the FMF/Sentman Mode
 B atmosphere calculation. The underlying U.S. Government report and physical
 data are not claimed as copyright of pandorobo11. The complete transformation,
@@ -62,10 +62,10 @@ The runtime dependencies declared in `pyproject.toml`--NetworkX, NumPy,
 openpyxl, pandas, PySide6, PyVista, pyvistaqt, Rtree, SciPy, and Trimesh--and
 the optional Embree bindings are installed as separate distributions. They
 remain subject to their respective upstream licenses and are not relicensed by
-panel-solvers. Consult each installed distribution and its upstream project for
+Panel Solver. Consult each installed distribution and its upstream project for
 its applicable license and notices.
 
-The panel-solvers wheel does not contain dependency source or binaries. In
+The panelsolver wheel does not contain dependency source or binaries. In
 particular, it declares `PySide6==6.9.3` as an external dependency and does not
 contain PySide6 or Qt binaries. A future standalone application bundle, for
 example one produced with PyInstaller, would require a separate license and

@@ -47,6 +47,6 @@ current workflow is in
 ## Contribution license
 
 Unless you explicitly state otherwise, contributions intentionally submitted
-for inclusion in panel-solvers are provided under the project's
+for inclusion in Panel Solver are provided under the project's
 [Apache License 2.0](LICENSE), consistent with section 5 of that license. This
 project does not require a Contributor License Agreement.

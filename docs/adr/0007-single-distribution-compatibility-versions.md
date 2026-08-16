@@ -8,6 +8,10 @@ by [ADR 0012](0012-runtime-artifact-distribution-version.md). Its packaging,
 release-tag, legacy-signature, and best-effort Python compatibility decisions
 remain in force.
 
+The distribution name and corresponding metadata lookup/uninstall spelling are
+superseded by [ADR 0013](0013-canonical-project-identity.md). The historical
+`panel-solvers` wording below records the decision as accepted at the time.
+
 ## Context
 
 ADR 0001 places the shared engine, application, models, and compatibility

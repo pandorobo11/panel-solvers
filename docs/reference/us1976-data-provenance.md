@@ -64,7 +64,7 @@ and also dedicates PDAS-added program value to the public domain. That statement
 is the software/right provenance basis for using `bigtables.py`; it is separate
 from the scientific report citation above.
 
-panel-solvers does not claim copyright in the underlying U.S. Government data
+Panel Solver does not claim copyright in the underlying U.S. Government data
 or the PDAS public-domain program and does not relicense either as Apache-2.0.
 The project license covers the project-authored generator, integration, tests,
 documentation, and original selection or arrangement to the extent those
