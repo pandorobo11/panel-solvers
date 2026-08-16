@@ -401,6 +401,10 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
     )
     runtime = importlib.import_module("panelsolver.app.runtime")
     for product, filename, multi_index in products:
+        runtime_product_id = {
+            "fmfsolver": "fmf",
+            "newtsolver": "hypersonic",
+        }[product]
         reader = importlib.import_module(f"{product}.io.io_cases").read_cases
         solver = importlib.import_module(f"{product}.core.solver")
         source = reader(inputs / filename)
@@ -408,14 +412,14 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         output = staging / "direct-solvers" / product
         row.update(out_dir=str(output), save_vtp_on=0)
 
-        runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(product)
+        runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(runtime_product_id)
         direct_logs: list[str] = []
         result = solver.run_case(row, direct_logs.append)
         if direct_logs not in ([], [MESH_WARNING]):
             raise RuntimeError(
                 f"{product} direct-case logs contain unexpected output: {direct_logs!r}"
             )
-        if product in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+        if runtime_product_id in runtime._RAY_ACCEL_HINTED_PRODUCTS:
             raise RuntimeError(f"{product} direct case consumed backend hint")
 
         owned = LookupError(f"{product} installed hint callback")
@@ -432,7 +436,7 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
                 ) from exc
         else:
             raise RuntimeError(f"{product} empty hint callback error was ignored")
-        if product in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+        if runtime_product_id in runtime._RAY_ACCEL_HINTED_PRODUCTS:
             raise RuntimeError(f"{product} failed hint callback consumed state")
 
         empty_logs: list[str] = []
@@ -444,7 +448,7 @@ def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
         )
         if empty_logs != [expected_hint]:
             raise RuntimeError(f"{product} empty backend hint changed: {empty_logs!r}")
-        if product not in runtime._RAY_ACCEL_HINTED_PRODUCTS:
+        if runtime_product_id not in runtime._RAY_ACCEL_HINTED_PRODUCTS:
             raise RuntimeError(f"{product} successful backend hint was not recorded")
         hot_logs: list[str] = []
         solver.run_cases(source.iloc[0:0], hot_logs.append)

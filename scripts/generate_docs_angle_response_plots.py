@@ -45,8 +45,8 @@ REPOSITORY_ROOT: Final = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR: Final = REPOSITORY_ROOT / "docs" / "assets" / "plots"
 OUTPUT_FILENAMES: Final = (
     "sentman-local-traction-vs-angle.svg",
-    "newtsolver-windward-cp-vs-angle.svg",
-    "newtsolver-leeward-cp-vs-angle.svg",
+    "hypersonic-windward-cp-vs-angle.svg",
+    "hypersonic-leeward-cp-vs-angle.svg",
 )
 GENERATOR_MARKER: Final = "scripts/generate_docs_angle_response_plots.py"
 

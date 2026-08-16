@@ -1,4 +1,4 @@
-"""Policy-driven compatibility execution and artifact orchestration."""
+"""Policy-driven domain execution and artifact orchestration."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class ProductProjectionAdditions:
 
 @dataclass(frozen=True, slots=True)
 class ProductRuntimePolicy:
-    """Independent product decisions required by common orchestration."""
+    """Independent domain decisions required by common orchestration."""
 
     product_id: str
     case_policy: ProductCasePolicy

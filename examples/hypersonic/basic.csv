@@ -1,2 +1,2 @@
 case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,alpha_deg,beta_or_bank_deg,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m
-newtsolver_basic,../geometry/plate.stl,1,6,1.4,10,0,0,0,0,1,1,1,1
+hypersonic_basic,../geometry/plate.stl,1,6,1.4,10,0,0,0,0,1,1,1,1

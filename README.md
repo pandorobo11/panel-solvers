@@ -50,12 +50,12 @@ panelsolver-gui hypersonic
 Run the same examples without the GUI:
 
 ```bash
-panelsolver fmf --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
-panelsolver hypersonic --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+panelsolver fmf --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
+panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
 
 # Legacy compatibility commands remain available:
-fmfsolver-cli --input examples/fmfsolver/basic.csv --workers 1 --flush-every-cases 0
-newtsolver-cli --input examples/newtsolver/basic.csv --workers 1 --flush-every-cases 0
+fmfsolver-cli --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
+newtsolver-cli --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
 ```
 
 `fmf` is the free-molecular-flow domain selector; it is not the legacy
@@ -74,10 +74,10 @@ CLI options.
 - [Documentation home](docs/index.md)
 - [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
 - [Case-file guide](docs/user-guide/case-files.md)
-- [FMF](docs/solvers/fmfsolver.md) and
-  [Hypersonic](docs/solvers/newtsolver.md)
-- [FMF input](docs/reference/fmfsolver-input.md),
-  [Hypersonic input](docs/reference/newtsolver-input.md), and
+- [FMF](docs/solvers/fmf.md) and
+  [Hypersonic](docs/solvers/hypersonic.md)
+- [FMF input](docs/reference/fmf-input.md),
+  [Hypersonic input](docs/reference/hypersonic-input.md), and
   [output reference](docs/reference/output-formats.md)
 - [Development guide](docs/development/setup-and-testing.md)
 - [Migration and audit history](docs/history/README.md)

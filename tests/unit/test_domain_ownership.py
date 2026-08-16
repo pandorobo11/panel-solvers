@@ -19,6 +19,12 @@ INSTALLED_VERSION = version("panelsolver")
 
 
 class DomainOwnershipTests(unittest.TestCase):
+    def test_canonical_runtime_policies_use_domain_product_ids(self) -> None:
+        self.assertEqual("fmf", fmf.CASE_POLICY.product_id)
+        self.assertEqual("fmf", fmf.RUNTIME_POLICY.product_id)
+        self.assertEqual("hypersonic", hypersonic.CASE_POLICY.product_id)
+        self.assertEqual("hypersonic", hypersonic.RUNTIME_POLICY.product_id)
+
     def test_legacy_batch_surfaces_delegate_to_canonical_domain_objects(self) -> None:
         self.assertIs(fmf.read_cases, legacy_read_fmf_cases)
         self.assertIs(hypersonic.read_cases, legacy_read_hypersonic_cases)
