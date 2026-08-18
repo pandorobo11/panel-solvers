@@ -146,7 +146,12 @@ def project_vtp_artifact(
         "ray_backend_used": [policy.ray_backend_used],
         "solver_version": [policy.solver_version],
         "stl_count": [len(sources)],
-        "stl_paths_json": [json.dumps(sources, ensure_ascii=False, separators=(",", ":"))],
+        # VTK's string-array bridge accepts ASCII text only. JSON escapes keep
+        # the serialized value ASCII-safe without changing the paths recovered
+        # by json.loads().
+        "stl_paths_json": [
+            json.dumps(sources, ensure_ascii=True, separators=(",", ":"))
+        ],
     }
     _add_without_collision(
         field_data,

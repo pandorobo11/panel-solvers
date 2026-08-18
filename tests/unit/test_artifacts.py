@@ -1,7 +1,13 @@
+import json
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
+import pyvista as pv
 
+from panelsolver.app.artifact_io import write_vtp_projection
 from panelsolver.core import (
     ArtifactProjectionPolicy,
     CommonCasePayload,
@@ -13,11 +19,25 @@ from panelsolver.core import (
     PanelGeometry,
     PanelMesh,
     assemble_common_results,
+    load_panel_mesh,
     project_vtp_artifact,
 )
 
+FIXTURE_STL = (
+    Path(__file__).parents[1]
+    / "fixtures"
+    / "phase1"
+    / "inputs"
+    / "stl"
+    / "plate.stl"
+)
 
-def fixture() -> tuple[PanelMesh, object]:
+
+def fixture(
+    *,
+    source: str = "plate.stl",
+    case_id: str = "artifact",
+) -> tuple[PanelMesh, object]:
     geometry = PanelGeometry(
         centers_stl_m=[[0.25, 0.25, 0], [0.75, 0.75, 0]],
         normals_out_stl=[[0, 0, 1], [0, 0, 1]],
@@ -30,7 +50,7 @@ def fixture() -> tuple[PanelMesh, object]:
         {"Cp_n": [2, 2], "theta_deg": [0, 0]},
     )
     case = CommonCasePayload(
-        case_id="artifact",
+        case_id=case_id,
         Aref_m2=1.0,
         moment_reference_stl_m=[0, 0, 0],
         Lref_Cl_m=1.0,
@@ -43,7 +63,7 @@ def fixture() -> tuple[PanelMesh, object]:
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],
         [[0, 1, 2], [1, 3, 2]],
         geometry,
-        [MeshComponent(0, "plate.stl")],
+        [MeshComponent(0, source)],
     )
     results = assemble_common_results(
         case,
@@ -53,6 +73,35 @@ def fixture() -> tuple[PanelMesh, object]:
         loads,
     )
     return mesh, results
+
+
+def results_for_mesh(mesh: PanelMesh, *, case_id: str = "artifact") -> object:
+    """Build stable synthetic results aligned with a loaded mesh."""
+    face_count = mesh.n_faces
+    geometry = mesh.geometry
+    case = CommonCasePayload(
+        case_id=case_id,
+        Aref_m2=1.0,
+        moment_reference_stl_m=[0, 0, 0],
+        Lref_Cl_m=1.0,
+        Lref_Cm_m=1.0,
+        Lref_Cn_m=1.0,
+        alpha_t_deg=0.0,
+        beta_t_deg=0.0,
+    )
+    return assemble_common_results(
+        case,
+        ModelCasePayload("synthetic"),
+        geometry,
+        PanelFlowState([1, 0, 0], np.zeros(face_count, dtype=bool)),
+        LocalLoads(
+            np.tile([[2.0, 0.0, 0.0]], (face_count, 1)),
+            {
+                "Cp_n": np.full(face_count, 2.0),
+                "theta_deg": np.zeros(face_count),
+            },
+        ),
+    )
 
 
 class ArtifactProjectionTests(unittest.TestCase):
@@ -81,6 +130,72 @@ class ArtifactProjectionTests(unittest.TestCase):
         np.testing.assert_array_equal(vtp.faces, [3, 0, 1, 2, 3, 1, 3, 2])
         np.testing.assert_array_equal(vtp.cell_data["C_face_stl"], [[1, 0, 0], [1, 0, 0]])
         self.assertFalse(vtp.cell_data["C_face_stl"].flags.writeable)
+
+    def test_unicode_stl_source_writes_and_round_trips_through_vtk(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "日本語ディレクトリ" / "板_日本語.stl"
+            source.parent.mkdir()
+            shutil.copyfile(FIXTURE_STL, source)
+            loaded = load_panel_mesh((source,), 1.0)
+            ascii_loaded = load_panel_mesh((FIXTURE_STL,), 1.0)
+            self.assertEqual(
+                loaded.geometry_fingerprint,
+                ascii_loaded.geometry_fingerprint,
+            )
+
+            projection = project_vtp_artifact(
+                loaded.mesh,
+                results_for_mesh(loaded.mesh),
+                ArtifactProjectionPolicy(
+                    "beta_tan",
+                    "signature",
+                    "not_used",
+                    "1.0",
+                ),
+            )
+            output = Path(temp_dir) / "unicode-path.vtp"
+            write_vtp_projection(output, projection)
+
+            stored = str(pv.read(output).field_data["stl_paths_json"][0])
+            self.assertTrue(stored.isascii())
+            self.assertEqual([str(source.resolve())], json.loads(stored))
+
+    def test_non_ascii_string_fields_round_trip_without_generic_escaping(self) -> None:
+        mesh, results = fixture(case_id="ケース")
+        projection = project_vtp_artifact(
+            mesh,
+            results,
+            ArtifactProjectionPolicy(
+                "beta_tan",
+                "signature",
+                "not_used",
+                "1.0",
+                vtp_field_data={"model_note": ["モデル固有の説明"]},
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "unicode-fields.vtp"
+            write_vtp_projection(output, projection)
+            poly = pv.read(output)
+
+        self.assertEqual("ケース", str(poly.field_data["case_id"][0]))
+        self.assertEqual("モデル固有の説明", str(poly.field_data["model_note"][0]))
+
+    def test_ascii_stl_path_json_remains_unchanged_after_vtp_write(self) -> None:
+        mesh, results = fixture()
+        projection = project_vtp_artifact(
+            mesh,
+            results,
+            ArtifactProjectionPolicy("beta_tan", "signature", "not_used", "1.0"),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "ascii-fields.vtp"
+            write_vtp_projection(output, projection)
+            poly = pv.read(output)
+
+        self.assertEqual('["plate.stl"]', str(poly.field_data["stl_paths_json"][0]))
 
     def test_policy_additions_cannot_override_common_fields(self) -> None:
         mesh, results = fixture()
