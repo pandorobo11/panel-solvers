@@ -57,8 +57,11 @@ the wheel-bundled site.
 The wheel and sdist checks also require Apache-2.0 metadata, author or maintainer,
 the canonical `pandorobo11/panelsolver` project URL, license/notice files, docs
 sources, MkDocs configuration, build helpers, examples, and the deterministic
-US1976 generator and generated source. MkDocs and LaTeX-to-MathML tooling are
-build/development dependencies, not runtime dependencies.
+US1976 generator, generated source, and pinned PDAS reference snapshot. The
+wheel and documentation ZIP must contain the audited license mapping and full
+license texts for every built-in MkDocs theme asset. MkDocs and
+LaTeX-to-MathML tooling are build/development dependencies, not runtime
+dependencies.
 
 ## Release gates
 
@@ -75,7 +78,9 @@ Before publishing, CI verifies:
 - unchanged regression, compatibility, scheduler, rtree, and available Embree
   behavior on Ubuntu, Windows, and macOS;
 - annotated tag, matching version and lock, nonempty matching CHANGELOG section,
-  exact protected-main target, and completely successful exact-main push CI;
+  exact protected-main target, and a successful latest `CI` workflow run for
+  the exact commit from a normal `main` push; tag and pull-request runs and
+  obsolete earlier runs are not release-acceptance inputs;
 - repository identity `pandorobo11/panelsolver`, zero open non-PR issues, and
   zero open pull requests.
 
@@ -103,10 +108,12 @@ This foundation does not change `0.1.0`, create a tag, or publish a release.
 ## Distribution licensing boundary
 
 The Python wheel declares runtime dependencies but does not vendor their source
-or binaries. This includes PySide6 and Qt, which pip installs as separate
-distributions under their upstream terms. Before publishing a standalone bundle
-that embeds Qt or another dependency, perform a separate audit for those exact
-files. The root `LICENSE` and `THIRD_PARTY_NOTICES.md` remain authoritative.
+or binaries. The separately audited static assets inside the generated offline
+documentation are the exception and carry their own license texts under
+`THIRD_PARTY_LICENSES/`. PySide6 and Qt remain separate distributions installed
+by pip. Before publishing a standalone bundle that embeds Qt or another
+dependency, perform a separate audit for those exact files. The root `LICENSE`,
+`THIRD_PARTY_NOTICES.md`, and third-party license directory remain authoritative.
 
 ## Roll back to pinned legacy implementations
 

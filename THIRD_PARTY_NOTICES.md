@@ -56,6 +56,30 @@ the solver documentation. Those citations are technical provenance; they are
 not third-party software licenses. The project does not redistribute source
 publication figures or publication prose.
 
+## Offline documentation static assets
+
+The wheel and standalone documentation ZIP redistribute the generated MkDocs
+site, including theme CSS, JavaScript, images, and webfonts. This content is a
+vendored release-artifact exception to the separately installed dependency
+boundary described below. The site uses the built-in `mkdocs` theme from the
+locked MkDocs 1.6.1 distribution; it does not include the ReadTheDocs/Sphinx
+RTD theme, Lato, Roboto Slab, jQuery, or HTML5 Shiv assets.
+
+| Redistributed content | Copyright holder | License | Required preservation |
+|---|---|---|---|
+| MkDocs 1.6.1 templates, base CSS/JS, favicon, and grid image | Copyright © 2014-present Tom Christie | BSD-2-Clause | copyright, conditions, and disclaimer |
+| Bootswatch 5.3.2 Cerulean CSS | Copyright © 2013 Thomas Park | MIT | copyright and permission notice |
+| Bootstrap 5.3.2 CSS and JavaScript | Copyright © 2011-2023 The Bootstrap Authors | MIT | copyright and permission notice |
+| Popper 2.11.8 code embedded in the Bootstrap JavaScript bundle | Copyright © 2019 Federico Zivolo | MIT | copyright and permission notice |
+| Font Awesome Free 6.5.1 CSS and webfonts | Copyright © 2023 Fonticons, Inc. | MIT for code; SIL OFL 1.1 for webfonts | MIT notice and complete OFL text; reserved font name retained |
+
+The required copyright notices and license texts are preserved under
+`THIRD_PARTY_LICENSES/`. That directory and this notice are copied into
+`panelsolver/_docs_site/` in the wheel and therefore into the byte-equivalent
+documentation ZIP. The same files are also recorded as wheel metadata license
+files. They are not covered or relicensed by Panel Solver's project
+Apache-2.0 `LICENSE`.
+
 ## Runtime dependencies
 
 The runtime dependencies declared in `pyproject.toml`--NetworkX, NumPy,
@@ -65,8 +89,9 @@ remain subject to their respective upstream licenses and are not relicensed by
 Panel Solver. Consult each installed distribution and its upstream project for
 its applicable license and notices.
 
-The panelsolver wheel does not contain dependency source or binaries. In
-particular, it declares `PySide6==6.9.3` as an external dependency and does not
-contain PySide6 or Qt binaries. A future standalone application bundle, for
-example one produced with PyInstaller, would require a separate license and
-notice audit for every bundled dependency and binary.
+Except for the audited offline-documentation assets above, the panelsolver
+wheel does not contain runtime-dependency source or binaries. In particular,
+it declares `PySide6==6.9.3` as an external dependency and does not contain
+PySide6 or Qt binaries. A future standalone application bundle, for example one
+produced with PyInstaller, would require a separate license and notice audit
+for every bundled dependency and binary.

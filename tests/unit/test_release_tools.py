@@ -12,6 +12,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.release_tools import (
+    _DOCS_NOTICE_MARKERS,
+    _DOCS_REQUIRED_LICENSES,
+    _DOCS_THEME_ASSET_LICENSES,
+    _github_api_json,
     create_dist_manifest,
     create_release_archives,
     expected_tag,
@@ -24,7 +28,9 @@ from scripts.release_tools import (
     verify_dist_manifest,
     verify_github_release_state,
     verify_lock_version,
+    verify_offline_documentation_licenses,
     verify_release_tag,
+    verify_sdist_contents,
     verify_tag,
     verify_wheel_contents,
     write_deterministic_zip,
@@ -53,9 +59,19 @@ class ReleaseToolTests(unittest.TestCase):
         )
         for name, content in (
             ("LICENSE", "license\n"),
-            ("THIRD_PARTY_NOTICES.md", "notices\n"),
+            (
+                "THIRD_PARTY_NOTICES.md",
+                "notices\n" + "\n".join(_DOCS_NOTICE_MARKERS) + "\n",
+            ),
         ):
             (repository / name).write_text(content, encoding="utf-8")
+        license_directory = repository / "THIRD_PARTY_LICENSES"
+        license_directory.mkdir()
+        for license_name in _DOCS_REQUIRED_LICENSES:
+            (license_directory / license_name).write_text(
+                f"third-party license: {license_name}\n",
+                encoding="utf-8",
+            )
         examples = repository / "examples"
         required = (
             "README.md",
@@ -100,15 +116,33 @@ class ReleaseToolTests(unittest.TestCase):
             "solvers/fmf.html": b"fmf",
             "solvers/hypersonic.html": b"hypersonic",
             "LICENSE": b"license\n",
-            "THIRD_PARTY_NOTICES.md": b"notices\n",
+            "THIRD_PARTY_NOTICES.md": (
+                repository / "THIRD_PARTY_NOTICES.md"
+            ).read_bytes(),
         }
+        docs.update(
+            {asset_name: b"audited theme asset\n" for asset_name in _DOCS_THEME_ASSET_LICENSES}
+        )
+        docs.update(
+            {
+                f"THIRD_PARTY_LICENSES/{license_name}": (
+                    repository / "THIRD_PARTY_LICENSES" / license_name
+                ).read_bytes()
+                for license_name in _DOCS_REQUIRED_LICENSES
+            }
+        )
         with zipfile.ZipFile(wheel, "w") as archive:
             archive.writestr(f"{dist_info}/METADATA", metadata)
             archive.writestr(f"{dist_info}/licenses/LICENSE", b"license\n")
             archive.writestr(
                 f"{dist_info}/licenses/THIRD_PARTY_NOTICES.md",
-                b"notices\n",
+                (repository / "THIRD_PARTY_NOTICES.md").read_bytes(),
             )
+            for license_name in _DOCS_REQUIRED_LICENSES:
+                archive.writestr(
+                    f"{dist_info}/licenses/THIRD_PARTY_LICENSES/{license_name}",
+                    (repository / "THIRD_PARTY_LICENSES" / license_name).read_bytes(),
+                )
             for relative, content in docs.items():
                 archive.writestr(f"panelsolver/_docs_site/{relative}", content)
         return wheel
@@ -120,6 +154,8 @@ class ReleaseToolTests(unittest.TestCase):
         name: str = "panelsolver",
         version: str = "2.3.4",
         filename: str | None = None,
+        complete: bool = False,
+        include_pdas: bool = True,
     ) -> Path:
         dist = repository / "dist"
         dist.mkdir(exist_ok=True)
@@ -129,6 +165,33 @@ class ReleaseToolTests(unittest.TestCase):
             info = tarfile.TarInfo(f"panelsolver-{version}/PKG-INFO")
             info.size = len(payload)
             archive.addfile(info, io.BytesIO(payload))
+            if complete:
+                required_sources = {
+                    "pyproject.toml",
+                    "LICENSE",
+                    "THIRD_PARTY_NOTICES.md",
+                    "mkdocs.yml",
+                    "src/panelsolver_docs_math.py",
+                    "hatch_build.py",
+                    "docs/index.md",
+                    "docs/solvers/fmf.md",
+                    "docs/solvers/hypersonic.md",
+                    "src/panelsolver/docs_site.py",
+                    "src/panelsolver/models/_sentman_atmosphere_data.py",
+                    "scripts/generate_us1976_sentman_table.py",
+                    "examples/README.md",
+                    "examples/fmf/basic.csv",
+                    "examples/hypersonic/basic.csv",
+                }
+                if include_pdas:
+                    required_sources.add(
+                        "tools/reference/pdas/bigtables_v1_5.py"
+                    )
+                for relative in sorted(required_sources):
+                    source_info = tarfile.TarInfo(
+                        f"panelsolver-{version}/{relative}"
+                    )
+                    archive.addfile(source_info, io.BytesIO())
         return sdist
 
     def prepare_artifacts(self, repository: Path) -> tuple[Path, Path, Path, Path]:
@@ -219,11 +282,92 @@ class ReleaseToolTests(unittest.TestCase):
             with zipfile.ZipFile(first[0]) as archive:
                 self.assertEqual(b"home", archive.read("index.html"))
                 self.assertIn("LICENSE", archive.namelist())
+                for license_name in _DOCS_REQUIRED_LICENSES:
+                    self.assertIn(
+                        f"THIRD_PARTY_LICENSES/{license_name}",
+                        archive.namelist(),
+                    )
             with zipfile.ZipFile(first[1]) as archive:
                 names = archive.namelist()
                 self.assertIn("examples/fmf/flow_modes.csv", names)
                 self.assertIn("examples/hypersonic/pressure_models.csv", names)
                 self.assertFalse(any(name.endswith((".npz", ".xls")) for name in names))
+
+    def test_wheel_and_docs_zip_preserve_audited_theme_licenses(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            wheel = self.write_wheel(repository)
+            self.write_sdist(repository)
+            verify_wheel_contents(repository, wheel)
+            docs_zip, _examples_zip = create_release_archives(repository)
+            with zipfile.ZipFile(wheel) as archive:
+                names = set(archive.namelist())
+                for license_name in _DOCS_REQUIRED_LICENSES:
+                    docs_license = (
+                        "panelsolver/_docs_site/THIRD_PARTY_LICENSES/"
+                        f"{license_name}"
+                    )
+                    metadata_license = next(
+                        name
+                        for name in names
+                        if name.endswith(
+                            f"licenses/THIRD_PARTY_LICENSES/{license_name}"
+                        )
+                    )
+                    self.assertNotEqual(
+                        archive.read("panelsolver/_docs_site/LICENSE"),
+                        archive.read(docs_license),
+                    )
+                    self.assertEqual(
+                        archive.read(docs_license),
+                        archive.read(metadata_license),
+                    )
+            with zipfile.ZipFile(docs_zip) as archive:
+                verify_offline_documentation_licenses(
+                    set(archive.namelist()),
+                    archive.read,
+                )
+
+    def test_unaudited_theme_asset_or_missing_license_fails_release_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            wheel = self.write_wheel(repository)
+            with zipfile.ZipFile(wheel, "a") as archive:
+                archive.writestr(
+                    "panelsolver/_docs_site/css/unlicensed-theme.css",
+                    b"body {}\n",
+                )
+            with self.assertRaisesRegex(RuntimeError, "unaudited theme assets"):
+                verify_wheel_contents(repository, wheel)
+
+        members = {
+            *set(_DOCS_THEME_ASSET_LICENSES),
+            "LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+        }
+        payloads = {
+            "LICENSE": b"project license\n",
+            "THIRD_PARTY_NOTICES.md": (
+                "\n".join(_DOCS_NOTICE_MARKERS) + "\n"
+            ).encode(),
+        }
+        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
+
+    def test_sdist_requires_the_pdas_regeneration_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            complete = self.write_sdist(repository, complete=True)
+            verify_sdist_contents(repository, complete)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            incomplete = self.write_sdist(
+                repository,
+                complete=True,
+                include_pdas=False,
+            )
+            with self.assertRaisesRegex(RuntimeError, "bigtables_v1_5.py"):
+                verify_sdist_contents(repository, incomplete)
 
     def test_manifest_v2_generation_and_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -427,12 +571,44 @@ class ReleaseToolTests(unittest.TestCase):
                 verify_github_release_state()
         with self.assertRaisesRegex(RuntimeError, "repository mismatch"):
             verify_github_release_state("pandorobo11/panel-solvers")
+        with patch(
+            "scripts.release_tools._github_api_json",
+            return_value={"full_name": "someone/panelsolver"},
+        ), self.assertRaisesRegex(RuntimeError, "canonical repository"):
+            verify_github_release_state()
 
-    def test_github_gate_requires_completely_successful_exact_main_push_ci(self) -> None:
+    def test_github_gate_accepts_only_latest_exact_main_push_ci(self) -> None:
         canonical = {"full_name": "pandorobo11/panelsolver"}
-        green = {
+        commit = "a" * 40
+
+        def run(
+            *,
+            number: int,
+            status: str = "completed",
+            conclusion: str | None = "success",
+            branch: str = "main",
+            event: str = "push",
+        ) -> dict[str, object]:
+            return {
+                "id": number * 10,
+                "run_number": number,
+                "run_attempt": 1,
+                "event": event,
+                "head_branch": branch,
+                "head_sha": commit,
+                "status": status,
+                "conclusion": conclusion,
+            }
+
+        green_with_current_tag = {
             "workflow_runs": [
-                {"name": "CI", "status": "completed", "conclusion": "success"}
+                run(number=20),
+                run(
+                    number=21,
+                    status="in_progress",
+                    conclusion=None,
+                    branch="v2.3.4",
+                ),
             ]
         }
         with patch(
@@ -441,24 +617,51 @@ class ReleaseToolTests(unittest.TestCase):
                 canonical,
                 {"total_count": 0},
                 {"total_count": 0},
-                green,
+                green_with_current_tag,
+            ],
+        ) as api:
+            verify_github_release_state(expected_commit=commit)
+        self.assertEqual(
+            "repos/pandorobo11/panelsolver/actions/workflows/ci.yml/runs"
+            f"?branch=main&event=push&head_sha={commit}&per_page=100",
+            api.call_args_list[-1].args[0],
+        )
+
+        obsolete_failure_then_green = {
+            "workflow_runs": [
+                run(number=10, conclusion="failure"),
+                run(number=11),
+            ]
+        }
+        with patch(
+            "scripts.release_tools._github_api_json",
+            side_effect=[
+                canonical,
+                {"total_count": 0},
+                {"total_count": 0},
+                obsolete_failure_then_green,
             ],
         ):
-            verify_github_release_state(expected_commit="a" * 40)
-        for runs in (
-            {"workflow_runs": []},
-            {
+            verify_github_release_state(expected_commit=commit)
+
+        failing_cases = {
+            "main push failure": {
+                "workflow_runs": [run(number=30, conclusion="failure")]
+            },
+            "main push running": {
                 "workflow_runs": [
-                    {"name": "CI", "status": "in_progress", "conclusion": None}
+                    run(number=30, status="in_progress", conclusion=None)
                 ]
             },
-            {
+            "no matching main push": {"workflow_runs": []},
+            "pull request success only": {
                 "workflow_runs": [
-                    {"name": "CI", "status": "completed", "conclusion": "failure"}
+                    run(number=30, branch="feature", event="pull_request")
                 ]
             },
-        ):
-            with self.subTest(runs=runs), patch(
+        }
+        for case, runs in failing_cases.items():
+            with self.subTest(case=case), patch(
                 "scripts.release_tools._github_api_json",
                 side_effect=[
                     canonical,
@@ -467,7 +670,41 @@ class ReleaseToolTests(unittest.TestCase):
                     runs,
                 ],
             ), self.assertRaisesRegex(RuntimeError, "exact-main CI"):
-                verify_github_release_state(expected_commit="b" * 40)
+                verify_github_release_state(expected_commit=commit)
+
+    def test_github_api_errors_and_invalid_json_fail_closed(self) -> None:
+        failures = (
+            subprocess.CompletedProcess(
+                ["gh", "api"],
+                1,
+                stdout="",
+                stderr="HTTP 403: Resource not accessible by integration",
+            ),
+            subprocess.CompletedProcess(
+                ["gh", "api"],
+                1,
+                stdout="",
+                stderr="HTTP 403: API rate limit exceeded",
+            ),
+        )
+        for result in failures:
+            with self.subTest(stderr=result.stderr), patch(
+                "scripts.release_tools.subprocess.run",
+                return_value=result,
+            ), self.assertRaisesRegex(RuntimeError, "GitHub API request failed"):
+                _github_api_json("repos/pandorobo11/panelsolver")
+
+        invalid_json = subprocess.CompletedProcess(
+            ["gh", "api"],
+            0,
+            stdout="not-json",
+            stderr="",
+        )
+        with patch(
+            "scripts.release_tools.subprocess.run",
+            return_value=invalid_json,
+        ), self.assertRaisesRegex(RuntimeError, "invalid JSON"):
+            _github_api_json("repos/pandorobo11/panelsolver")
 
     def test_smoke_environment_is_fixed_and_removes_product_tuning(self) -> None:
         inherited = {

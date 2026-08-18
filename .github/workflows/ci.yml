@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     needs: artifact
@@ -78,6 +81,11 @@ jobs:
 
   artifact:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -259,6 +267,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
+      issues: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1

@@ -6,6 +6,10 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Harden the first-release gates by accepting only the latest exact-commit
+  `main` push CI run, bundling audited offline-documentation asset licenses,
+  making US1976 regeneration executable from the sdist, and granting release
+  validation only its required GitHub API read permissions.
 - Add the first-release foundation: strict offline documentation bundled in the
   wheel, shared GUI Help/About, deterministic documentation and examples ZIPs,
   manifest schema v2, and build-once release verification.

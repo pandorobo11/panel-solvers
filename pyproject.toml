@@ -5,7 +5,7 @@ description = "Shared panel-solver platform for free-molecular and hypersonic fl
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_LICENSES/*"]
 authors = [
   { name = "pandorobo11" },
 ]
@@ -71,12 +71,14 @@ include = [
   "/LICENSE",
   "/README.md",
   "/THIRD_PARTY_NOTICES.md",
+  "/THIRD_PARTY_LICENSES",
   "/docs",
   "/examples",
   "/hatch_build.py",
   "/mkdocs.yml",
   "/pyproject.toml",
   "/scripts/generate_us1976_sentman_table.py",
+  "/tools/reference/pdas/bigtables_v1_5.py",
   "/src",
 ]
 
