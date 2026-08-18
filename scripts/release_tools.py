@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import tomllib
 import zipfile
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 _CANONICAL_SEPARATOR = re.compile(r"[-_.]+")
@@ -26,6 +27,44 @@ _DIST_MANIFEST_VERSION = 2
 _REPOSITORY_NAME = "pandorobo11/panelsolver"
 _ARTIFACT_KINDS = ("wheel", "sdist", "docs", "examples")
 _ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+_CI_WORKFLOW = "ci.yml"
+_PROTECTED_BRANCH = "main"
+_DOCS_LICENSE_DIRECTORY = "THIRD_PARTY_LICENSES"
+_DOCS_THEME_ASSET_LICENSES = {
+    "css/base.css": ("MKDOCS-BSD-2-CLAUSE.txt",),
+    "css/bootstrap.min.css": ("BOOTSWATCH-MIT.txt", "BOOTSTRAP-MIT.txt"),
+    "css/bootstrap.min.css.map": ("BOOTSWATCH-MIT.txt", "BOOTSTRAP-MIT.txt"),
+    "css/brands.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "css/fontawesome.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "css/solid.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "css/v4-font-face.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "img/favicon.ico": ("MKDOCS-BSD-2-CLAUSE.txt",),
+    "img/grid.png": ("MKDOCS-BSD-2-CLAUSE.txt",),
+    "js/base.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
+    "js/bootstrap.bundle.min.js": ("BOOTSTRAP-MIT.txt", "POPPER-MIT.txt"),
+    "js/bootstrap.bundle.min.js.map": ("BOOTSTRAP-MIT.txt", "POPPER-MIT.txt"),
+    "js/darkmode.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
+    "webfonts/fa-brands-400.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-brands-400.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-regular-400.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-regular-400.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-solid-900.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-solid-900.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-v4compatibility.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "webfonts/fa-v4compatibility.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
+}
+_DOCS_REQUIRED_LICENSES = frozenset(
+    license_name
+    for license_names in _DOCS_THEME_ASSET_LICENSES.values()
+    for license_name in license_names
+)
+_DOCS_NOTICE_MARKERS = (
+    "MkDocs 1.6.1",
+    "Bootswatch 5.3.2",
+    "Bootstrap 5.3.2",
+    "Popper 2.11.8",
+    "Font Awesome Free 6.5.1",
+)
 
 
 def canonical_distribution_name(value: str) -> str:
@@ -184,6 +223,61 @@ def write_deterministic_zip(
     return output
 
 
+def verify_offline_documentation_licenses(
+    member_names: set[str],
+    read_member: Callable[[str], bytes],
+) -> None:
+    """Require a complete license mapping for every bundled theme asset."""
+    theme_prefixes = ("css/", "img/", "js/", "webfonts/")
+    actual_assets = {
+        name for name in member_names if name.startswith(theme_prefixes)
+    }
+    expected_assets = set(_DOCS_THEME_ASSET_LICENSES)
+    missing_assets = expected_assets - actual_assets
+    unknown_assets = actual_assets - expected_assets
+    if missing_assets:
+        raise RuntimeError(
+            "offline documentation is missing audited theme assets: "
+            f"{sorted(missing_assets)}"
+        )
+    if unknown_assets:
+        raise RuntimeError(
+            "offline documentation has unaudited theme assets: "
+            f"{sorted(unknown_assets)}"
+        )
+
+    missing_licenses = {
+        license_name
+        for license_name in _DOCS_REQUIRED_LICENSES
+        if f"{_DOCS_LICENSE_DIRECTORY}/{license_name}" not in member_names
+    }
+    if missing_licenses:
+        raise RuntimeError(
+            "offline documentation is missing third-party license texts: "
+            f"{sorted(missing_licenses)}"
+        )
+    for license_name in _DOCS_REQUIRED_LICENSES:
+        license_path = f"{_DOCS_LICENSE_DIRECTORY}/{license_name}"
+        if not read_member(license_path).strip():
+            raise RuntimeError(
+                f"offline documentation license text is empty: {license_path}"
+            )
+        if read_member(license_path) == read_member("LICENSE"):
+            raise RuntimeError(
+                f"third-party license must be distinct from project LICENSE: {license_path}"
+            )
+
+    notices = read_member("THIRD_PARTY_NOTICES.md").decode("utf-8")
+    missing_markers = [
+        marker for marker in _DOCS_NOTICE_MARKERS if marker not in notices
+    ]
+    if missing_markers:
+        raise RuntimeError(
+            "offline documentation notices omit audited components: "
+            f"{missing_markers}"
+        )
+
+
 def _extract_wheel_documentation(wheel: Path, destination: Path) -> None:
     prefix = "panelsolver/_docs_site/"
     with zipfile.ZipFile(wheel) as archive:
@@ -282,6 +376,8 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
         missing = required - set(names)
         if missing:
             raise RuntimeError(f"{kind} ZIP is missing required members: {sorted(missing)}")
+        if kind == "docs":
+            verify_offline_documentation_licenses(set(names), archive.read)
 
 
 def _verify_docs_zip_matches_wheel(wheel: Path, docs_zip: Path) -> None:
@@ -656,6 +752,16 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             raise RuntimeError(
                 f"wheel is missing packaged documentation: {sorted(missing)}"
             )
+        docs_prefix = "panelsolver/_docs_site/"
+        docs_names = {
+            name.removeprefix(docs_prefix)
+            for name in names
+            if name.startswith(docs_prefix) and not name.endswith("/")
+        }
+        verify_offline_documentation_licenses(
+            docs_names,
+            lambda name: archive.read(f"{docs_prefix}{name}"),
+        )
         metadata_files = [
             name for name in names if name.endswith(".dist-info/METADATA")
         ]
@@ -668,6 +774,14 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
         for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
             if f"{license_prefix}{legal_name}" not in names:
                 raise RuntimeError(f"wheel is missing license file {legal_name}")
+        for license_name in _DOCS_REQUIRED_LICENSES:
+            license_path = (
+                f"{license_prefix}{_DOCS_LICENSE_DIRECTORY}/{license_name}"
+            )
+            if license_path not in names:
+                raise RuntimeError(
+                    f"wheel metadata is missing third-party license {license_name}"
+                )
 
     expected_name, expected_version = project_identity(repository)
     if (
@@ -717,6 +831,7 @@ def verify_sdist_contents(repository: Path, sdist: Path) -> None:
         f"{root}/src/panelsolver/docs_site.py",
         f"{root}/src/panelsolver/models/_sentman_atmosphere_data.py",
         f"{root}/scripts/generate_us1976_sentman_table.py",
+        f"{root}/tools/reference/pdas/bigtables_v1_5.py",
         f"{root}/examples/README.md",
         f"{root}/examples/fmf/basic.csv",
         f"{root}/examples/hypersonic/basic.csv",
@@ -779,6 +894,26 @@ def verify_built_distributions(
     verify_sdist_contents(repository, sdist)
     with tempfile.TemporaryDirectory(prefix="panelsolver-sdist-rebuild-") as temporary:
         root = Path(temporary)
+        extracted = root / "source"
+        extracted.mkdir()
+        with tarfile.open(sdist, "r:gz") as archive:
+            archive.extractall(extracted, filter="data")
+        source_roots = [path for path in extracted.iterdir() if path.is_dir()]
+        if len(source_roots) != 1:
+            raise RuntimeError(
+                "extracted sdist must have exactly one source root: "
+                f"{source_roots}"
+            )
+        source_root = source_roots[0]
+        subprocess.run(
+            [
+                sys.executable,
+                "scripts/generate_us1976_sentman_table.py",
+                "--check",
+            ],
+            cwd=source_root,
+            check=True,
+        )
         rebuilt_dir = root / "dist"
         subprocess.run(
             [
@@ -848,26 +983,43 @@ def verify_github_release_state(
     if expected_commit is not None:
         commit = _validated_commit_sha(expected_commit)
         runs = _github_api_json(
-            f"repos/{repository_name}/actions/runs?event=push&head_sha={commit}&per_page=100"
+            f"repos/{repository_name}/actions/workflows/{_CI_WORKFLOW}/runs"
+            f"?branch={_PROTECTED_BRANCH}&event=push&head_sha={commit}&per_page=100"
         )
         if not isinstance(runs, dict) or not isinstance(runs.get("workflow_runs"), list):
             raise RuntimeError("GitHub exact-main CI query returned an invalid payload")
-        exact_runs = runs["workflow_runs"]
-        if not exact_runs:
-            raise RuntimeError(f"exact-main CI has no push workflow run for {commit}")
-        failures = [
-            {
-                "name": run.get("name"),
-                "status": run.get("status"),
-                "conclusion": run.get("conclusion"),
-            }
-            for run in exact_runs
-            if not isinstance(run, dict)
-            or run.get("status") != "completed"
-            or run.get("conclusion") != "success"
+        if any(not isinstance(run, dict) for run in runs["workflow_runs"]):
+            raise RuntimeError("GitHub exact-main CI query returned an invalid run")
+        main_push_runs = [
+            run
+            for run in runs["workflow_runs"]
+            if run.get("event") == "push"
+            and run.get("head_branch") == _PROTECTED_BRANCH
+            and run.get("head_sha") == commit
         ]
-        if failures:
-            raise RuntimeError(f"exact-main CI is not completely successful: {failures}")
+        if not main_push_runs:
+            raise RuntimeError(f"exact-main CI has no main push workflow run for {commit}")
+        if any(
+            not isinstance(run.get(field), int)
+            for run in main_push_runs
+            for field in ("run_number", "run_attempt", "id")
+        ):
+            raise RuntimeError("GitHub exact-main CI run ordering fields are invalid")
+        accepted = max(
+            main_push_runs,
+            key=lambda run: (run["run_number"], run["run_attempt"], run["id"]),
+        )
+        if accepted.get("status") != "completed" or accepted.get("conclusion") != "success":
+            summary = {
+                "id": accepted.get("id"),
+                "run_number": accepted.get("run_number"),
+                "run_attempt": accepted.get("run_attempt"),
+                "status": accepted.get("status"),
+                "conclusion": accepted.get("conclusion"),
+            }
+            raise RuntimeError(
+                f"latest exact-main CI run is not successful: {summary}"
+            )
 
 
 def _replace_version(repository: Path, old: str, new: str) -> None:

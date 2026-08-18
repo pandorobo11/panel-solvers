@@ -74,6 +74,22 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertIn("verify-github-state", job)
                 self.assertIn("--expected-commit", job)
 
+    def test_tag_validation_jobs_have_minimum_github_api_permissions(self) -> None:
+        artifact_job = self.job("artifact")
+        release_job = self.job("release")
+        for job_name, job in (("artifact", artifact_job), ("release", release_job)):
+            with self.subTest(job=job_name):
+                self.assertIn("actions: read", job)
+                self.assertIn("issues: read", job)
+                self.assertIn("pull-requests: read", job)
+                self.assertNotIn("write-all", job)
+        self.assertIn("contents: read", artifact_job)
+        self.assertNotIn("contents: write", artifact_job)
+        self.assertIn("contents: write", release_job)
+        self.assertNotIn("actions: write", self.workflow)
+        self.assertNotIn("issues: write", self.workflow)
+        self.assertNotIn("pull-requests: write", self.workflow)
+
     def test_obsolete_release_identity_is_not_reintroduced(self) -> None:
         self.assertNotIn("panel-solvers-dist-", self.workflow)
         self.assertNotIn("panel-solvers-docs-", self.workflow)

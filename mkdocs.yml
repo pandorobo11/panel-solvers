@@ -3,7 +3,7 @@ site_description: Offline documentation for the panelsolver distribution.
 docs_dir: docs
 use_directory_urls: false
 theme:
-  name: readthedocs
+  name: mkdocs
   highlightjs: false
 plugins: []
 markdown_extensions:

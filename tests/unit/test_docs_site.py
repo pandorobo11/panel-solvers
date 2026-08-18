@@ -67,6 +67,11 @@ class DocumentationSiteTests(unittest.TestCase):
             (ROOT / "THIRD_PARTY_NOTICES.md").read_bytes(),
             (self.site / "THIRD_PARTY_NOTICES.md").read_bytes(),
         )
+        for license_file in (ROOT / "THIRD_PARTY_LICENSES").iterdir():
+            with self.subTest(license_file=license_file.name):
+                packaged = self.site / "THIRD_PARTY_LICENSES" / license_file.name
+                self.assertTrue(packaged.is_file())
+                self.assertEqual(license_file.read_bytes(), packaged.read_bytes())
 
     def test_html_and_css_require_no_network_resources(self) -> None:
         for html in self.site.rglob("*.html"):

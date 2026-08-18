@@ -79,6 +79,10 @@ def build_documentation_site(project_root: Path, site_dir: Path) -> None:
         (staged_site / "404.html").unlink(missing_ok=True)
         for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
             shutil.copyfile(project_root / legal_name, staged_site / legal_name)
+        shutil.copytree(
+            project_root / "THIRD_PARTY_LICENSES",
+            staged_site / "THIRD_PARTY_LICENSES",
+        )
         if site_dir.exists():
             shutil.rmtree(site_dir)
         shutil.copytree(staged_site, site_dir)
