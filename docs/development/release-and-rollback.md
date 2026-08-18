@@ -61,7 +61,9 @@ US1976 generator, generated source, and pinned PDAS reference snapshot. The
 wheel and documentation ZIP must contain the audited license mapping and full
 license texts for every built-in MkDocs theme asset. MkDocs and
 LaTeX-to-MathML tooling are build/development dependencies, not runtime
-dependencies.
+dependencies. Their versions are exact-pinned because the generated static
+assets, MathML, and third-party license inventory are part of the audited
+release artifact contract.
 
 ## Release gates
 

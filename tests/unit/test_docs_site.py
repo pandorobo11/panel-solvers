@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import re
 import tempfile
+import tomllib
 import unittest
 from html.parser import HTMLParser
+from importlib.metadata import version as distribution_version
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import unquote, urlsplit
 
 from panelsolver.docs_site import (
@@ -72,6 +75,39 @@ class DocumentationSiteTests(unittest.TestCase):
                 packaged = self.site / "THIRD_PARTY_LICENSES" / license_file.name
                 self.assertTrue(packaged.is_file())
                 self.assertEqual(license_file.read_bytes(), packaged.read_bytes())
+
+    def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
+        with (ROOT / "pyproject.toml").open("rb") as stream:
+            project = tomllib.load(stream)
+        for requirement in ("mkdocs==1.6.1", "latex2mathml==3.81.0"):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, project["dependency-groups"]["docs"])
+                self.assertIn(requirement, project["build-system"]["requires"])
+        self.assertEqual("1.6.1", distribution_version("mkdocs"))
+        self.assertEqual("3.81.0", distribution_version("latex2mathml"))
+
+    def test_wrong_mkdocs_version_fails_before_documentation_build(self) -> None:
+        versions = {"mkdocs": "1.7.0", "latex2mathml": "3.81.0"}
+        with tempfile.TemporaryDirectory() as temporary, patch(
+            "panelsolver.docs_site.distribution_version",
+            side_effect=versions.__getitem__,
+        ), self.assertRaisesRegex(
+            RuntimeError,
+            r"Offline documentation requires audited MkDocs 1\.6\.1; found 1\.7\.0\.",
+        ):
+            build_documentation_site(ROOT, Path(temporary) / "site")
+
+    def test_wrong_latex2mathml_version_fails_before_documentation_build(self) -> None:
+        versions = {"mkdocs": "1.6.1", "latex2mathml": "3.82.0"}
+        with tempfile.TemporaryDirectory() as temporary, patch(
+            "panelsolver.docs_site.distribution_version",
+            side_effect=versions.__getitem__,
+        ), self.assertRaisesRegex(
+            RuntimeError,
+            r"Offline documentation requires audited latex2mathml 3\.81\.0; "
+            r"found 3\.82\.0\.",
+        ):
+            build_documentation_site(ROOT, Path(temporary) / "site")
 
     def test_html_and_css_require_no_network_resources(self) -> None:
         for html in self.site.rglob("*.html"):

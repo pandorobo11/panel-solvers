@@ -8,8 +8,15 @@ import sys
 import tempfile
 from contextlib import ExitStack
 from importlib import resources
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as distribution_version
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Self
+
+_AUDITED_DOCUMENTATION_BUILD_DEPENDENCIES = (
+    ("mkdocs", "MkDocs", "1.6.1"),
+    ("latex2mathml", "latex2mathml", "3.81.0"),
+)
 
 
 class DocumentationSiteError(RuntimeError):
@@ -37,6 +44,7 @@ def validate_documentation_page(value: object) -> str:
 
 def build_documentation_site(project_root: Path, site_dir: Path) -> None:
     """Build the strict offline site without leaving a partial destination."""
+    _verify_audited_build_dependencies()
     try:
         from mkdocs.commands.build import build
         from mkdocs.config import load_config
@@ -86,6 +94,21 @@ def build_documentation_site(project_root: Path, site_dir: Path) -> None:
         if site_dir.exists():
             shutil.rmtree(site_dir)
         shutil.copytree(staged_site, site_dir)
+
+
+def _verify_audited_build_dependencies() -> None:
+    for distribution, display_name, expected in (
+        _AUDITED_DOCUMENTATION_BUILD_DEPENDENCIES
+    ):
+        try:
+            actual = distribution_version(distribution)
+        except PackageNotFoundError:
+            actual = "not installed"
+        if actual != expected:
+            raise RuntimeError(
+                f"Offline documentation requires audited {display_name} "
+                f"{expected}; found {actual}."
+            )
 
 
 def _editable_project_root() -> Path | None:

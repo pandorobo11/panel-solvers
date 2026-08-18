@@ -49,16 +49,16 @@ newtsolver-cli = "newtsolver.app.cli_app:main"
 [dependency-groups]
 dev = ["ruff"]
 docs = [
-  "latex2mathml>=3.78,<4",
+  "latex2mathml==3.81.0",
   "matplotlib",
-  "mkdocs>=1.6,<2",
+  "mkdocs==1.6.1",
 ]
 
 [build-system]
 requires = [
   "hatchling>=1.27",
-  "latex2mathml>=3.78,<4",
-  "mkdocs>=1.6,<2",
+  "latex2mathml==3.81.0",
+  "mkdocs==1.6.1",
 ]
 build-backend = "hatchling.build"
 
