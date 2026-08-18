@@ -569,6 +569,37 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
                         np.testing.assert_array_equal(poly.field_data[name], expected)
                         self.assertEqual(poly.field_data[name].dtype, expected.dtype)
 
+    def test_direct_exporters_round_trip_non_ascii_field_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir)
+            vertices = np.array(
+                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                dtype=np.float32,
+            )
+            faces = np.array([[0, 1, 2]], dtype=np.int32)
+            cell_data = {
+                "panel_id": np.array([7], dtype=np.int16),
+            }
+            field_data = {"case_id": "直接出力"}
+
+            for module in EXPORTER_MODULES:
+                product = module.__name__.split(".", maxsplit=1)[0]
+                vtp_path = output / product / "unicode.vtp"
+                with self.subTest(product=product):
+                    result = module.export_vtp(
+                        out_path=vtp_path,
+                        vertices=vertices,
+                        faces=faces,
+                        cell_data=cell_data,
+                        field_data=field_data,
+                    )
+                    self.assertIsNone(result)
+                    poly = pv.read(vtp_path)
+                    self.assertEqual(
+                        "直接出力",
+                        str(poly.field_data["case_id"][0]),
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
