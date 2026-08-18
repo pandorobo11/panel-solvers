@@ -36,8 +36,10 @@ alive for the lifetime of the window.
 2. Select one or more table rows. With no selection, **Run Selected Cases** runs
    every loaded row.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
-4. Choose **Run Selected Cases** and select the summary CSV destination.
-5. Follow progress and diagnostics in the log panel.
+4. Set **Checkpoint every** in cases. The default is `2000`; use `0` to
+   disable intermediate Summary CSV snapshots.
+5. Choose **Run Selected Cases** and select the summary CSV destination.
+6. Follow progress and diagnostics in the log panel.
 
 Input validation issues are shown with spreadsheet row, case ID, field, and
 message. The GUI uses the same reader, execution engine, checkpoint behavior,

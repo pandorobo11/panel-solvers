@@ -77,19 +77,10 @@ def resolve_shielding_environment(
             environment,
             minimum=1,
         )
-    cache_max = config.cache_max
-    if cache_max is None:
-        cache_max = _shielding_environment_integer(
-            "SHIELD_CACHE_MAX",
-            prefix,
-            environment,
-            minimum=0,
-        )
     return ShieldingConfig(
         enabled=config.enabled,
         ray_backend=config.ray_backend,
         batch_size=batch_size,
-        cache_max=cache_max,
     )
 
 

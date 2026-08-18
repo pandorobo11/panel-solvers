@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import inspect
 import os
 import tempfile
 import unittest
@@ -17,7 +18,12 @@ from fmfsolver.runtime import run_cases as run_fmf_cases
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
 from newtsolver.runtime import run_cases as run_newt_cases
-from panelsolver.app import GuiRunRequest, run_and_write_product_cases
+from panelsolver.app import (
+    DEFAULT_CHECKPOINT_CASES,
+    GuiRunRequest,
+    run_and_write_product_cases,
+    run_product_cases,
+)
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -49,6 +55,19 @@ def _assert_artifact_semantics_equal(
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
 class Phase7RuntimeTests(unittest.TestCase):
+    def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
+        for callback in (
+            run_product_cases,
+            run_and_write_product_cases,
+            run_fmf_cases,
+            run_newt_cases,
+        ):
+            with self.subTest(callback=callback):
+                parameter = inspect.signature(callback).parameters[
+                    "checkpoint_every_cases"
+                ]
+                self.assertEqual(DEFAULT_CHECKPOINT_CASES, parameter.default)
+
     def test_products_share_supported_scheduler_policy(self) -> None:
         for policy in (FMF_POLICY, NEWT_POLICY):
             with self.subTest(product=policy.product_id):
@@ -103,7 +122,7 @@ class Phase7RuntimeTests(unittest.TestCase):
             run_fmf_cases(
                 rows,
                 workers=1,
-                flush_every_cases=1,
+                checkpoint_every_cases=1,
                 snapshot_cb=capture,
             )
         input_order = {str(row["case_id"]): index for index, row in enumerate(rows)}
@@ -192,7 +211,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                                 progress_cb=lambda done, total, sink=progress: sink.append(
                                     (done, total)
                                 ),
-                                flush_every_cases=1,
+                                checkpoint_every_cases=1,
                                 log_snapshots=True,
                             )
 
@@ -287,6 +306,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                 GuiRunRequest(
                     rows=(row,),
                     workers=1,
+                    checkpoint_every_cases=DEFAULT_CHECKPOINT_CASES,
                     output_path=output,
                     log=logs.append,
                     progress=lambda done, total: progress.append((done, total)),
@@ -302,6 +322,29 @@ class Phase7RuntimeTests(unittest.TestCase):
                 FMF_GUI_ADAPTERS.build_case_signatures(row).primary.digest,
                 FMF_GUI_ADAPTERS.build_case_signatures(result.first_case_row).primary.digest,
             )
+
+    def test_gui_checkpoint_value_reaches_domain_runtime(self) -> None:
+        row = read_current_cases(
+            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+        ).iloc[0].to_dict()
+        batch = mock.Mock()
+        batch.cases = (mock.Mock(vtp_path=""),)
+        with mock.patch(
+            "panelsolver.domains.fmf.run_and_write_product_cases",
+            return_value=batch,
+        ) as run:
+            FMF_GUI_ADAPTERS.run_cases(
+                GuiRunRequest(
+                    rows=(row,),
+                    workers=1,
+                    checkpoint_every_cases=0,
+                    output_path=Path("summary.csv"),
+                    log=lambda _message: None,
+                    progress=lambda _done, _total: None,
+                    cancel_requested=lambda: False,
+                )
+            )
+        self.assertEqual(0, run.call_args.kwargs["checkpoint_every_cases"])
 
 
 if __name__ == "__main__":

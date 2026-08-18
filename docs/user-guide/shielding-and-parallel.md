@@ -14,8 +14,8 @@ equation.
   error and never falls back;
 - `auto`: use the available configured implementation.
 
-When shielding is off, outputs record `ray_backend_used=not_used`. Ray batch and
-cache controls are listed in
+When shielding is off, outputs record `ray_backend_used=not_used`. Ray batch
+controls are listed in
 [Environment variables](../reference/environment-variables.md).
 
 ## Workers and checkpoints
@@ -27,8 +27,9 @@ geometry, backend, flow direction, algorithm, and model identities remain part
 of cache safety.
 
 Both products forward worker logs and retain successful cases completed before a
-later case in the same chunk fails. `--flush-every-cases N` controls complete
-checkpoint snapshots; `0` disables them.
+later case in the same chunk fails. `--checkpoint-every-cases N` controls
+complete Summary CSV checkpoint snapshots; the default is `2000` and `0`
+disables intermediate snapshots. The final Summary CSV is still written.
 
 Cancellation is cooperative between cases. It does not interrupt an active ray
 query, root solve, or ODE integration, and existing per-case artifacts are not

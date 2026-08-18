@@ -16,6 +16,7 @@ from PySide6 import QtCore, QtWidgets
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
 from panelsolver.app import (
+    DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunResult,
     SolverGuiAdapters,
@@ -228,6 +229,7 @@ class CasesPanelTests(unittest.TestCase):
 
             panel, _ = self.make_panel(validator=validate)
             panel.load_input_file(input_path)
+            panel.spin_checkpoint_every_cases.setValue(37)
             emitted: list[tuple] = []
             panel.run_requested.connect(lambda *args: emitted.append(args))
 
@@ -246,7 +248,18 @@ class CasesPanelTests(unittest.TestCase):
             self.assertTrue(captured["dir_existed"])
             self.assertEqual(["case_b", "case_a"], [r["case_id"] for r in emitted[0][0]])
             self.assertEqual(1, emitted[0][1])
-            self.assertEqual(Path(directory) / "result.csv", emitted[0][2])
+            self.assertEqual(37, emitted[0][2])
+            self.assertEqual(Path(directory) / "result.csv", emitted[0][3])
+
+    def test_checkpoint_spinbox_defaults_and_accepts_zero(self) -> None:
+        panel, _ = self.make_panel()
+        self.assertEqual(
+            DEFAULT_CHECKPOINT_CASES,
+            panel.spin_checkpoint_every_cases.value(),
+        )
+        self.assertEqual(0, panel.spin_checkpoint_every_cases.minimum())
+        panel.spin_checkpoint_every_cases.setValue(0)
+        self.assertEqual(0, panel.spin_checkpoint_every_cases.value())
 
     def test_run_cancel_and_output_rejection_do_not_emit(self) -> None:
         def reject(_out, _input, _rows):

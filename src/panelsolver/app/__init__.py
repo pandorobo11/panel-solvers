@@ -23,6 +23,7 @@ from .csv_writer import (
 )
 from .execution import default_model_registry, request_from_registry
 from .runtime import (
+    DEFAULT_CHECKPOINT_CASES,
     PreparedProductCase,
     ProductBatchRunResult,
     ProductCaseRunResult,
@@ -54,6 +55,7 @@ from .viewer_data import (
 
 __all__ = (
     "ATTITUDE_INPUT_VALUES",
+    "DEFAULT_CHECKPOINT_CASES",
     "DURABLE_CSV_WRITE_POLICY",
     "AdaptedCase",
     "ArtifactCaseMatch",

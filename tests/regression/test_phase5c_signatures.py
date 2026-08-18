@@ -122,7 +122,6 @@ class Phase5cSignatureGoldenTests(unittest.TestCase):
                     batch_size=(64 if effective_backend == "embree" else 8)
                     if shielding_enabled
                     else 0,
-                    cache_max=1 if shielding_enabled else 0,
                 )
                 signature = build_case_signature(
                     geometry_fingerprint=loaded.geometry_fingerprint,

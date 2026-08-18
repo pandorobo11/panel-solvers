@@ -10,36 +10,33 @@ from panelsolver.core import SchedulerError, ShieldingConfig, ShieldingError
 
 
 class EnvironmentResolutionTests(unittest.TestCase):
-    def test_shielding_precedence_is_explicit_neutral_selected_legacy_default(self) -> None:
+    def test_shielding_batch_precedence_is_explicit_neutral_legacy_default(self) -> None:
         environment = {
             "PANELSOLVER_SHIELD_BATCH_SIZE": "5",
             "FMFSOLVER_SHIELD_BATCH_SIZE": "3",
-            "PANELSOLVER_SHIELD_CACHE_MAX": "0",
-            "FMFSOLVER_SHIELD_CACHE_MAX": "7",
         }
         resolved = resolve_shielding_environment(
             ShieldingConfig(),
             legacy_env_prefix="FMFSOLVER",
             environment=environment,
         )
-        self.assertEqual((5, 0), (resolved.batch_size, resolved.cache_max))
+        self.assertEqual(5, resolved.batch_size)
 
         explicit = resolve_shielding_environment(
-            ShieldingConfig(batch_size=2, cache_max=9),
+            ShieldingConfig(batch_size=2),
             legacy_env_prefix="FMFSOLVER",
             environment=environment,
         )
-        self.assertEqual((2, 9), (explicit.batch_size, explicit.cache_max))
+        self.assertEqual(2, explicit.batch_size)
 
         legacy = resolve_shielding_environment(
             ShieldingConfig(),
             legacy_env_prefix="NEWTSOLVER",
             environment={
                 "NEWTSOLVER_SHIELD_BATCH_SIZE": "6",
-                "NEWTSOLVER_SHIELD_CACHE_MAX": "2",
             },
         )
-        self.assertEqual((6, 2), (legacy.batch_size, legacy.cache_max))
+        self.assertEqual(6, legacy.batch_size)
 
         defaults = resolve_shielding_environment(
             ShieldingConfig(),
@@ -47,14 +44,9 @@ class EnvironmentResolutionTests(unittest.TestCase):
             environment={},
         )
         self.assertIsNone(defaults.batch_size)
-        self.assertIsNone(defaults.cache_max)
 
     def test_invalid_shielding_environment_names_the_boundary_variable(self) -> None:
-        for name, value in (
-            ("PANELSOLVER_SHIELD_BATCH_SIZE", "0"),
-            ("PANELSOLVER_SHIELD_CACHE_MAX", "-1"),
-            ("PANELSOLVER_SHIELD_CACHE_MAX", "bad"),
-        ):
+        for name, value in (("PANELSOLVER_SHIELD_BATCH_SIZE", "0"),):
             with self.subTest(name=name, value=value), self.assertRaisesRegex(
                 ShieldingError, name
             ):
@@ -63,6 +55,18 @@ class EnvironmentResolutionTests(unittest.TestCase):
                     legacy_env_prefix="FMFSOLVER",
                     environment={name: value},
                 )
+
+    def test_shield_cache_capacity_environment_is_not_recognized(self) -> None:
+        resolved = resolve_shielding_environment(
+            ShieldingConfig(),
+            legacy_env_prefix="FMFSOLVER",
+            environment={
+                "PANELSOLVER_SHIELD_CACHE_MAX": "invalid",
+                "FMFSOLVER_SHIELD_CACHE_MAX": "-1",
+            },
+        )
+        self.assertIsNone(resolved.batch_size)
+        self.assertFalse(hasattr(resolved, "cache_max"))
 
     def test_shielding_environment_is_ignored_when_shielding_is_disabled(self) -> None:
         config = ShieldingConfig(enabled=False)

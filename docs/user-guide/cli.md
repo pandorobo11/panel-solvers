@@ -4,9 +4,9 @@ The canonical batch entry point selects a physical flow domain:
 
 ```text
 panelsolver fmf --input PATH [--output PATH] [--workers N]
-                [--cases ID [ID ...]] [--flush-every-cases N]
+                [--cases ID [ID ...]] [--checkpoint-every-cases N]
 panelsolver hypersonic --input PATH [--output PATH] [--workers N]
-                       [--cases ID [ID ...]] [--flush-every-cases N]
+                       [--cases ID [ID ...]] [--checkpoint-every-cases N]
 ```
 
 Here `fmf` means the free-molecular-flow domain selector. It is not the legacy
@@ -26,9 +26,9 @@ options:
 
 ```text
 fmfsolver-cli --input PATH [--output PATH] [--workers N]
-              [--cases ID [ID ...]] [--flush-every-cases N]
+              [--cases ID [ID ...]] [--checkpoint-every-cases N]
 newtsolver-cli --input PATH [--output PATH] [--workers N]
-               [--cases ID [ID ...]] [--flush-every-cases N]
+               [--cases ID [ID ...]] [--checkpoint-every-cases N]
 ```
 
 All four batch forms use the same case-table reader and application service.
@@ -41,7 +41,7 @@ only formal outputs; legacy BIFF `.xls` and NPZ are not supported.
 | `-o`, `--output` | Summary CSV | `<input_dir>/outputs/<input_stem>_result.csv` |
 | `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
 | `--cases` | Space- or comma-separated case IDs | all cases |
-| `--flush-every-cases` | Rewrite a complete checkpoint after N completed cases; `0` disables | `100` |
+| `--checkpoint-every-cases` | Rewrite a complete checkpoint after N completed cases; `0` disables | `2000` |
 
 Examples:
 

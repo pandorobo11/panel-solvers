@@ -139,7 +139,6 @@ def case_execution_bucket_keys(
                 tuple(float(value) for value in request.velocity_hat_stl),
                 config.ray_backend.value,
                 config.batch_size,
-                config.cache_max,
             )
         )
     return tuple(keys)

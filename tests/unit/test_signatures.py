@@ -35,7 +35,6 @@ def _shielding(**updates) -> ResolvedShieldingConfig:
         "requested_backend": "auto",
         "effective_backend": "embree",
         "batch_size": 64,
-        "cache_max": 1,
     }
     values.update(updates)
     return ResolvedShieldingConfig(**values)
@@ -94,11 +93,6 @@ class SignatureTests(unittest.TestCase):
             ),
         )
         self.assertTrue(all(item.digest != baseline for item in variants))
-
-    def test_shielding_cache_capacity_does_not_change_case_signature(self) -> None:
-        first = _signature(shielding_config=_shielding(cache_max=1))
-        second = _signature(shielding_config=_shielding(cache_max=99))
-        self.assertEqual(first.digest, second.digest)
 
     def test_rejects_nonfinite_unsupported_and_invalid_identity(self) -> None:
         invalid_payloads = (

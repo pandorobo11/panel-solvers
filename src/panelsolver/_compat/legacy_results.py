@@ -9,6 +9,7 @@ import pandas as pd
 
 from panelsolver.app.csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from panelsolver.app.runtime import (
+    DEFAULT_CHECKPOINT_CASES,
     ProductBatchRunResult,
     ProductRuntimePolicy,
     _maybe_log_ray_accel_hint,
@@ -89,15 +90,15 @@ def run_legacy_cases(
     logfn=None,
     progress_cb=None,
     cancel_cb=None,
-    flush_every_cases: int | None = None,
+    checkpoint_every_cases: int | None = DEFAULT_CHECKPOINT_CASES,
     chunk_cb=None,
 ) -> pd.DataFrame:
     """Run shared execution and retain the frozen DataFrame callback shape."""
     compat_cancel_cb = legacy_cancel_callback(cancel_cb)
     if frame.empty:
-        flush_every = int(flush_every_cases or 0)
-        if flush_every < 0:
-            raise ValueError("flush_every_cases must be >= 0.")
+        checkpoint_every = int(checkpoint_every_cases or 0)
+        if checkpoint_every < 0:
+            raise ValueError("checkpoint_every_cases must be >= 0.")
         callback_error: BaseException | None = None
         try:
             if compat_cancel_cb is not None:
@@ -171,7 +172,7 @@ def run_legacy_cases(
             logfn=compat_logfn,
             progress_cb=compat_progress_cb,
             cancel_cb=compat_cancel_cb,
-            flush_every_cases=flush_every_cases,
+            checkpoint_every_cases=checkpoint_every_cases,
             snapshot_cb=snapshot if compat_chunk_cb is not None else None,
         )
     except _LegacyCallbackError as exc:

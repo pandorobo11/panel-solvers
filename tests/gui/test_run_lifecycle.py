@@ -17,6 +17,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
 from newtsolver.gui_spec import solver_spec as newt_solver_spec
 from panelsolver.app import (
+    DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
@@ -140,13 +141,16 @@ class RunLifecycleTests(unittest.TestCase):
             panel.vtp_loaded.connect(lambda *args: loaded.append(args))
             panel.run_finished.connect(lambda: finished.append(True))
 
-            self.assertTrue(panel.start_run(rows, 2, Path(directory) / "results.csv"))
+            self.assertTrue(
+                panel.start_run(rows, 2, 17, Path(directory) / "results.csv")
+            )
             self.assertFalse(panel.btn_pick_input.isEnabled())
             self.assertTrue(panel.btn_cancel.isEnabled())
             self.wait_until(lambda: not panel.is_running())
 
             self.assertIsInstance(captured["request"], GuiRunRequest)
             self.assertEqual(2, captured["request"].workers)
+            self.assertEqual(17, captured["request"].checkpoint_every_cases)
             self.assertEqual("2/2", panel.progress.text())
             self.assertIn("[SAVE] checkpoint 1/2", panel.log.toPlainText())
             self.assertIn("[SAVE] final 2/2", panel.log.toPlainText())
@@ -176,7 +180,11 @@ class RunLifecycleTests(unittest.TestCase):
                     raise SchedulerCancelled("case boundary")
 
                 panel, rows, _ = self.make_panel(runner)
-                self.assertTrue(panel.start_run(rows, 1, "results.csv"))
+                self.assertTrue(
+                    panel.start_run(
+                        rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv"
+                    )
+                )
                 self.wait_until(entered.is_set)
                 panel.cancel_run()
                 self.wait_until(lambda active_panel=panel: not active_panel.is_running())
@@ -197,9 +205,13 @@ class RunLifecycleTests(unittest.TestCase):
             raise RuntimeError("primary solver failure")
 
         panel, rows, _ = self.make_panel(runner)
-        self.assertTrue(panel.start_run(rows, 1, "results.csv"))
+        self.assertTrue(
+            panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+        )
         self.wait_until(entered.is_set)
-        self.assertFalse(panel.start_run(rows, 1, "second.csv"))
+        self.assertFalse(
+            panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "second.csv")
+        )
         panel.cancel_run()
         self.wait_until(lambda: not panel.is_running())
         self.assertEqual(1, len(calls))
@@ -232,7 +244,11 @@ class RunLifecycleTests(unittest.TestCase):
                 )
                 window.show()
                 self.assertEqual((1480, 900), (window.width(), window.height()))
-                self.assertTrue(panel.start_run(rows, 1, "results.csv"))
+                self.assertTrue(
+                    panel.start_run(
+                        rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv"
+                    )
+                )
                 self.wait_until(entered.is_set)
 
                 first_event = QtGui.QCloseEvent()
@@ -291,7 +307,9 @@ class RunLifecycleTests(unittest.TestCase):
             viewer_panel=_FakeViewer(),
         )
         window.show()
-        self.assertTrue(panel.start_run(rows, 1, "results.csv"))
+        self.assertTrue(
+            panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+        )
         self.wait_until(entered.is_set)
 
         event = QtGui.QCloseEvent()

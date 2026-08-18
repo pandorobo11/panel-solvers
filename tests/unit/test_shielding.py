@@ -104,32 +104,32 @@ class ShieldingTests(unittest.TestCase):
             first = compute_shielding(
                 self.mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
+                ShieldingConfig(ray_backend="rtree", batch_size=8),
             )
             exact_repeat = compute_shielding(
                 self.mesh,
                 np.array([2.0, 0.0, 0.0]),
-                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
+                ShieldingConfig(ray_backend="rtree", batch_size=8),
             )
             different_direction = compute_shielding(
                 self.mesh,
                 np.array([0.0, 1.0, 0.0]),
-                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
+                ShieldingConfig(ray_backend="rtree", batch_size=8),
             )
             different_batch = compute_shielding(
                 self.mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(ray_backend="rtree", batch_size=3, cache_max=8),
+                ShieldingConfig(ray_backend="rtree", batch_size=3),
             )
             different_geometry = compute_shielding(
                 other_mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(ray_backend="rtree", batch_size=8, cache_max=8),
+                ShieldingConfig(ray_backend="rtree", batch_size=8),
             )
             different_backend = compute_shielding(
                 self.mesh,
                 np.array([1.0, 0.0, 0.0]),
-                ShieldingConfig(ray_backend="embree", batch_size=8, cache_max=8),
+                ShieldingConfig(ray_backend="embree", batch_size=8),
             )
 
         self.assertFalse(first.cache_hit)
@@ -143,7 +143,7 @@ class ShieldingTests(unittest.TestCase):
             self.assertFalse(result.cache_hit)
         stats = shielding_cache_stats()
         self.assertEqual(
-            (5, 1, 5),
+            (1, 1, 5),
             (stats.mask_entries, stats.mask_hits, stats.mask_misses),
         )
 
@@ -156,12 +156,9 @@ class ShieldingTests(unittest.TestCase):
             0.0,
             -2.291831180523293e-11,
         )
-        uncached = ShieldingConfig(
-            ray_backend="rtree",
-            batch_size=2,
-            cache_max=0,
-        )
+        uncached = ShieldingConfig(ray_backend="rtree", batch_size=2)
         cold_a = compute_shielding(mesh, direction_a, uncached)
+        clear_shielding_cache()
         cold_b = compute_shielding(mesh, direction_b, uncached)
         np.testing.assert_array_equal(cold_a.shielded, [False, False])
         np.testing.assert_array_equal(cold_b.shielded, [True, False])
@@ -169,11 +166,7 @@ class ShieldingTests(unittest.TestCase):
         self.assertEqual("rtree", cold_b.config.effective_backend)
 
         clear_shielding_cache()
-        cached = ShieldingConfig(
-            ray_backend="rtree",
-            batch_size=2,
-            cache_max=2,
-        )
+        cached = ShieldingConfig(ray_backend="rtree", batch_size=2)
         first_a = compute_shielding(mesh, direction_a, cached)
         first_b = compute_shielding(mesh, direction_b, cached)
         repeated_b = compute_shielding(mesh, direction_b, cached)
@@ -186,7 +179,7 @@ class ShieldingTests(unittest.TestCase):
         self.assertTrue(repeated_b.cache_hit)
         stats = shielding_cache_stats()
         self.assertEqual(
-            (2, 1, 2),
+            (1, 1, 2),
             (stats.mask_entries, stats.mask_hits, stats.mask_misses),
         )
 
@@ -221,7 +214,7 @@ class ShieldingTests(unittest.TestCase):
         result = compute_shielding(
             self.mesh,
             np.array([1.0, 0.0, 0.0]),
-            ShieldingConfig(ray_backend="auto", cache_max=0),
+            ShieldingConfig(ray_backend="auto"),
         )
         expected = "embree" if has_embree else "rtree"
         self.assertEqual("auto", result.config.requested_backend)
@@ -241,7 +234,6 @@ class ShieldingTests(unittest.TestCase):
 
         for kwargs in (
             {"batch_size": 0},
-            {"cache_max": -1},
             {"ray_backend": "bad"},
             {"enabled": 1},
         ):
@@ -249,13 +241,15 @@ class ShieldingTests(unittest.TestCase):
                 with self.assertRaises(ShieldingError):
                     ShieldingConfig(**kwargs)
 
+        with self.assertRaises(TypeError):
+            ShieldingConfig(cache_max=1)
+
     def test_ragged_arrays_are_field_aware_shielding_errors(self) -> None:
         config = ResolvedShieldingConfig(
             enabled=False,
             requested_backend="auto",
             effective_backend="not_used",
             batch_size=0,
-            cache_max=0,
         )
 
         class TypeErrorArray:
@@ -302,6 +296,23 @@ class ShieldingTests(unittest.TestCase):
             ) as caught:
                 construct()
             self.assertIsInstance(caught.exception.__cause__, cause_type)
+
+    def test_mask_and_intersector_caches_are_bounded_to_one_entry(self) -> None:
+        other_mesh = load_panel_mesh([FIXTURE_STL / "plate.stl"], 1.0).mesh
+        direction = np.array([1.0, 0.0, 0.0])
+        compute_shielding(
+            self.mesh,
+            direction,
+            ShieldingConfig(ray_backend="rtree"),
+        )
+        compute_shielding(
+            other_mesh,
+            direction,
+            ShieldingConfig(ray_backend="rtree"),
+        )
+        stats = shielding_cache_stats()
+        self.assertEqual(1, stats.mask_entries)
+        self.assertEqual(1, stats.intersector_entries)
 
 
 if __name__ == "__main__":
