@@ -821,9 +821,9 @@ provides-extras = ["rayaccel"]
 [package.metadata.requires-dev]
 dev = [{ name = "ruff" }]
 docs = [
-    { name = "latex2mathml", specifier = ">=3.78,<4" },
+    { name = "latex2mathml", specifier = "==3.81.0" },
     { name = "matplotlib" },
-    { name = "mkdocs", specifier = ">=1.6,<2" },
+    { name = "mkdocs", specifier = "==1.6.1" },
 ]
 
 [[package]]

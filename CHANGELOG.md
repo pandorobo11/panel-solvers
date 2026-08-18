@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Exact-pin and fail closed on the audited MkDocs and LaTeX-to-MathML versions
+  used to generate offline release documentation.
 - Harden the first-release gates by accepting only the latest exact-commit
   `main` push CI run, bundling audited offline-documentation asset licenses,
   making US1976 regeneration executable from the sdist, and granting release
