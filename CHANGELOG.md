@@ -6,6 +6,18 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** Rename the CLI checkpoint option from
+  `--flush-every-cases` to `--checkpoint-every-cases`, with no compatibility or
+  deprecated alias. Unify the CLI, GUI, and runtime API name as
+  `checkpoint_every_cases`, change the default from 100 to 2000 cases, expose
+  the interval in the GUI, and allow `0` to disable intermediate checkpoints.
+- **Breaking:** Remove `PANELSOLVER_SHIELD_CACHE_MAX` and the legacy
+  `FMFSOLVER_SHIELD_CACHE_MAX` / `NEWTSOLVER_SHIELD_CACHE_MAX` fallbacks, plus
+  `ShieldingConfig.cache_max` and `ResolvedShieldingConfig.cache_max`. Mask,
+  mesh, and intersector caches are now fixed internally at one entry;
+  `SHIELD_BATCH_SIZE` and `PARALLEL_CHUNK_CASES` remain advanced tuning options.
+- Preserve numerical results, algorithm versions, the signature schema, and
+  case signatures across these runtime-tuning changes.
 - Exact-pin and fail closed on the audited MkDocs and LaTeX-to-MathML versions
   used to generate offline release documentation.
 - Harden the first-release gates by accepting only the latest exact-commit
