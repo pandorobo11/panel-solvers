@@ -234,8 +234,15 @@ def _run_sample(
     case_id: str,
     output: Path,
     environment: dict[str, str],
+    *,
+    legacy_cli: bool,
 ) -> dict[str, object]:
     command = _command_path(python, f"{product}-cli")
+    checkpoint_option = (
+        "--flush-every-cases"
+        if legacy_cli
+        else "--checkpoint-every-cases"
+    )
     _run(
         [
             command,
@@ -245,7 +252,7 @@ def _run_sample(
             output,
             "--workers",
             "1",
-            "--flush-every-cases",
+            checkpoint_option,
             "0",
             "--cases",
             case_id,
@@ -380,6 +387,7 @@ def probe(
                 spec.sample_case,
                 work / f"{spec.name}-legacy-results.csv",
                 environment,
+                legacy_cli=True,
             )
             for spec in LEGACY_SPECS
         }
@@ -397,6 +405,7 @@ def probe(
                 "fmf_zero_plate",
                 work / "fmfsolver-return-results.csv",
                 environment,
+                legacy_cli=False,
             ),
             "newtsolver": _run_sample(
                 python,
@@ -405,6 +414,7 @@ def probe(
                 "newt_zero_newtonian",
                 work / "newtsolver-return-results.csv",
                 environment,
+                legacy_cli=False,
             ),
         }
 

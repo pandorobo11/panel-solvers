@@ -27,6 +27,7 @@ from panelsolver.core import (
     iter_case_results_parallel,
     project_summary_csv,
     project_vtp_artifact,
+    reuse_oriented_execution_order,
 )
 from panelsolver.models import ModelRegistry
 
@@ -281,22 +282,10 @@ def _run_prepared_product_case(
 def _execution_order(
     prepared: Sequence[PreparedProductCase],
 ) -> tuple[int, ...]:
-    """Retain the pinned shielding-first reuse order without output reordering."""
-    def key(index: int) -> tuple[object, ...]:
-        request = prepared[index].adapted.request
-        if not request.shielding.enabled:
-            return (1, index)
-        return (
-            0,
-            request.stl_paths,
-            round(request.scale_m_per_unit, 12),
-            round(request.common_case.alpha_t_deg, 12),
-            round(request.common_case.beta_t_deg, 12),
-            request.shielding.ray_backend.value,
-            index,
-        )
-
-    return tuple(sorted(range(len(prepared)), key=key))
+    """Use core's exact shielding-first reuse order without output reordering."""
+    return reuse_oriented_execution_order(
+        tuple(case.adapted.request for case in prepared)
+    )
 
 
 def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) -> None:

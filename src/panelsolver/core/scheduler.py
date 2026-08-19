@@ -144,6 +144,24 @@ def case_execution_bucket_keys(
     return tuple(keys)
 
 
+def reuse_oriented_execution_order(
+    requests: Sequence[CaseExecutionRequest],
+) -> tuple[int, ...]:
+    """Group exact shielding-reuse buckets while preserving stable input order."""
+    keys = case_execution_bucket_keys(requests)
+    shielding_buckets: OrderedDict[Hashable, list[int]] = OrderedDict()
+    unshielded: list[int] = []
+    for index, key in enumerate(keys):
+        if key[0] == "shield":
+            shielding_buckets.setdefault(key, []).append(index)
+        else:
+            unshielded.append(index)
+    return (
+        *(index for indices in shielding_buckets.values() for index in indices),
+        *unshielded,
+    )
+
+
 def ordered_success_snapshot[ResultT](
     completed: Mapping[int, ResultT],
     execution_order: Sequence[int],
@@ -965,4 +983,5 @@ __all__ = (
     "iter_execution_results_parallel",
     "ordered_success_snapshot",
     "resolve_parallel_chunk_cases",
+    "reuse_oriented_execution_order",
 )

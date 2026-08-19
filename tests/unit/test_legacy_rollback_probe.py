@@ -9,6 +9,7 @@ from scripts.probe_legacy_rollback import (
     LEGACY_SPECS,
     _archive_commit,
     _prepare_panel_wheel,
+    _run_sample,
     _stage_current_panel_inputs,
     sha256_file,
 )
@@ -17,6 +18,36 @@ ROOT = Path(__file__).parents[2]
 
 
 class LegacyRollbackProbeTests(unittest.TestCase):
+    def test_sample_uses_generation_specific_checkpoint_cli_option(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_path = root / "cases.csv"
+            input_path.write_text("case_id\ncase-a\n", encoding="utf-8")
+            for legacy_cli, expected, rejected in (
+                (True, "--flush-every-cases", "--checkpoint-every-cases"),
+                (False, "--checkpoint-every-cases", "--flush-every-cases"),
+            ):
+                with self.subTest(legacy_cli=legacy_cli):
+                    output = root / f"results-{legacy_cli}.csv"
+                    output.write_text(
+                        "case_id,CA,CY,CN,Cl,Cm,Cn,CD,CL\n"
+                        "case-a,0,0,0,0,0,0,0,0\n",
+                        encoding="utf-8",
+                    )
+                    with patch("scripts.probe_legacy_rollback._run") as run:
+                        _run_sample(
+                            root / "python",
+                            "fmfsolver",
+                            input_path,
+                            "case-a",
+                            output,
+                            {},
+                            legacy_cli=legacy_cli,
+                        )
+                    command = run.call_args.args[0]
+                    self.assertIn(expected, command)
+                    self.assertNotIn(rejected, command)
+
     def test_pins_match_migration_sources(self) -> None:
         migration_sources = (
             ROOT / "docs" / "history" / "migration" / "MIGRATION_SOURCES.md"

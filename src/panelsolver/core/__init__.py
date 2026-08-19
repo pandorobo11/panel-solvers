@@ -75,6 +75,7 @@ from .scheduler import (
     iter_execution_results_parallel,
     ordered_success_snapshot,
     resolve_parallel_chunk_cases,
+    reuse_oriented_execution_order,
 )
 from .shielding import (
     SHIELDING_ALGORITHM_VERSION,
@@ -180,6 +181,7 @@ __all__ = (
     "project_summary_csv",
     "project_vtp_artifact",
     "resolve_parallel_chunk_cases",
+    "reuse_oriented_execution_order",
     "shielding_cache_stats",
     "stl_to_body",
     "velocity_hat_stl_from_tangent_angles",
