@@ -27,6 +27,7 @@ class GuiRunRequest:
 
     rows: tuple[CaseRow, ...]
     workers: int
+    checkpoint_every_cases: int
     output_path: Path
     log: LogCallback
     progress: ProgressCallback
@@ -42,6 +43,17 @@ class GuiRunRequest:
             raise TypeError("GuiRunRequest.workers must be an integer")
         if self.workers < 1:
             raise ValueError("GuiRunRequest.workers must be at least one")
+        if (
+            isinstance(self.checkpoint_every_cases, bool)
+            or not isinstance(self.checkpoint_every_cases, int)
+        ):
+            raise TypeError(
+                "GuiRunRequest.checkpoint_every_cases must be an integer"
+            )
+        if self.checkpoint_every_cases < 0:
+            raise ValueError(
+                "GuiRunRequest.checkpoint_every_cases must be nonnegative"
+            )
         output_path = Path(self.output_path)
         for field_name in ("log", "progress", "cancel_requested"):
             if not callable(getattr(self, field_name)):

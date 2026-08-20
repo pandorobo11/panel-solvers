@@ -233,7 +233,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                     self.assertEqual([], logs)
                     self.assertFalse(out_dir.exists())
 
-    def test_empty_negative_flush_validation_precedes_cancellation(self) -> None:
+    def test_empty_negative_checkpoint_validation_precedes_cancellation(self) -> None:
         for product, _reader, _run_one, run_many, _filename in self.products():
             for requested in (False, True):
                 with self.subTest(product=product, cancel_requested=requested):
@@ -249,12 +249,12 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                             pd.DataFrame(),
                             lambda _message: None,
                             cancel_cb=cancel,
-                            flush_every_cases=-1,
+                            checkpoint_every_cases=-1,
                         )
                     self.assert_exact_exception(
                         caught.exception,
                         ValueError,
-                        "flush_every_cases must be >= 0.",
+                        "checkpoint_every_cases must be >= 0.",
                     )
                     self.assertEqual(0, calls)
 
@@ -312,7 +312,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                                 (done, total)
                             ),
                             cancel_cb=boundary_cancel,
-                            flush_every_cases=1,
+                            checkpoint_every_cases=1,
                             chunk_cb=snapshot,
                         )
                     self.assert_exact_exception(
@@ -376,7 +376,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                                     (done, total)
                                 ),
                                 cancel_cb=cancel_when_started,
-                                flush_every_cases=1,
+                                checkpoint_every_cases=1,
                                 chunk_cb=lambda _frame, done, total, final, sink=snapshots: (
                                     sink.append((done, total, final))
                                 ),
@@ -465,7 +465,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                                 progress_cb=lambda done, total, sink=progress: (
                                     sink.append((done, total))
                                 ),
-                                flush_every_cases=1,
+                                checkpoint_every_cases=1,
                                 chunk_cb=lambda _frame, done, total, final, sink=snapshots: (
                                     sink.append((done, total, final))
                                 ),
@@ -671,7 +671,7 @@ class Phase8DirectErrorCompatibilityTests(unittest.TestCase):
                                 if callback_point == "progress_cb"
                                 else None
                             ),
-                            "flush_every_cases": (
+                            "checkpoint_every_cases": (
                                 1 if callback_point == "chunk_cb" else 0
                             ),
                             "chunk_cb": (

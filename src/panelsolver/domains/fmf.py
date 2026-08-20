@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from panelsolver.app import (
+    DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
@@ -318,7 +319,7 @@ def run_cases(
     logfn=None,
     progress_cb=None,
     cancel_cb=None,
-    flush_every_cases: int | None = None,
+    checkpoint_every_cases: int | None = DEFAULT_CHECKPOINT_CASES,
     snapshot_cb=None,
 ) -> ProductBatchRunResult:
     return run_product_cases(
@@ -328,7 +329,7 @@ def run_cases(
         logfn=logfn,
         progress_cb=progress_cb,
         cancel_cb=cancel_cb,
-        flush_every_cases=flush_every_cases,
+        checkpoint_every_cases=checkpoint_every_cases,
         snapshot_cb=snapshot_cb,
     )
 
@@ -358,7 +359,7 @@ def _run_gui_cases(request: GuiRunRequest) -> GuiRunResult:
         logfn=request.log,
         progress_cb=request.progress,
         cancel_cb=request.cancel_requested,
-        flush_every_cases=100,
+        checkpoint_every_cases=request.checkpoint_every_cases,
         log_snapshots=True,
     )
     first = result.cases[0]

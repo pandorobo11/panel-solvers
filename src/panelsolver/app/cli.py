@@ -9,7 +9,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .runtime import ProductRuntimePolicy, run_and_write_product_cases
+from .runtime import (
+    DEFAULT_CHECKPOINT_CASES,
+    ProductRuntimePolicy,
+    run_and_write_product_cases,
+)
 
 type ReadCasesCallback = Callable[[str | Path], pd.DataFrame]
 type ValidateOutputCallback = Callable[
@@ -89,10 +93,13 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
         help="Run only selected case_id values (space/comma separated).",
     )
     parser.add_argument(
-        "--flush-every-cases",
+        "--checkpoint-every-cases",
         type=int,
-        default=100,
-        help="Checkpoint output every N completed cases (0 to disable, default: 100).",
+        default=DEFAULT_CHECKPOINT_CASES,
+        help=(
+            "Checkpoint output every N completed cases "
+            f"(0 to disable, default: {DEFAULT_CHECKPOINT_CASES})."
+        ),
     )
     return parser
 
@@ -103,8 +110,8 @@ def run_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.workers < 1:
         parser.error("--workers must be >= 1")
-    if args.flush_every_cases < 0:
-        parser.error("--flush-every-cases must be >= 0")
+    if args.checkpoint_every_cases < 0:
+        parser.error("--checkpoint-every-cases must be >= 0")
 
     input_path = Path(args.input).expanduser()
     frame = policy.read_cases(input_path)
@@ -147,8 +154,8 @@ def run_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
         output,
         workers=args.workers,
         logfn=logfn,
-        flush_every_cases=args.flush_every_cases,
-        log_snapshots=args.flush_every_cases > 0,
+        checkpoint_every_cases=args.checkpoint_every_cases,
+        log_snapshots=args.checkpoint_every_cases > 0,
     )
     print(f"[OK] Wrote results: {output}", flush=True)
     return 0

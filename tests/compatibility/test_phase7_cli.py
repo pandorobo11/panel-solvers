@@ -17,6 +17,7 @@ from newtsolver.app.cli_app import build_parser as build_newt_parser
 from newtsolver.app.cli_app import main as newt_main
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.cli import parse_case_ids
+from panelsolver.app.runtime import DEFAULT_CHECKPOINT_CASES
 from panelsolver.cli import build_parser as build_canonical_parser
 from panelsolver.cli import main as canonical_main
 from tests.current_case_fixtures import read_current_cases
@@ -68,7 +69,13 @@ class Phase7CliTests(unittest.TestCase):
                     self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", help_text)
                     self.assertNotIn(".xls)", help_text)
                     self.assertIn("--cases CASES [CASES ...]", help_text)
-                    self.assertIn("--flush-every-cases", help_text)
+                    self.assertIn("--checkpoint-every-cases", help_text)
+                    self.assertNotIn("--flush-every-cases", help_text)
+                    parsed = builder().parse_args(["--input", "cases.csv"])
+                    self.assertEqual(
+                        DEFAULT_CHECKPOINT_CASES,
+                        parsed.checkpoint_every_cases,
+                    )
                     with contextlib.redirect_stderr(io.StringIO()):
                         with self.assertRaises(SystemExit) as caught:
                             builder().parse_args(
@@ -110,7 +117,7 @@ class Phase7CliTests(unittest.TestCase):
                         str(input_path),
                         "--output",
                         str(input_path),
-                        "--flush-every-cases",
+                        "--checkpoint-every-cases",
                         "0",
                     ]
                 )
@@ -121,7 +128,7 @@ class Phase7CliTests(unittest.TestCase):
                         str(input_path),
                         "--cases",
                         "missing",
-                        "--flush-every-cases",
+                        "--checkpoint-every-cases",
                         "0",
                     ]
                 )
@@ -161,7 +168,7 @@ class Phase7CliTests(unittest.TestCase):
                                 str(output),
                                 "--cases",
                                 f"{case_ids[1]},{case_ids[0]}",
-                                "--flush-every-cases",
+                                "--checkpoint-every-cases",
                                 "0",
                             ]
                         ),
@@ -173,6 +180,48 @@ class Phase7CliTests(unittest.TestCase):
                     list(case_ids),
                     summary.loc[summary["scope"] == "total", "case_id"].tolist(),
                 )
+
+    def test_checkpoint_option_reaches_runtime_and_old_name_is_rejected(self) -> None:
+        parser = build_fmf_parser()
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as caught:
+                parser.parse_args(
+                    ["--input", "cases.csv", "--flush-every-cases", "1"]
+                )
+        self.assertEqual(2, caught.exception.code)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_path = root / "cases.csv"
+            output_path = root / "results.csv"
+            frame = read_current_cases(
+                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+            ).iloc[[0]].copy()
+            frame["out_dir"] = str(root / "artifacts")
+            frame["save_vtp_on"] = 0
+            frame.to_csv(input_path, index=False)
+            for value in (0, 37):
+                with self.subTest(value=value), patch(
+                    "panelsolver.app.cli.run_and_write_product_cases"
+                ) as run:
+                    self.assertEqual(
+                        0,
+                        fmf_main(
+                            [
+                                "--input",
+                                str(input_path),
+                                "--output",
+                                str(output_path),
+                                "--checkpoint-every-cases",
+                                str(value),
+                            ]
+                        ),
+                    )
+                    self.assertEqual(
+                        value,
+                        run.call_args.kwargs["checkpoint_every_cases"],
+                    )
+                    self.assertEqual(value > 0, run.call_args.kwargs["log_snapshots"])
 
 
 if __name__ == "__main__":

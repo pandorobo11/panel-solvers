@@ -342,12 +342,12 @@ class Phase8DirectLoggingCompatibilityTests(unittest.TestCase):
                         if point == "validation":
                             with self.assertRaisesRegex(
                                 ValueError,
-                                "flush_every_cases must be >= 0",
+                                "checkpoint_every_cases must be >= 0",
                             ):
                                 run_many(
                                     pd.DataFrame(),
                                     logs.append,
-                                    flush_every_cases=-1,
+                                    checkpoint_every_cases=-1,
                                 )
                         else:
                             with self.assertRaisesRegex(RuntimeError, "Canceled by user"):

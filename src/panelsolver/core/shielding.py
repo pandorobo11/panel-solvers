@@ -1,4 +1,4 @@
-"""Model-neutral ray shielding with explicit backend and cache policy."""
+"""Model-neutral ray shielding with explicit backend and batch policy."""
 
 from __future__ import annotations
 
@@ -50,7 +50,6 @@ class ShieldingConfig:
     enabled: bool = True
     ray_backend: RayBackend | str = RayBackend.AUTO
     batch_size: int | None = None
-    cache_max: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, (bool, np.bool_)):
@@ -63,12 +62,6 @@ class ShieldingConfig:
                 "batch_size",
                 _positive_integer(self.batch_size, field="batch_size"),
             )
-        if self.cache_max is not None:
-            object.__setattr__(
-                self,
-                "cache_max",
-                _nonnegative_integer(self.cache_max, field="cache_max"),
-            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +72,6 @@ class ResolvedShieldingConfig:
     requested_backend: str
     effective_backend: str
     batch_size: int
-    cache_max: int
     algorithm_version: str = SHIELDING_ALGORITHM_VERSION
 
     def __post_init__(self) -> None:
@@ -97,7 +89,6 @@ class ResolvedShieldingConfig:
             raise ShieldingError(
                 "algorithm_version must be non-empty text without surrounding whitespace."
             )
-        cache_max = _nonnegative_integer(self.cache_max, field="cache_max")
         if self.enabled:
             if self.effective_backend == "not_used":
                 raise ShieldingError(
@@ -114,7 +105,6 @@ class ResolvedShieldingConfig:
         object.__setattr__(self, "enabled", bool(self.enabled))
         object.__setattr__(self, "requested_backend", requested)
         object.__setattr__(self, "batch_size", batch_size)
-        object.__setattr__(self, "cache_max", cache_max)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -155,7 +145,8 @@ _MASK_HITS = 0
 _MASK_MISSES = 0
 _INTERSECTOR_HITS = 0
 _INTERSECTOR_MISSES = 0
-_INTERSECTOR_CACHE_MAX = 4
+_MASK_CACHE_MAX = 1
+_INTERSECTOR_CACHE_MAX = 1
 
 
 def _normalize_backend(value: RayBackend | str | None) -> RayBackend:
@@ -179,25 +170,6 @@ def _positive_integer(value: object, *, field: str) -> int:
     if parsed < 1:
         raise ShieldingError(f"{field} must be an integer >= 1.")
     return parsed
-
-
-def _nonnegative_integer(value: object, *, field: str) -> int:
-    if isinstance(value, (bool, np.bool_)):
-        raise ShieldingError(f"{field} must be an integer >= 0.")
-    try:
-        if isinstance(value, (str, int, np.integer)):
-            parsed = int(value)
-        else:
-            raise TypeError
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise ShieldingError(f"{field} must be an integer >= 0.") from exc
-    if parsed < 0:
-        raise ShieldingError(f"{field} must be an integer >= 0.")
-    return parsed
-
-
-def _resolve_cache_max(config: ShieldingConfig) -> int:
-    return 1 if config.cache_max is None else config.cache_max
 
 
 def _resolve_batch_size(config: ShieldingConfig, effective_backend: str) -> int:
@@ -343,7 +315,6 @@ def compute_shielding(
                 requested_backend=config.ray_backend.value,
                 effective_backend="not_used",
                 batch_size=0,
-                cache_max=0,
             ),
             fingerprint,
             False,
@@ -360,16 +331,14 @@ def compute_shielding(
         requested_backend=config.ray_backend.value,
         effective_backend=effective_backend,
         batch_size=_resolve_batch_size(config, effective_backend),
-        cache_max=_resolve_cache_max(config),
     )
     key = _mask_cache_key(fingerprint, upstream_direction, resolved)
-    if resolved.cache_max > 0:
-        with _CACHE_LOCK:
-            cached = _MASK_CACHE.get(key)
-            if cached is not None:
-                _MASK_HITS += 1
-                _MASK_CACHE.move_to_end(key)
-                return ShieldingResult(cached, resolved, fingerprint, True)
+    with _CACHE_LOCK:
+        cached = _MASK_CACHE.get(key)
+        if cached is not None:
+            _MASK_HITS += 1
+            _MASK_CACHE.move_to_end(key)
+            return ShieldingResult(cached, resolved, fingerprint, True)
 
     centers = mesh.geometry.centers_stl_m
     bounds = np.stack(
@@ -397,12 +366,11 @@ def compute_shielding(
 
     with _CACHE_LOCK:
         _MASK_MISSES += 1
-        if resolved.cache_max > 0:
-            immutable = np.frombuffer(shielded.tobytes(), dtype=np.bool_)
-            _MASK_CACHE[key] = immutable
-            _MASK_CACHE.move_to_end(key)
-            while len(_MASK_CACHE) > resolved.cache_max:
-                _MASK_CACHE.popitem(last=False)
+        immutable = np.frombuffer(shielded.tobytes(), dtype=np.bool_)
+        _MASK_CACHE[key] = immutable
+        _MASK_CACHE.move_to_end(key)
+        while len(_MASK_CACHE) > _MASK_CACHE_MAX:
+            _MASK_CACHE.popitem(last=False)
     return ShieldingResult(shielded, resolved, fingerprint, False)
 
 

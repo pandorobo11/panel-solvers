@@ -27,6 +27,7 @@ class CaseRunWorker(QtCore.QObject):
         run_cases: RunCasesCallback,
         rows: Sequence[CaseRow],
         workers: int,
+        checkpoint_every_cases: int,
         output_path: str | Path,
     ) -> None:
         super().__init__()
@@ -35,6 +36,7 @@ class CaseRunWorker(QtCore.QObject):
         self._run_cases = run_cases
         self._rows = tuple(rows)
         self._workers = workers
+        self._checkpoint_every_cases = checkpoint_every_cases
         self._output_path = Path(output_path)
         self._cancel_event = threading.Event()
 
@@ -45,6 +47,7 @@ class CaseRunWorker(QtCore.QObject):
             request = GuiRunRequest(
                 rows=self._rows,
                 workers=self._workers,
+                checkpoint_every_cases=self._checkpoint_every_cases,
                 output_path=self._output_path,
                 log=self.log.emit,
                 progress=self.progress.emit,

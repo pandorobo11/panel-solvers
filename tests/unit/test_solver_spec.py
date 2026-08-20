@@ -37,6 +37,7 @@ class SolverSpecTests(unittest.TestCase):
         request = GuiRunRequest(
             rows=({"case_id": "one"},),
             workers=2,
+            checkpoint_every_cases=2000,
             output_path="results.csv",
             log=lambda _message: None,
             progress=lambda _done, _total: None,
@@ -45,11 +46,19 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual(Path("results.csv"), request.output_path)
         self.assertEqual("one", request.rows[0]["case_id"])
         with self.assertRaises(ValueError):
-            GuiRunRequest((), 1, Path("out.csv"), print, print, lambda: False)
+            GuiRunRequest((), 1, 2000, Path("out.csv"), print, print, lambda: False)
         with self.assertRaises(ValueError):
-            GuiRunRequest(request.rows, 0, Path("out.csv"), print, print, lambda: False)
+            GuiRunRequest(
+                request.rows, 0, 2000, Path("out.csv"), print, print, lambda: False
+            )
         with self.assertRaises(TypeError):
-            GuiRunRequest(request.rows, True, Path("out.csv"), print, print, lambda: False)
+            GuiRunRequest(
+                request.rows, True, 2000, Path("out.csv"), print, print, lambda: False
+            )
+        with self.assertRaises(ValueError):
+            GuiRunRequest(
+                request.rows, 1, -1, Path("out.csv"), print, print, lambda: False
+            )
         result = GuiRunResult("one.vtp", request.rows[0])
         self.assertEqual(Path("one.vtp"), result.first_vtp_path)
         with self.assertRaises(TypeError):

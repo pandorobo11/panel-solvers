@@ -52,7 +52,7 @@ remain directly under `outputs/`.
 ### `fmf/basic.csv`
 
 - Purpose: a minimal first run for Sentman Mode A.
-- Run: `panelsolver fmf --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/fmf/basic.csv`
 - Main inputs: `plate.stl`, `S=5`, `Ti_K=Tw_K=300`, and 10-degree alpha.
 - Observe: one total row and `outputs/fmf_basic.vtp` are produced.
@@ -62,7 +62,7 @@ remain directly under `outputs/`.
 
 - Purpose: compare FMF Mode A and atmosphere-resolved Mode B at the same
   freestream state.
-- Run: `panelsolver fmf --input examples/fmf/flow_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmf/flow_modes.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/fmf/flow_modes.csv`
 - Main inputs: `plate.stl`, `Tw_K=300`, 5-degree alpha; Mode A uses
   `S=20.711805563427` and `Ti_K=195.081`, while Mode B uses `Mach=25` and
@@ -76,7 +76,7 @@ remain directly under `outputs/`.
 ### `fmf/shielding.csv`
 
 - Purpose: compare unshielded and rtree ray-shielded loads.
-- Run: `panelsolver fmf --input examples/fmf/shielding.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmf/shielding.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/fmf/shielding.csv`
 - Main inputs: two aligned plates in `double_plate.stl`, `S=5`,
   `Ti_K=Tw_K=300`, zero attitude, and `ray_backend=rtree`.
@@ -88,7 +88,7 @@ remain directly under `outputs/`.
 ### `fmf/components.csv`
 
 - Purpose: show ordered multi-STL input and total/component summary rows.
-- Run: `panelsolver fmf --input examples/fmf/components.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmf/components.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/fmf/components.csv`
 - Main inputs: `cube.stl;plate_offset_x2.stl`, `S=5`, `Ti_K=Tw_K=300`,
   `alpha_deg=15`, and `beta_or_bank_deg=10`.
@@ -102,7 +102,7 @@ remain directly under `outputs/`.
 
 - Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
   and `bank` inputs.
-- Run: `panelsolver fmf --input examples/fmf/attitude_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver fmf --input examples/fmf/attitude_modes.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/fmf/attitude_modes.csv`
 - Main inputs: `cube.stl`; `(alpha, second angle, mode)` is `(0,10,beta_tan)`,
   `(0,10,beta_sin)`, and `(10,90,bank)` with otherwise identical FMF inputs.
@@ -115,7 +115,7 @@ remain directly under `outputs/`.
 ### `hypersonic/basic.csv`
 
 - Purpose: a minimal first run using the default pressure selectors.
-- Run: `panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/hypersonic/basic.csv`
 - Main inputs: `plate.stl`, `Mach=6`, `gamma=1.4`, and 10-degree alpha; omitted
   selectors default to windward Newtonian and leeward `shield`.
@@ -126,7 +126,7 @@ remain directly under `outputs/`.
 
 - Purpose: compare all four windward equations and exercise leeward
   Prandtl–Meyer expansion.
-- Run: `panelsolver hypersonic --input examples/hypersonic/pressure_models.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/hypersonic/pressure_models.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/hypersonic/pressure_models.csv`
 - Main inputs: the four windward cases use `plate.stl`, `Mach=6`, `gamma=1.4`,
   leeward `shield`, and whole-vehicle `alpha_deg=75`. With this plate orientation,
@@ -145,7 +145,7 @@ remain directly under `outputs/`.
 ### `hypersonic/shielding.csv`
 
 - Purpose: compare Newtonian loads with ray shielding off and on.
-- Run: `panelsolver hypersonic --input examples/hypersonic/shielding.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/hypersonic/shielding.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/hypersonic/shielding.csv`
 - Main inputs: `double_plate.stl`, `Mach=6`, `gamma=1.4`, Newtonian windward,
   leeward `shield`, zero attitude, and `ray_backend=rtree`.
@@ -161,7 +161,7 @@ regardless of its windward/leeward pressure selector.
 ### `hypersonic/components.csv`
 
 - Purpose: combine multi-STL output with per-component pressure selectors.
-- Run: `panelsolver hypersonic --input examples/hypersonic/components.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/hypersonic/components.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/hypersonic/components.csv`
 - Main inputs: `cube.stl;plate_offset_x2.stl`, `Mach=6`, `gamma=1.4`, nonzero
   alpha/beta, `modified_newtonian;newtonian`, and
@@ -175,7 +175,7 @@ regardless of its windward/leeward pressure selector.
 
 - Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
   and `bank` inputs.
-- Run: `panelsolver hypersonic --input examples/hypersonic/attitude_modes.csv --workers 1 --flush-every-cases 0`
+- Run: `panelsolver hypersonic --input examples/hypersonic/attitude_modes.csv --workers 1 --checkpoint-every-cases 0`
 - GUI file: `examples/hypersonic/attitude_modes.csv`
 - Main inputs: `cube.stl`, `Mach=6`, `gamma=1.4`, Newtonian windward, leeward
   `shield`; the three attitude tuples are the same as in the FMF example.

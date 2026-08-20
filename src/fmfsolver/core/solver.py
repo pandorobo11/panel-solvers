@@ -6,6 +6,7 @@ import pandas as pd
 
 from panelsolver._compat.legacy_results import run_legacy_case, run_legacy_cases
 from panelsolver._compat.legacy_scheduler import legacy_execution_order
+from panelsolver.app import DEFAULT_CHECKPOINT_CASES
 
 from ..csv_adapter import CSV_PROJECTION_POLICY
 from ..runtime import RUNTIME_POLICY
@@ -41,7 +42,7 @@ def run_cases(
     workers: int = 1,
     progress_cb=None,
     cancel_cb=None,
-    flush_every_cases: int | None = None,
+    checkpoint_every_cases: int | None = DEFAULT_CHECKPOINT_CASES,
     chunk_cb=None,
 ) -> pd.DataFrame:
     return run_legacy_cases(
@@ -56,7 +57,7 @@ def run_cases(
         logfn=logfn,
         progress_cb=progress_cb,
         cancel_cb=cancel_cb,
-        flush_every_cases=flush_every_cases,
+        checkpoint_every_cases=checkpoint_every_cases,
         chunk_cb=chunk_cb,
     )
 

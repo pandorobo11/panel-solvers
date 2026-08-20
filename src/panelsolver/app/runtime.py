@@ -27,6 +27,7 @@ from panelsolver.core import (
     iter_case_results_parallel,
     project_summary_csv,
     project_vtp_artifact,
+    reuse_oriented_execution_order,
 )
 from panelsolver.models import ModelRegistry
 
@@ -47,6 +48,7 @@ type ProjectionAdditionsBuilder = Callable[
 
 _RAY_ACCEL_HINTED_PRODUCTS: set[str] = set()
 _RAY_ACCEL_INSTALL_TARGET = "panelsolver[rayaccel]"
+DEFAULT_CHECKPOINT_CASES = 2000
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,22 +282,10 @@ def _run_prepared_product_case(
 def _execution_order(
     prepared: Sequence[PreparedProductCase],
 ) -> tuple[int, ...]:
-    """Retain the pinned shielding-first reuse order without output reordering."""
-    def key(index: int) -> tuple[object, ...]:
-        request = prepared[index].adapted.request
-        if not request.shielding.enabled:
-            return (1, index)
-        return (
-            0,
-            request.stl_paths,
-            round(request.scale_m_per_unit, 12),
-            round(request.common_case.alpha_t_deg, 12),
-            round(request.common_case.beta_t_deg, 12),
-            request.shielding.ray_backend.value,
-            index,
-        )
-
-    return tuple(sorted(range(len(prepared)), key=key))
+    """Use core's exact shielding-first reuse order without output reordering."""
+    return reuse_oriented_execution_order(
+        tuple(case.adapted.request for case in prepared)
+    )
 
 
 def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) -> None:
@@ -332,7 +322,7 @@ def run_product_cases(
     logfn: LogCallback | None = None,
     progress_cb: ProgressCallback | None = None,
     cancel_cb: CancelCallback | None = None,
-    flush_every_cases: int | None = None,
+    checkpoint_every_cases: int | None = DEFAULT_CHECKPOINT_CASES,
     snapshot_cb: SnapshotCallback | None = None,
     registry: ModelRegistry | None = None,
 ) -> ProductBatchRunResult:
@@ -348,9 +338,9 @@ def run_product_cases(
         raise TypeError("snapshot_cb must be callable")
     if isinstance(workers, bool) or not isinstance(workers, int):
         raise TypeError("workers must be an integer")
-    flush_every = int(flush_every_cases or 0)
-    if flush_every < 0:
-        raise ValueError("flush_every_cases must be >= 0.")
+    checkpoint_every = int(checkpoint_every_cases or 0)
+    if checkpoint_every < 0:
+        raise ValueError("checkpoint_every_cases must be >= 0.")
     if cancel_cb is not None and cancel_cb():
         raise SchedulerCancelled("Canceled by user at a case boundary.")
 
@@ -366,7 +356,10 @@ def run_product_cases(
         nonlocal completed_since_snapshot
         if snapshot_cb is None:
             return
-        if not force and (flush_every <= 0 or completed_since_snapshot < flush_every):
+        if not force and (
+            checkpoint_every <= 0
+            or completed_since_snapshot < checkpoint_every
+        ):
             return
         available = tuple(case for case in completed if case is not None)
         if not available:
@@ -442,7 +435,7 @@ def run_and_write_product_cases(
     logfn: LogCallback | None = None,
     progress_cb: ProgressCallback | None = None,
     cancel_cb: CancelCallback | None = None,
-    flush_every_cases: int = 0,
+    checkpoint_every_cases: int = DEFAULT_CHECKPOINT_CASES,
     log_snapshots: bool = False,
 ) -> ProductBatchRunResult:
     """Run cases and atomically rewrite checkpoint/final summary snapshots."""
@@ -467,12 +460,13 @@ def run_and_write_product_cases(
         logfn=logger,
         progress_cb=progress_cb,
         cancel_cb=cancel_cb,
-        flush_every_cases=flush_every_cases,
+        checkpoint_every_cases=checkpoint_every_cases,
         snapshot_cb=write_snapshot,
     )
 
 
 __all__ = (
+    "DEFAULT_CHECKPOINT_CASES",
     "PreparedProductCase",
     "ProductBatchRunResult",
     "ProductCaseRunResult",

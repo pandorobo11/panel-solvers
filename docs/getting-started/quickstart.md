@@ -10,7 +10,7 @@ contains the extracted `examples/` folder.
 ## Run FMF
 
 ```bash
-panelsolver fmf --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
+panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
 
 The legacy compatibility form remains `fmfsolver-cli` with the same options.
@@ -21,7 +21,7 @@ Its summary and VTP output are written to `examples/fmf/outputs/`.
 ## Run Hypersonic
 
 ```bash
-panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
+panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
 
 The legacy compatibility form remains `newtsolver-cli` with the same options.

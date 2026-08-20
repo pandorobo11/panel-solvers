@@ -10,6 +10,7 @@ import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
 from .run_lifecycle import CaseRunWorker
+from .runtime import DEFAULT_CHECKPOINT_CASES
 from .solver_spec import CaseRow, GuiRunResult, SolverSpec
 from .viewer_data import match_artifact_case
 
@@ -86,7 +87,7 @@ class CasesPanel(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(str, object, object)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
-    run_requested = QtCore.Signal(object, int, object)
+    run_requested = QtCore.Signal(object, int, int, object)
     run_finished = QtCore.Signal()
 
     def __init__(
@@ -122,6 +123,10 @@ class CasesPanel(QtWidgets.QWidget):
         self.spin_workers = QtWidgets.QSpinBox()
         self.spin_workers.setRange(1, os.cpu_count() or 1)
         self.spin_workers.setValue(1)
+        self.spin_checkpoint_every_cases = QtWidgets.QSpinBox()
+        self.spin_checkpoint_every_cases.setRange(0, 2_147_483_647)
+        self.spin_checkpoint_every_cases.setValue(DEFAULT_CHECKPOINT_CASES)
+        self.spin_checkpoint_every_cases.setSuffix(" cases")
         self.case_table = QtWidgets.QTableWidget()
         self.case_table.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
@@ -170,6 +175,8 @@ class CasesPanel(QtWidgets.QWidget):
         run_row = QtWidgets.QHBoxLayout()
         run_row.addWidget(QtWidgets.QLabel("Workers:"))
         run_row.addWidget(self.spin_workers)
+        run_row.addWidget(QtWidgets.QLabel("Checkpoint every:"))
+        run_row.addWidget(self.spin_checkpoint_every_cases)
         run_row.addStretch(1)
         run_row.addWidget(self.btn_run)
         run_row.addWidget(self.btn_cancel)
@@ -341,13 +348,19 @@ class CasesPanel(QtWidgets.QWidget):
                 str(exc),
             )
             return
-        self.run_requested.emit(rows, int(self.spin_workers.value()), output_path)
+        self.run_requested.emit(
+            rows,
+            int(self.spin_workers.value()),
+            int(self.spin_checkpoint_every_cases.value()),
+            output_path,
+        )
 
-    @QtCore.Slot(object, int, object)
+    @QtCore.Slot(object, int, int, object)
     def start_run(
         self,
         rows: Sequence[CaseRow],
         workers: int,
+        checkpoint_every_cases: int,
         output_path: str | Path,
     ) -> bool:
         """Start exactly one background adapter run."""
@@ -372,6 +385,7 @@ class CasesPanel(QtWidgets.QWidget):
             self.spec.adapters.run_cases,
             selected,
             workers,
+            checkpoint_every_cases,
             self._run_output_path,
         )
         self._run_thread = thread
