@@ -115,6 +115,9 @@ class GuiBootstrapTests(unittest.TestCase):
         with (
             patch.object(QtWidgets.QApplication, "instance", return_value=self.app),
             patch.object(QtWidgets.QApplication, "exec", return_value=0),
+            patch(
+                "panelsolver.app.gui_bootstrap._set_windows_app_user_model_id",
+            ) as set_app_id,
             patch.object(
                 QtWidgets.QApplication,
                 "setWindowIcon",
@@ -124,11 +127,19 @@ class GuiBootstrapTests(unittest.TestCase):
 
         set_window_icon.assert_called_once()
         self.assertFalse(set_window_icon.call_args.args[0].isNull())
+        set_app_id.assert_not_called()
 
     def test_packaged_application_icon_is_loadable(self) -> None:
         icon = _application_icon()
         self.assertFalse(icon.isNull())
         self.assertTrue(icon.availableSizes())
+        image = icon.pixmap(icon.availableSizes()[0]).toImage()
+        self.assertTrue(image.hasAlphaChannel())
+        self.assertEqual(0, image.pixelColor(0, 0).alpha())
+        self.assertEqual(
+            255,
+            image.pixelColor(image.width() // 2, image.height() // 2).alpha(),
+        )
 
     def test_windows_app_id_is_skipped_on_other_platforms(self) -> None:
         with (

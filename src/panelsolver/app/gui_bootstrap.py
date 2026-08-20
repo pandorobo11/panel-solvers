@@ -102,11 +102,11 @@ def run_gui(
     window_factory: Callable[[SolverSpec], MainWindow] = MainWindow,
 ) -> int:
     """Show the shared window and run the Qt event loop."""
-    _set_windows_app_user_model_id()
     application = QtWidgets.QApplication.instance()
     if application is None:
         if not callable(application_factory):
             raise TypeError("application_factory must be callable")
+        _set_windows_app_user_model_id()
         application = application_factory(list(sys.argv if argv is None else argv))
     application.setWindowIcon(_application_icon())
     window = create_main_window(spec, window_factory=window_factory)
