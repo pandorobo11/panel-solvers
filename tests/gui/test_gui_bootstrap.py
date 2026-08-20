@@ -5,7 +5,7 @@ import io
 import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -18,7 +18,10 @@ from newtsolver.gui_spec import solver_spec as newt_solver_spec
 from panelsolver import gui as canonical_gui
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
+    _WINDOWS_APP_USER_MODEL_ID,
     GuiAdaptersUnavailable,
+    _application_icon,
+    _set_windows_app_user_model_id,
     create_main_window,
     prepare_gui_spec,
     run_gui,
@@ -94,11 +97,97 @@ class GuiBootstrapTests(unittest.TestCase):
             made.append(window)
             return window
 
-        with patch.object(QtWidgets.QApplication, "exec", return_value=23) as execute:
+        with (
+            patch.object(QtWidgets.QApplication, "exec", return_value=23) as execute,
+            patch.object(
+                QtWidgets.QApplication,
+                "setWindowIcon",
+            ) as set_window_icon,
+        ):
             self.assertEqual(23, run_gui(fmf_solver_spec(), window_factory=factory))
         execute.assert_called_once_with()
+        set_window_icon.assert_called_once()
+        self.assertFalse(set_window_icon.call_args.args[0].isNull())
         self.assertTrue(made[0].shown)
         self.assertEqual("sentman", made[0].spec.model_id)
+
+    def test_run_gui_sets_icon_when_reusing_existing_application(self) -> None:
+        with (
+            patch.object(QtWidgets.QApplication, "instance", return_value=self.app),
+            patch.object(QtWidgets.QApplication, "exec", return_value=0),
+            patch(
+                "panelsolver.app.gui_bootstrap._set_windows_app_user_model_id",
+            ) as set_app_id,
+            patch.object(
+                QtWidgets.QApplication,
+                "setWindowIcon",
+            ) as set_window_icon,
+        ):
+            run_gui(fmf_solver_spec(), window_factory=_FakeWindow)
+
+        set_window_icon.assert_called_once()
+        self.assertFalse(set_window_icon.call_args.args[0].isNull())
+        set_app_id.assert_not_called()
+
+    def test_packaged_application_icon_is_loadable(self) -> None:
+        icon = _application_icon()
+        self.assertFalse(icon.isNull())
+        self.assertTrue(icon.availableSizes())
+        image = icon.pixmap(icon.availableSizes()[0]).toImage()
+        self.assertTrue(image.hasAlphaChannel())
+        self.assertEqual(0, image.pixelColor(0, 0).alpha())
+        self.assertEqual(
+            255,
+            image.pixelColor(image.width() // 2, image.height() // 2).alpha(),
+        )
+
+    def test_windows_app_id_is_skipped_on_other_platforms(self) -> None:
+        with (
+            patch("panelsolver.app.gui_bootstrap.sys.platform", "linux"),
+            patch("ctypes.WinDLL", create=True) as win_dll,
+        ):
+            _set_windows_app_user_model_id()
+        win_dll.assert_not_called()
+
+    def test_windows_app_id_is_set_before_application_creation(self) -> None:
+        events = []
+        fake_application = MagicMock()
+        fake_application.exec.return_value = 0
+
+        def make_application(_argv):
+            events.append("application")
+            return fake_application
+
+        with (
+            patch.object(QtWidgets.QApplication, "instance", return_value=None),
+            patch(
+                "panelsolver.app.gui_bootstrap._set_windows_app_user_model_id",
+                side_effect=lambda: events.append("app-id"),
+            ),
+            patch(
+                "panelsolver.app.gui_bootstrap._application_icon",
+                return_value=MagicMock(),
+            ),
+        ):
+            run_gui(
+                newt_solver_spec(),
+                application_factory=make_application,
+                window_factory=_FakeWindow,
+            )
+
+        self.assertEqual(["app-id", "application"], events)
+        fake_application.setWindowIcon.assert_called_once()
+
+    def test_windows_app_id_uses_stable_identity(self) -> None:
+        set_app_id = MagicMock(return_value=0)
+        shell32 = MagicMock()
+        shell32.SetCurrentProcessExplicitAppUserModelID = set_app_id
+        with (
+            patch("panelsolver.app.gui_bootstrap.sys.platform", "win32"),
+            patch("ctypes.WinDLL", create=True, return_value=shell32),
+        ):
+            _set_windows_app_user_model_id()
+        set_app_id.assert_called_once_with(_WINDOWS_APP_USER_MODEL_ID)
 
     def test_compatibility_launchers_select_independent_specs_only(self) -> None:
         captured = []
