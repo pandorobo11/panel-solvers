@@ -5,8 +5,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import replace
+from importlib import resources
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from .main_window import MainWindow
 from .solver_spec import SolverGuiAdapters, SolverSpec
@@ -14,6 +15,38 @@ from .solver_spec import SolverGuiAdapters, SolverSpec
 
 class GuiAdaptersUnavailable(RuntimeError):
     """Raised when an explicitly unconfigured GUI specification is invoked."""
+
+
+_WINDOWS_APP_USER_MODEL_ID = "io.github.pandorobo11.panelsolver"
+
+
+def _set_windows_app_user_model_id() -> None:
+    """Give Windows GUI launches a stable taskbar application identity."""
+    if sys.platform != "win32":
+        return
+
+    import ctypes
+
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    set_app_id = shell32.SetCurrentProcessExplicitAppUserModelID
+    set_app_id.argtypes = [ctypes.c_wchar_p]
+    set_app_id.restype = ctypes.c_long
+    result = int(set_app_id(_WINDOWS_APP_USER_MODEL_ID))
+    if result != 0:
+        raise OSError(result, "Could not set the Windows AppUserModelID")
+
+
+def _application_icon() -> QtGui.QIcon:
+    """Load the canonical application icon from the installed package."""
+    payload = (
+        resources.files("panelsolver")
+        .joinpath("assets", "panelsolver.png")
+        .read_bytes()
+    )
+    pixmap = QtGui.QPixmap()
+    if not pixmap.loadFromData(payload, "PNG"):
+        raise RuntimeError("Could not load the packaged Panel Solver icon")
+    return QtGui.QIcon(pixmap)
 
 
 def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
@@ -69,11 +102,13 @@ def run_gui(
     window_factory: Callable[[SolverSpec], MainWindow] = MainWindow,
 ) -> int:
     """Show the shared window and run the Qt event loop."""
+    _set_windows_app_user_model_id()
     application = QtWidgets.QApplication.instance()
     if application is None:
         if not callable(application_factory):
             raise TypeError("application_factory must be callable")
         application = application_factory(list(sys.argv if argv is None else argv))
+    application.setWindowIcon(_application_icon())
     window = create_main_window(spec, window_factory=window_factory)
     window.show()
     return int(application.exec())

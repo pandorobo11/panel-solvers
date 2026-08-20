@@ -178,7 +178,7 @@ def _smoke_canonical_gui_entrypoint() -> None:
     from fmfsolver.gui_spec import solver_spec as legacy_fmf_spec
     from newtsolver.gui_spec import solver_spec as legacy_hypersonic_spec
     from panelsolver import gui as canonical_gui
-    from panelsolver.app.gui_bootstrap import create_main_window
+    from panelsolver.app.gui_bootstrap import _application_icon, create_main_window
     from panelsolver.app.main_window import MainWindow
 
     class OffscreenViewer(QtWidgets.QWidget):
@@ -198,6 +198,8 @@ def _smoke_canonical_gui_entrypoint() -> None:
             pass
 
     _application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    if _application_icon().isNull():
+        raise RuntimeError("installed wheel application icon is not loadable")
     entry = next(
         item
         for item in importlib.metadata.distribution("panelsolver").entry_points
