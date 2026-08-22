@@ -21,6 +21,7 @@ from panelsolver.app import (
 )
 from panelsolver.app.viewer import ViewerPanel
 from panelsolver.core import CaseSignature, canonical_json
+from tests.path_assertions import assert_paths_equivalent
 
 
 class FakeCamera:
@@ -341,7 +342,11 @@ class ViewerPanelTests(unittest.TestCase):
             ):
                 viewer.save_images_for_case_rows(rows)
 
-            self.assertEqual(str(source_dir / "images"), dialog.call_args.args[2])
+            assert_paths_equivalent(
+                self,
+                source_dir / "images",
+                dialog.call_args.args[2],
+            )
             self.assertEqual([output_dir], made)
             self.assertEqual(5, len(events))
             self.assertEqual(
@@ -392,19 +397,25 @@ class ViewerPanelTests(unittest.TestCase):
             )
             viewer.set_input_path(root / "input.csv")
             viewer._display_case_row = row
-            self.assertEqual(root / "outputs", viewer.default_artifact_dir())
+            assert_paths_equivalent(
+                self,
+                root / "outputs",
+                viewer.default_artifact_dir(),
+            )
             with patch.object(
                 QtWidgets.QFileDialog,
                 "getExistingDirectory",
                 return_value="",
             ) as dialog:
                 viewer.save_images_for_case_rows((row,))
-            self.assertEqual(
-                str(root / "outputs" / "images"),
+            assert_paths_equivalent(
+                self,
+                root / "outputs" / "images",
                 dialog.call_args.args[2],
             )
             viewer._save_case_image(row, root / "captures")
-            self.assertEqual([root / "outputs" / "one.vtp"], seen)
+            self.assertEqual(1, len(seen))
+            assert_paths_equivalent(self, root / "outputs" / "one.vtp", seen[0])
 
 
 if __name__ == "__main__":

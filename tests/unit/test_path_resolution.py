@@ -10,6 +10,7 @@ from panelsolver.app.path_resolution import (
     resolve_case_vtp_path,
     resolve_input_relative_path,
 )
+from tests.path_assertions import assert_paths_equivalent
 
 
 class PathResolutionTests(unittest.TestCase):
@@ -18,15 +19,18 @@ class PathResolutionTests(unittest.TestCase):
             root = Path(directory)
             input_path = root / "project" / "input.csv"
             row = {"case_id": "case001", "out_dir": "outputs"}
-            self.assertEqual(
+            assert_paths_equivalent(
+                self,
                 input_path.parent / "outputs",
                 resolve_case_output_dir(row, input_path),
             )
-            self.assertEqual(
+            assert_paths_equivalent(
+                self,
                 input_path.parent / "outputs" / "case001.vtp",
                 resolve_case_vtp_path(row, input_path),
             )
-            self.assertEqual(
+            assert_paths_equivalent(
+                self,
                 input_path.parent / "outputs" / "input_result.csv",
                 default_summary_output_path(input_path),
             )
@@ -36,11 +40,13 @@ class PathResolutionTests(unittest.TestCase):
             root = Path(directory)
             absolute = root / "shared-artifacts"
             input_path = root / "project" / "input.csv"
-            self.assertEqual(
+            assert_paths_equivalent(
+                self,
                 absolute,
                 resolve_input_relative_path(absolute, input_path),
             )
-            self.assertEqual(
+            assert_paths_equivalent(
+                self,
                 absolute,
                 resolve_case_output_dir(
                     {"case_id": "one", "out_dir": str(absolute)},

@@ -23,6 +23,7 @@ from panelsolver.app import (
 )
 from panelsolver.app.cases_panel import CasesPanel, ValidationIssuesDialog
 from panelsolver.core import CaseSignature, canonical_json
+from tests.path_assertions import assert_paths_equivalent
 
 
 def _signature(label: str) -> CaseSignature:
@@ -298,7 +299,8 @@ class CasesPanelTests(unittest.TestCase):
                 )
             )
             panel.case_table.selectRow(0)
-            self.assertEqual([artifact_path], seen)
+            self.assertEqual(1, len(seen))
+            assert_paths_equivalent(self, artifact_path, seen[0])
 
     def test_missing_and_broken_artifacts_clear_previous_view(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:

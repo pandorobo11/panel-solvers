@@ -25,11 +25,14 @@ class ExampleResourceTests(unittest.TestCase):
                         self.assertTrue(input_path.is_file())
                         frame = module.read_cases(input_path)
                         self.assertGreater(len(frame), 0)
+                        resolved_destination = destination.resolve(strict=False)
                         for raw in frame["stl_path"]:
                             for stl_path in str(raw).split(";"):
                                 self.assertTrue(Path(stl_path).is_file())
                                 self.assertTrue(
-                                    Path(stl_path).is_relative_to(destination)
+                                    Path(stl_path)
+                                    .resolve(strict=False)
+                                    .is_relative_to(resolved_destination)
                                 )
 
     def test_copy_never_overwrites_a_modified_workspace_file(self) -> None:

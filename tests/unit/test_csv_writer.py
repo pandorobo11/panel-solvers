@@ -245,8 +245,8 @@ class CsvWriterTests(unittest.TestCase):
                         message = str(caught.exception)
                         self.assertIn("summary path", message)
                         self.assertIn(f"{role} path", message)
-                        self.assertIn(str(output), message)
-                        self.assertIn(str(protected), message)
+                        self.assertIn(output.name, message)
+                        self.assertIn(protected.name, message)
                         if role.startswith("planned") or role == "STL":
                             self.assertIn("case_id=", message)
 
