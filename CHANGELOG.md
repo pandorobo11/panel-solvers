@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Allow PySide6 6.9.3 through the Qt 6 series and require PyVistaQt 0.12 or
+  newer, removing the obsolete cross-platform PySide6 6.9.3 exact pin.
 - Improve batch CLI presentation with Rich, including progress display and
   `--verbose`, `--plain`, and `--debug`, while preserving plain-text output for
   non-interactive use.
