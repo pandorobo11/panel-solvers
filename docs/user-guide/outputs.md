@@ -7,9 +7,14 @@ column and array inventory is in [Output formats](../reference/output-formats.md
 
 - If CLI `--output` is omitted, the summary is
   `<input_dir>/outputs/<input_stem>_result.csv`.
-- Per-case artifacts are `<out_dir>/<case_id>.vtp`.
+- A relative `out_dir` is resolved from `<input_dir>`; an absolute `out_dir` is
+  used as specified.
+- Per-case artifacts are `<resolved_out_dir>/<case_id>.vtp`.
 - `save_vtp_on` defaults to `1`.
 - `out_dir` is created even if VTP output is off.
+
+The GUI uses the same base for its default Summary CSV, automatic VTP loading,
+and image-export directories.
 
 Both the final summary and checkpoint snapshots are written through a
 same-directory temporary file, flushed, synchronized, and atomically replaced.

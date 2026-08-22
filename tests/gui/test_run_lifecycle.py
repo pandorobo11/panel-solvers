@@ -63,6 +63,7 @@ class _FakeViewer(QtWidgets.QWidget):
         self.loaded = []
         self.cleared = 0
         self.rows = ()
+        self.input_path = None
         self.saved_rows = []
 
     def load_vtp(self, *args) -> None:
@@ -73,6 +74,9 @@ class _FakeViewer(QtWidgets.QWidget):
 
     def set_case_rows(self, rows) -> None:
         self.rows = tuple(rows)
+
+    def set_input_path(self, path) -> None:
+        self.input_path = path
 
     def save_images_for_case_rows(self, rows) -> None:
         self.saved_rows.append(list(rows))

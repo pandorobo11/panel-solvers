@@ -9,6 +9,8 @@ from pathlib import Path
 from panelsolver.core import CaseSignature, match_case_signature
 from panelsolver.docs_site import validate_documentation_page
 
+from .examples import ExampleDefinition
+
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
 type LogCallback = Callable[[str], None]
@@ -173,6 +175,7 @@ class SolverSpec:
     preferred_scalars: tuple[str, ...]
     format_case: FormatCaseCallback
     adapters: SolverGuiAdapters | None = None
+    examples: tuple[ExampleDefinition, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -222,6 +225,19 @@ class SolverSpec:
             SolverGuiAdapters,
         ):
             raise TypeError("SolverSpec.adapters must be SolverGuiAdapters or None")
+        try:
+            examples = tuple(self.examples)
+        except TypeError as exc:
+            raise TypeError("SolverSpec.examples must be iterable") from exc
+        if any(not isinstance(example, ExampleDefinition) for example in examples):
+            raise TypeError(
+                "SolverSpec.examples must contain ExampleDefinition values"
+            )
+        labels = tuple(example.label for example in examples)
+        inputs = tuple(example.input_resource for example in examples)
+        if len(labels) != len(set(labels)) or len(inputs) != len(set(inputs)):
+            raise ValueError("SolverSpec.examples must have unique labels and inputs")
+        object.__setattr__(self, "examples", examples)
 
 
 __all__ = (
@@ -229,6 +245,7 @@ __all__ = (
     "BuildCaseSignaturesCallback",
     "CancelRequestedCallback",
     "CaseRow",
+    "ExampleDefinition",
     "FormatCaseCallback",
     "GuiRunRequest",
     "GuiRunResult",

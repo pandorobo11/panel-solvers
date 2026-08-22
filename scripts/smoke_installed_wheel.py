@@ -194,6 +194,9 @@ def _smoke_canonical_gui_entrypoint() -> None:
         def set_case_rows(self, *_args) -> None:
             pass
 
+        def set_input_path(self, *_args) -> None:
+            pass
+
         def save_images_for_case_rows(self, *_args) -> None:
             pass
 
@@ -629,6 +632,31 @@ def _smoke_packaged_documentation() -> None:
                 raise RuntimeError(f"installed documentation file is missing: {legal_name}")
 
 
+def _smoke_packaged_examples(staging: Path) -> None:
+    from panelsolver.app import ExampleLibrary
+    from panelsolver.domains import fmf, hypersonic
+
+    library = ExampleLibrary()
+    for module, domain in ((fmf, "fmf"), (hypersonic, "hypersonic")):
+        for example in module.gui_spec().examples:
+            destination = (
+                staging
+                / "packaged-examples"
+                / domain
+                / Path(example.input_resource).stem
+            )
+            input_path = library.copy_example(example, destination)
+            frame = module.read_cases(input_path)
+            if frame.empty:
+                raise RuntimeError(f"installed example did not load: {input_path}")
+            for raw in frame["stl_path"]:
+                for raw_path in str(raw).split(";"):
+                    if not Path(raw_path).is_file():
+                        raise RuntimeError(
+                            f"installed example geometry is missing: {raw_path}"
+                        )
+
+
 def _extract_release_archives(
     repository: Path,
     dist_dir: Path,
@@ -822,6 +850,7 @@ def main(argv: list[str] | None = None) -> int:
         excel_inputs = _prepare_current_excel_inputs(inputs)
         _smoke_high_level_api(staging, inputs)
         _smoke_packaged_documentation()
+        _smoke_packaged_examples(staging)
         _smoke_canonical_gui_entrypoint()
         _smoke_direct_solver_results(staging, inputs)
         _smoke_direct_solver_errors(staging, inputs)

@@ -22,7 +22,14 @@ class _Cases(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(object)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
+    input_path_changed = QtCore.Signal(object)
     run_finished = QtCore.Signal()
+
+    def pick_input_file(self) -> None:
+        pass
+
+    def load_input_file(self, *_args, **_kwargs) -> bool:
+        return True
 
     def logln(self, _message: str) -> None:
         pass
@@ -45,6 +52,9 @@ class _Viewer(QtWidgets.QWidget):
         pass
 
     def set_case_rows(self, _rows) -> None:
+        pass
+
+    def set_input_path(self, _path) -> None:
         pass
 
     def save_images_for_case_rows(self, _rows) -> None:
