@@ -637,18 +637,24 @@ def _smoke_packaged_examples(staging: Path) -> None:
     from panelsolver.domains import fmf, hypersonic
 
     library = ExampleLibrary()
-    for module in (fmf, hypersonic):
-        example = module.gui_spec().examples[0]
-        input_path = library.copy_example(
-            example,
-            staging / f"packaged-example-{module.__name__.rsplit('.', 1)[-1]}",
-        )
-        frame = module.read_cases(input_path)
-        if len(frame) != 1:
-            raise RuntimeError(f"installed example did not load: {input_path}")
-        for raw_path in str(frame.iloc[0]["stl_path"]).split(";"):
-            if not Path(raw_path).is_file():
-                raise RuntimeError(f"installed example geometry is missing: {raw_path}")
+    for module, domain in ((fmf, "fmf"), (hypersonic, "hypersonic")):
+        for example in module.gui_spec().examples:
+            destination = (
+                staging
+                / "packaged-examples"
+                / domain
+                / Path(example.input_resource).stem
+            )
+            input_path = library.copy_example(example, destination)
+            frame = module.read_cases(input_path)
+            if frame.empty:
+                raise RuntimeError(f"installed example did not load: {input_path}")
+            for raw in frame["stl_path"]:
+                for raw_path in str(raw).split(";"):
+                    if not Path(raw_path).is_file():
+                        raise RuntimeError(
+                            f"installed example geometry is missing: {raw_path}"
+                        )
 
 
 def _extract_release_archives(

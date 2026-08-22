@@ -33,8 +33,10 @@ alive for the lifetime of the window.
 ## Run cases
 
 1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
-   XLSX, or XLSM case table. The first dialog starts in the current directory;
-   after a successful normal load, later dialogs start in that file's directory.
+   XLSX, or XLSM case table. If no remembered input directory exists, the dialog
+   starts in the current directory. After a successful normal load, later dialogs
+   start in that file's directory. If the remembered directory no longer exists,
+   the dialog falls back to the current directory.
 2. Select one or more table rows. With no selection, **Run Selected Cases** runs
    every loaded row.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
