@@ -83,11 +83,11 @@ Apache-2.0 `LICENSE`.
 ## Runtime dependencies
 
 The runtime dependencies declared in `pyproject.toml`--NetworkX, NumPy,
-openpyxl, pandas, PySide6, PyVista, pyvistaqt, Rtree, SciPy, and Trimesh--and
-the optional Embree bindings are installed as separate distributions. They
-remain subject to their respective upstream licenses and are not relicensed by
-Panel Solver. Consult each installed distribution and its upstream project for
-its applicable license and notices.
+openpyxl, pandas, PySide6, PyVista, pyvistaqt, Rich, rich-argparse, Rtree,
+SciPy, and Trimesh--and the optional Embree bindings are installed as separate
+distributions. They remain subject to their respective upstream licenses and
+are not relicensed by Panel Solver. Consult each installed distribution and its
+upstream project for its applicable license and notices.
 
 Except for the audited offline-documentation assets above, the panelsolver
 wheel does not contain runtime-dependency source or binaries. In particular,

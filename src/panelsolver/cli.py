@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from rich_argparse import RichHelpFormatter
+
 from panelsolver.app.cli import ProductCliPolicy, run_cli
 from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as _FMF_POLICY
 from panelsolver.domains.hypersonic import (
@@ -22,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="panelsolver",
         description="Run Panel Solver using a canonical flow-domain selector.",
+        formatter_class=RichHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="domain", metavar="{fmf,hypersonic}")
     subparsers.add_parser(

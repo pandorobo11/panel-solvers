@@ -29,7 +29,7 @@ class Phase7CliTests(unittest.TestCase):
     def test_canonical_help_names_flow_domains_and_delegated_program(self) -> None:
         with patch.dict(os.environ, {"COLUMNS": "80"}):
             help_text = build_canonical_parser().format_help()
-            self.assertIn("usage: panelsolver", help_text)
+            self.assertIn("usage: panelsolver", help_text.casefold())
             self.assertIn("fmf", help_text)
             self.assertIn("hypersonic", help_text)
             for domain, description in (
@@ -43,7 +43,9 @@ class Phase7CliTests(unittest.TestCase):
                             canonical_main([domain, "--help"])
                     self.assertEqual(0, caught.exception.code)
                     delegated = stdout.getvalue()
-                    self.assertIn(f"usage: panelsolver {domain}", delegated)
+                    self.assertIn(
+                        f"usage: panelsolver {domain}", delegated.casefold()
+                    )
                     self.assertIn(description, delegated)
                     self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", delegated)
                     self.assertNotIn(".xls)", delegated)
@@ -64,12 +66,15 @@ class Phase7CliTests(unittest.TestCase):
             ):
                 with self.subTest(program=program):
                     help_text = builder().format_help()
-                    self.assertIn(f"usage: {program}", help_text)
+                    self.assertIn(f"usage: {program}", help_text.casefold())
                     self.assertIn(description, help_text)
                     self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", help_text)
                     self.assertNotIn(".xls)", help_text)
                     self.assertIn("--cases CASES [CASES ...]", help_text)
                     self.assertIn("--checkpoint-every-cases", help_text)
+                    self.assertIn("--verbose", help_text)
+                    self.assertIn("--plain", help_text)
+                    self.assertIn("--debug", help_text)
                     self.assertNotIn("--flush-every-cases", help_text)
                     parsed = builder().parse_args(["--input", "cases.csv"])
                     self.assertEqual(
@@ -110,8 +115,9 @@ class Phase7CliTests(unittest.TestCase):
                 read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
             ).iloc[[0]].copy()
             frame.to_csv(input_path, index=False)
-            with self.assertRaisesRegex(ValueError, "protected path"):
-                fmf_main(
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                self.assertEqual(1, fmf_main(
                     [
                         "--input",
                         str(input_path),
@@ -120,9 +126,12 @@ class Phase7CliTests(unittest.TestCase):
                         "--checkpoint-every-cases",
                         "0",
                     ]
-                )
-            with self.assertRaisesRegex(ValueError, "Unknown case_id"):
-                fmf_main(
+                ))
+            self.assertIn("Error:", stderr.getvalue())
+            self.assertIn("protected path", stderr.getvalue())
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                self.assertEqual(1, fmf_main(
                     [
                         "--input",
                         str(input_path),
@@ -130,6 +139,18 @@ class Phase7CliTests(unittest.TestCase):
                         "missing",
                         "--checkpoint-every-cases",
                         "0",
+                    ]
+                ))
+            self.assertIn("Unknown case_id", stderr.getvalue())
+
+            with self.assertRaisesRegex(ValueError, "Unknown case_id"):
+                fmf_main(
+                    [
+                        "--input",
+                        str(input_path),
+                        "--cases",
+                        "missing",
+                        "--debug",
                     ]
                 )
 
