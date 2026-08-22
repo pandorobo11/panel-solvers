@@ -25,6 +25,7 @@ from panelsolver.app import (
     run_and_write_product_cases,
     run_product_cases,
 )
+from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -180,7 +181,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                     self.assertFalse((out_dir / f"{row['case_id']}.npz").exists())
                     self.assertEqual("", result.cases[0].vtp_path)
                     self.assertFalse(hasattr(result.cases[0], "npz_path"))
-                    with summary.open(encoding="utf-8", newline="") as stream:
+                    with summary.open(encoding=CSV_ENCODING, newline="") as stream:
                         total = next(csv.DictReader(stream))
                     self.assertEqual("", total["vtp_path"])
                     self.assertNotIn("save_npz_on", total)
@@ -321,7 +322,7 @@ class Phase7RuntimeTests(unittest.TestCase):
                     )
 
                     self.assertEqual([(1, 3), (2, 3)], progress)
-                    with summary.open(encoding="utf-8", newline="") as stream:
+                    with summary.open(encoding=CSV_ENCODING, newline="") as stream:
                         rows = tuple(csv.DictReader(stream))
                     self.assertEqual(
                         list(good_ids),

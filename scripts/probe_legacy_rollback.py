@@ -15,6 +15,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from panelsolver.app.csv_writer import CSV_ENCODING
+
 try:
     from release_tools import (
         canonical_distribution_name,
@@ -261,7 +263,7 @@ def _run_sample(
         env=environment,
         capture_output=True,
     )
-    with output.open(encoding="utf-8", newline="") as stream:
+    with output.open(encoding=CSV_ENCODING, newline="") as stream:
         rows = list(csv.DictReader(stream))
     if not rows or not any(row.get("case_id") == case_id for row in rows):
         raise RuntimeError(f"{product} rollback sample output is missing {case_id}")

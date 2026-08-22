@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from panelsolver.app.csv_writer import CSV_ENCODING
+
 
 def read_current_cases(
     reader: Callable[[str | Path], pd.DataFrame],
@@ -15,7 +17,7 @@ def read_current_cases(
 ) -> pd.DataFrame:
     """Read a Phase 1 CSV after removing only the retired input field."""
     source = Path(historical_path)
-    frame = pd.read_csv(source)
+    frame = pd.read_csv(source, encoding=CSV_ENCODING)
     frame = frame.drop(columns=["save_npz_on"])
     frame["stl_path"] = frame["stl_path"].map(
         lambda value: ";".join(
@@ -28,5 +30,5 @@ def read_current_cases(
     )
     with tempfile.TemporaryDirectory() as temp_dir:
         current_path = Path(temp_dir) / source.name
-        frame.to_csv(current_path, index=False)
+        frame.to_csv(current_path, index=False, encoding=CSV_ENCODING)
         return reader(current_path)

@@ -19,6 +19,7 @@ from newtsolver.case_adapter import build_signatures as build_newt_signatures
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
 from panelsolver.app import run_and_write_product_cases
+from panelsolver.app.csv_writer import CSV_ENCODING
 from tests.current_case_fixtures import read_current_cases
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -86,7 +87,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                         output,
                         roots=roots,
                     )
-                    with output.open(encoding="utf-8", newline="") as stream:
+                    with output.open(encoding=CSV_ENCODING, newline="") as stream:
                         raw_csv_rows = list(csv.DictReader(stream))
 
                     for row in rows:

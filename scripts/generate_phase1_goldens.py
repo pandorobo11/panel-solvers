@@ -33,6 +33,8 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
+from panelsolver.app.csv_writer import CSV_ENCODING
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 MANIFEST_PATH = FIXTURE_ROOT / "manifest.json"
@@ -810,7 +812,7 @@ def _csv_cell(column: str, value: str, *, roots: Mapping[Path, str]) -> Any:
 
 
 def _read_semantic_csv(path: Path, *, roots: Mapping[Path, str]) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8", newline="") as stream:
+    with path.open("r", encoding=CSV_ENCODING, newline="") as stream:
         reader = csv.DictReader(stream)
         columns = list(reader.fieldnames or [])
         rows = [
@@ -1085,7 +1087,7 @@ def _capture_valid_cases(
         raise Phase1GenerationError(f"{solver} CLI returned {exit_code}")
 
     semantic_csv = _read_semantic_csv(result_path, roots=roots)
-    with result_path.open("r", encoding="utf-8", newline="") as stream:
+    with result_path.open("r", encoding=CSV_ENCODING, newline="") as stream:
         raw_csv_rows = list(csv.DictReader(stream))
     normalized_cases = api["read_cases"](str(input_path))
     cases: dict[str, Any] = {}

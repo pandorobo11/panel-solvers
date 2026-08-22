@@ -7,13 +7,18 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pandas as pd
+
 from fmfsolver import csv_adapter as fmf_csv
 from fmfsolver.app.cli_app import CLI_POLICY as FMF_CLI_POLICY
+from fmfsolver.io.csv_out import append_results_csv as append_fmf_results_csv
 from fmfsolver.runtime import GUI_ADAPTERS as FMF_GUI_ADAPTERS
 from newtsolver import csv_adapter as newt_csv
 from newtsolver.app.cli_app import CLI_POLICY as NEWT_CLI_POLICY
+from newtsolver.io.csv_out import append_results_csv as append_newt_results_csv
 from newtsolver.runtime import GUI_ADAPTERS as NEWT_GUI_ADAPTERS
 from panelsolver.app.csv_writer import (
+    CSV_ENCODING,
     DURABLE_CSV_WRITE_POLICY,
     paths_collide,
     portable_path_key,
@@ -29,6 +34,13 @@ def projection() -> CsvProjection:
             {"case_id": "a", "scope": "total", "blank": None},
             {"case_id": "a", "scope": "component", "blank": None},
         ),
+    )
+
+
+def unicode_projection() -> CsvProjection:
+    return CsvProjection(
+        ("case_id", "note"),
+        ({"case_id": "日本語ケース", "note": "日本語メモ"},),
     )
 
 
@@ -74,7 +86,8 @@ class CsvWriterTests(unittest.TestCase):
                     adapter.write_csv(output, projection())
                 fsync.assert_called_once()
                 replace.assert_called_once()
-                with output.open(encoding="utf-8", newline="") as handle:
+                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
+                with output.open(encoding=CSV_ENCODING, newline="") as handle:
                     reader = csv.DictReader(handle)
                     self.assertEqual(
                         [
@@ -83,6 +96,45 @@ class CsvWriterTests(unittest.TestCase):
                         ],
                         list(reader),
                     )
+
+    def test_atomic_writer_emits_bom_and_round_trips_unicode(self) -> None:
+        for adapter in (fmf_csv, newt_csv):
+            with self.subTest(adapter=adapter.__name__), tempfile.TemporaryDirectory() as td:
+                output = Path(td) / "日本語-results.csv"
+                adapter.write_csv(output, unicode_projection())
+                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
+                with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                    self.assertEqual(
+                        [{"case_id": "日本語ケース", "note": "日本語メモ"}],
+                        list(csv.DictReader(handle)),
+                    )
+
+    def test_legacy_append_paths_use_bom_encoding_for_unicode_rows(self) -> None:
+        inputs = pd.DataFrame([{"case_id": "日本語ケース"}])
+        results = pd.DataFrame(
+            [
+                {
+                    "case_id": "日本語ケース",
+                    "scope": "total",
+                    "component_id": "",
+                    "component_stl_path": "",
+                    "note": "日本語メモ",
+                }
+            ]
+        )
+        for append in (append_fmf_results_csv, append_newt_results_csv):
+            with self.subTest(append=append.__module__), tempfile.TemporaryDirectory() as td:
+                output = Path(td) / "legacy-append.csv"
+                append(output, inputs, results)
+                append(output, inputs, results)
+                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
+                frame = pd.read_csv(output, encoding=CSV_ENCODING)
+                self.assertEqual(
+                    ["日本語ケース", "日本語ケース"], frame["case_id"].tolist()
+                )
+                self.assertEqual(
+                    ["日本語メモ", "日本語メモ"], frame["note"].tolist()
+                )
 
     def test_both_policies_preserve_output_and_clean_temp_on_failure(self) -> None:
         for policy in (fmf_csv.CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY):

@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+from panelsolver.app.csv_writer import CSV_ENCODING
 from scripts.probe_legacy_rollback import (
     LEGACY_SPECS,
     _archive_commit,
@@ -112,13 +113,13 @@ class LegacyRollbackProbeTests(unittest.TestCase):
     def test_current_panel_inputs_are_staged_without_mutating_history(self) -> None:
         source = ROOT / "tests" / "fixtures" / "phase1" / "inputs"
         source_csv = source / "fmfsolver_cases.csv"
-        with source_csv.open(encoding="utf-8", newline="") as stream:
+        with source_csv.open(encoding=CSV_ENCODING, newline="") as stream:
             self.assertIn("save_npz_on", csv.DictReader(stream).fieldnames or ())
 
         with tempfile.TemporaryDirectory() as temp_dir:
             staged = _stage_current_panel_inputs(ROOT, Path(temp_dir))
             with (staged / "fmfsolver_cases.csv").open(
-                encoding="utf-8", newline=""
+                encoding=CSV_ENCODING, newline=""
             ) as stream:
                 self.assertNotIn(
                     "save_npz_on",
@@ -126,7 +127,7 @@ class LegacyRollbackProbeTests(unittest.TestCase):
                 )
             self.assertTrue((staged / "stl" / "plate.stl").is_file())
 
-        with source_csv.open(encoding="utf-8", newline="") as stream:
+        with source_csv.open(encoding=CSV_ENCODING, newline="") as stream:
             self.assertIn("save_npz_on", csv.DictReader(stream).fieldnames or ())
 
 

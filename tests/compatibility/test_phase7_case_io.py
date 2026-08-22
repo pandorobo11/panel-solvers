@@ -30,6 +30,7 @@ from newtsolver.case_adapter import (
     build_signatures as build_newt_signatures,
 )
 from newtsolver.io.io_cases import read_cases as read_newt_cases
+from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.core import MeshValidationPolicy, execute_case
 from tests.current_case_fixtures import read_current_cases
 
@@ -99,6 +100,32 @@ class ProductCaseReaderTests(unittest.TestCase):
                 frame.to_csv(path, index=False)
                 actual = reader(path)
                 self.assertEqual("preserved", actual.iloc[0]["user_note"])
+
+    def test_csv_reader_accepts_bomless_bom_and_japanese_utf8(self) -> None:
+        products = (
+            (read_fmf_cases, "fmfsolver_cases.csv"),
+            (read_newt_cases, "newtsolver_cases.csv"),
+        )
+        for reader, filename in products:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
+                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                frame.loc[frame.index[0], "case_id"] = "日本語ケース"
+                frame["user_note"] = "日本語メモ"
+                path = Path(td) / filename
+                for encoding in ("utf-8", CSV_ENCODING):
+                    with self.subTest(encoding=encoding):
+                        frame.to_csv(path, index=False, encoding=encoding)
+                        with patch(
+                            "panelsolver.app.case_io.pd.read_csv",
+                            wraps=pd.read_csv,
+                        ) as read_csv:
+                            actual = reader(path)
+                        self.assertEqual(
+                            CSV_ENCODING,
+                            read_csv.call_args.kwargs["encoding"],
+                        )
+                        self.assertEqual("日本語ケース", actual.iloc[0]["case_id"])
+                        self.assertEqual("日本語メモ", actual.iloc[0]["user_note"])
 
     def test_valid_phase1_tables_preserve_rows_columns_defaults_and_paths(self) -> None:
         products = (
