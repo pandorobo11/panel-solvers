@@ -38,6 +38,7 @@ from panelsolver.app.csv_writer import (
     validate_summary_output_path,
     write_csv_atomic,
 )
+from panelsolver.app.examples import ExampleDefinition
 from panelsolver.core import (
     CaseExecutionResult,
     CommonResults,
@@ -414,6 +415,34 @@ _PREFERRED_SCALARS = (
 )
 _DEFAULT_ADAPTERS = object()
 
+_GUI_EXAMPLES = (
+    ExampleDefinition(
+        "Basic",
+        "hypersonic/basic.csv",
+        ("geometry/plate.stl",),
+    ),
+    ExampleDefinition(
+        "Attitude Modes",
+        "hypersonic/attitude_modes.csv",
+        ("geometry/cube.stl",),
+    ),
+    ExampleDefinition(
+        "Components",
+        "hypersonic/components.csv",
+        ("geometry/cube.stl", "geometry/plate_offset_x2.stl"),
+    ),
+    ExampleDefinition(
+        "Pressure Models",
+        "hypersonic/pressure_models.csv",
+        ("geometry/plate.stl", "geometry/cube.stl"),
+    ),
+    ExampleDefinition(
+        "Shielding",
+        "hypersonic/shielding.csv",
+        ("geometry/double_plate.stl",),
+    ),
+)
+
 
 def _present(value: object) -> str | None:
     if value is None:
@@ -469,6 +498,7 @@ def gui_spec(
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,
         adapters=selected_adapters,  # type: ignore[arg-type]
+        examples=_GUI_EXAMPLES,
     )
 
 

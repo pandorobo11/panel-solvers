@@ -14,6 +14,7 @@ import pandas as pd
 from .attitude import ATTITUDE_INPUT_VALUES
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
+from .path_resolution import resolve_input_relative_path
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -357,11 +358,9 @@ def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:
 
 def _resolve_out_dirs(frame: pd.DataFrame, input_path: Path) -> None:
     for index, raw in frame["out_dir"].items():
-        candidate = Path(str(raw)).expanduser()
-        resolved = candidate.resolve() if candidate.is_absolute() else (
-            input_path.parent / candidate
-        ).resolve()
-        frame.at[index, "out_dir"] = str(resolved)
+        frame.at[index, "out_dir"] = str(
+            resolve_input_relative_path(str(raw), input_path)
+        )
 
 
 def _validate_and_normalize(

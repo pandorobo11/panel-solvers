@@ -18,6 +18,8 @@ from typing import TextIO
 from panelsolver.core.csv_projection import CsvProjection
 from panelsolver.core.errors import ContractValueError
 
+from .path_resolution import resolve_case_vtp_path, resolve_input_relative_path
+
 CSV_ENCODING = "utf-8-sig"
 
 
@@ -255,13 +257,16 @@ def validate_summary_output_path(
         for raw_stl in str(row.get("stl_path", "")).split(";"):
             if raw_stl.strip():
                 candidates.append(
-                    _CollisionPath(Path(raw_stl.strip()), "STL", case_id=case_id)
+                    _CollisionPath(
+                        resolve_input_relative_path(raw_stl.strip(), input_path),
+                        "STL",
+                        case_id=case_id,
+                    )
                 )
-        out_dir = Path(str(row.get("out_dir", "outputs")))
         if case_id:
             candidates.append(
                 _CollisionPath(
-                    out_dir / f"{case_id}.vtp",
+                    resolve_case_vtp_path(row, input_path),
                     "planned VTP",
                     case_id=case_id,
                     is_output=True,

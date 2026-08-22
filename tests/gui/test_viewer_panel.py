@@ -21,6 +21,7 @@ from panelsolver.app import (
 )
 from panelsolver.app.viewer import ViewerPanel
 from panelsolver.core import CaseSignature, canonical_json
+from tests.path_assertions import assert_paths_equivalent, paths_equivalent
 
 
 class FakeCamera:
@@ -318,7 +319,9 @@ class ViewerPanelTests(unittest.TestCase):
             viewer, plotter = self.make_viewer(
                 spec=spec,
                 reader=artifact_reader,
-                path_exists=lambda path: path in existing,
+                path_exists=lambda path: any(
+                    paths_equivalent(path, candidate) for candidate in existing
+                ),
                 make_directory=lambda path: made.append(path),
                 process_events=lambda: events.append("event"),
             )
@@ -341,13 +344,20 @@ class ViewerPanelTests(unittest.TestCase):
             ):
                 viewer.save_images_for_case_rows(rows)
 
-            self.assertEqual(str(source_dir / "images"), dialog.call_args.args[2])
+            assert_paths_equivalent(
+                self,
+                source_dir / "images",
+                dialog.call_args.args[2],
+            )
             self.assertEqual([output_dir], made)
             self.assertEqual(5, len(events))
-            self.assertEqual(
-                [str(output_dir / "current_a.png"), str(output_dir / "current_b.png")],
+            self.assertEqual(2, len(plotter.screenshot_calls))
+            for case_id, actual in zip(
+                ("current_a", "current_b"),
                 plotter.screenshot_calls,
-            )
+                strict=True,
+            ):
+                assert_paths_equivalent(self, output_dir / f"{case_id}.png", actual)
             self.assertEqual(
                 [("current_a", rows[0]), ("current_b", rows[4])],
                 contexts,
@@ -381,6 +391,36 @@ class ViewerPanelTests(unittest.TestCase):
         ):
             viewer.save_images_for_case_rows((row,))
         self.assertIn("Failed to create image directory: read only", messages[-1])
+
+    def test_relative_vtp_and_image_paths_use_input_parent(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="viewer_input_base_") as directory:
+            root = Path(directory)
+            row = {"case_id": "one", "out_dir": "outputs"}
+            seen = []
+            viewer, _plotter = self.make_viewer(
+                path_exists=lambda path: seen.append(path) or False,
+            )
+            viewer.set_input_path(root / "input.csv")
+            viewer._display_case_row = row
+            assert_paths_equivalent(
+                self,
+                root / "outputs",
+                viewer.default_artifact_dir(),
+            )
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getExistingDirectory",
+                return_value="",
+            ) as dialog:
+                viewer.save_images_for_case_rows((row,))
+            assert_paths_equivalent(
+                self,
+                root / "outputs" / "images",
+                dialog.call_args.args[2],
+            )
+            viewer._save_case_image(row, root / "captures")
+            self.assertEqual(1, len(seen))
+            assert_paths_equivalent(self, root / "outputs" / "one.vtp", seen[0])
 
 
 if __name__ == "__main__":

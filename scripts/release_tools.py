@@ -752,6 +752,16 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             raise RuntimeError(
                 f"wheel is missing packaged documentation: {sorted(missing)}"
             )
+        required_examples = {
+            "panelsolver/_examples/fmf/basic.csv",
+            "panelsolver/_examples/hypersonic/basic.csv",
+            "panelsolver/_examples/geometry/plate.stl",
+        }
+        missing_examples = required_examples - names
+        if missing_examples:
+            raise RuntimeError(
+                f"wheel is missing packaged examples: {sorted(missing_examples)}"
+            )
         docs_prefix = "panelsolver/_docs_site/"
         docs_names = {
             name.removeprefix(docs_prefix)

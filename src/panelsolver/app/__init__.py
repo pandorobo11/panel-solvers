@@ -21,7 +21,16 @@ from .csv_writer import (
     validate_summary_output_path,
     write_csv_atomic,
 )
+from .examples import ExampleDefinition, ExampleLibrary, ExampleResourceError
 from .execution import default_model_registry, request_from_registry
+from .path_resolution import (
+    DEFAULT_OUTPUT_DIRECTORY,
+    absolute_input_path,
+    default_summary_output_path,
+    resolve_case_output_dir,
+    resolve_case_vtp_path,
+    resolve_input_relative_path,
+)
 from .runtime import (
     DEFAULT_CHECKPOINT_CASES,
     PreparedProductCase,
@@ -56,6 +65,7 @@ from .viewer_data import (
 __all__ = (
     "ATTITUDE_INPUT_VALUES",
     "DEFAULT_CHECKPOINT_CASES",
+    "DEFAULT_OUTPUT_DIRECTORY",
     "DURABLE_CSV_WRITE_POLICY",
     "AdaptedCase",
     "ArtifactCaseMatch",
@@ -63,6 +73,9 @@ __all__ = (
     "ArtifactSignatureCandidates",
     "AtomicCsvWritePolicy",
     "CaseReaderPolicy",
+    "ExampleDefinition",
+    "ExampleLibrary",
+    "ExampleResourceError",
     "GuiRunRequest",
     "GuiRunResult",
     "InputValidationError",
@@ -78,10 +91,12 @@ __all__ = (
     "SolverSpec",
     "TempNameStyle",
     "ValidationIssue",
+    "absolute_input_path",
     "adapt_case_row",
     "artifact_display_allowed",
     "combine_csv_projections",
     "default_model_registry",
+    "default_summary_output_path",
     "discover_scalar_fields",
     "field_data_scalar",
     "match_artifact_case",
@@ -89,6 +104,9 @@ __all__ = (
     "read_case_table",
     "request_from_registry",
     "resolve_attitude",
+    "resolve_case_output_dir",
+    "resolve_case_vtp_path",
+    "resolve_input_relative_path",
     "resolve_matching_case_row",
     "run_and_write_product_cases",
     "run_product_cases",

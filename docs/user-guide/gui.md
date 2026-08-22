@@ -32,7 +32,11 @@ alive for the lifetime of the window.
 
 ## Run cases
 
-1. Choose **Select Input File** and open a CSV, XLSX, or XLSM case table.
+1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
+   XLSX, or XLSM case table. If no remembered input directory exists, the dialog
+   starts in the current directory. After a successful normal load, later dialogs
+   start in that file's directory. If the remembered directory no longer exists,
+   the dialog falls back to the current directory.
 2. Select one or more table rows. With no selection, **Run Selected Cases** runs
    every loaded row.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
@@ -45,12 +49,22 @@ Input validation issues are shown with spreadsheet row, case ID, field, and
 message. The GUI uses the same reader, execution engine, checkpoint behavior,
 and output serializers as the CLI.
 
+## Start from an example
+
+Choose **File > New from Example** to see only the examples for the active FMF
+or Hypersonic domain. Select a workspace directory; the GUI copies the chosen
+case table and its required geometry there with their relative layout intact,
+then opens the copied table. Packaged examples are never run in place, and
+opening one does not replace the remembered directory for normal input files.
+
 ## View and export
 
 When a case saves VTP, the first selected case's result is loaded automatically. A
 selected row also loads an existing `<out_dir>/<case_id>.vtp` when its case ID
 and accepted signature match. The viewer can switch among available cell
 scalars, adjust the camera and coloring, open another VTP, and save images.
+Relative `out_dir` values, automatic VTP loading, and default image directories
+are all resolved from the loaded input table's directory.
 
 Closing the window during a run requests cooperative cancellation and waits for
 worker cleanup. An active ray query or model solve may finish before cancellation
