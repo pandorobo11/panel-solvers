@@ -21,7 +21,7 @@ from panelsolver.app import (
 )
 from panelsolver.app.viewer import ViewerPanel
 from panelsolver.core import CaseSignature, canonical_json
-from tests.path_assertions import assert_paths_equivalent
+from tests.path_assertions import assert_paths_equivalent, paths_equivalent
 
 
 class FakeCamera:
@@ -319,7 +319,9 @@ class ViewerPanelTests(unittest.TestCase):
             viewer, plotter = self.make_viewer(
                 spec=spec,
                 reader=artifact_reader,
-                path_exists=lambda path: path in existing,
+                path_exists=lambda path: any(
+                    paths_equivalent(path, candidate) for candidate in existing
+                ),
                 make_directory=lambda path: made.append(path),
                 process_events=lambda: events.append("event"),
             )
@@ -349,10 +351,13 @@ class ViewerPanelTests(unittest.TestCase):
             )
             self.assertEqual([output_dir], made)
             self.assertEqual(5, len(events))
-            self.assertEqual(
-                [str(output_dir / "current_a.png"), str(output_dir / "current_b.png")],
+            self.assertEqual(2, len(plotter.screenshot_calls))
+            for case_id, actual in zip(
+                ("current_a", "current_b"),
                 plotter.screenshot_calls,
-            )
+                strict=True,
+            ):
+                assert_paths_equivalent(self, output_dir / f"{case_id}.png", actual)
             self.assertEqual(
                 [("current_a", rows[0]), ("current_b", rows[4])],
                 contexts,
