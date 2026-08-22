@@ -9,6 +9,11 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .path_resolution import (
+    absolute_input_path,
+    default_summary_output_path,
+    resolve_case_vtp_path,
+)
 from .run_lifecycle import CaseRunWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
 from .solver_spec import CaseRow, GuiRunResult, SolverSpec
@@ -87,6 +92,7 @@ class CasesPanel(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(str, object, object)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
+    input_path_changed = QtCore.Signal(object)
     run_requested = QtCore.Signal(object, int, int, object)
     run_finished = QtCore.Signal()
 
@@ -96,6 +102,7 @@ class CasesPanel(QtWidgets.QWidget):
         parent=None,
         *,
         artifact_reader=pv.read,
+        settings: QtCore.QSettings | None = None,
     ) -> None:
         if not isinstance(spec, SolverSpec):
             raise TypeError("spec must be a SolverSpec")
@@ -106,6 +113,11 @@ class CasesPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self.spec = spec
         self._artifact_reader = artifact_reader
+        self._settings = (
+            QtCore.QSettings("pandorobo11", "panelsolver")
+            if settings is None
+            else settings
+        )
         self.case_rows: tuple[CaseRow, ...] = ()
         self.input_path: Path | None = None
         self._table_columns: tuple[str, ...] = ()
@@ -187,17 +199,34 @@ class CasesPanel(QtWidgets.QWidget):
     def logln(self, message: str) -> None:
         self.log.appendPlainText(message)
 
+    def input_dialog_directory(self) -> Path:
+        """Return the persisted existing directory, or the current directory."""
+        stored = self._settings.value("gui/last_input_directory", "")
+        candidate = Path(str(stored)).expanduser() if stored else None
+        if candidate is not None and candidate.is_dir():
+            return candidate
+        return Path.cwd()
+
     def pick_input_file(self) -> None:
+        """Open the shared normal-input picker used by both GUI entry points."""
+        if self.is_running():
+            self.logln("[WARN] Cannot open another input while cases are running.")
+            return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select Input File",
-            str(Path.cwd()),
+            str(self.input_dialog_directory()),
             "CSV/Excel (*.csv *.xlsx *.xlsm)",
         )
         if path:
             self.load_input_file(path)
 
-    def load_input_file(self, path: str | Path) -> bool:
+    def load_input_file(
+        self,
+        path: str | Path,
+        *,
+        remember_directory: bool = True,
+    ) -> bool:
         """Read cases through the selected product adapter and reset on failure."""
         try:
             raw_rows = self.spec.adapters.read_cases(path)
@@ -223,12 +252,18 @@ class CasesPanel(QtWidgets.QWidget):
                 )
             return False
 
-        self.input_path = Path(path).expanduser()
-        self.input_value.setText(str(path))
+        self.input_path = absolute_input_path(path)
+        self.input_value.setText(str(self.input_path))
         self.case_rows = normalized
         self._populate_case_table()
         self.btn_run.setEnabled(True)
+        if remember_directory:
+            self._settings.setValue(
+                "gui/last_input_directory",
+                str(self.input_path.parent),
+            )
         self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
+        self.input_path_changed.emit(self.input_path)
         self.cases_updated.emit(self.case_rows)
         return True
 
@@ -298,11 +333,13 @@ class CasesPanel(QtWidgets.QWidget):
 
     def _auto_load_case_artifact(self, row: CaseRow) -> None:
         case_id = str(row.get("case_id", "")).strip()
-        raw_out_dir = str(row.get("out_dir", "")).strip() or "outputs"
         if not case_id:
             self.viewer_clear_requested.emit()
             return
-        path = Path(raw_out_dir).expanduser() / f"{case_id}.vtp"
+        if self.input_path is None:
+            self.viewer_clear_requested.emit()
+            return
+        path = resolve_case_vtp_path(row, self.input_path)
         if not path.exists():
             self.viewer_clear_requested.emit()
             return
@@ -322,9 +359,9 @@ class CasesPanel(QtWidgets.QWidget):
         if self.input_path is None or not self.case_rows:
             return
         rows = self.selected_or_all_case_rows()
-        output_dir = self.input_path.parent / "outputs"
+        default_path = default_summary_output_path(self.input_path)
+        output_dir = default_path.parent
         output_dir.mkdir(parents=True, exist_ok=True)
-        default_path = output_dir / f"{self.input_path.stem}_result.csv"
         selected_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
             "Save Results",
@@ -501,6 +538,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setValue(0)
         self.progress.setFormat("Idle")
         self.viewer_clear_requested.emit()
+        self.input_path_changed.emit(None)
         self.cases_updated.emit(self.case_rows)
         self._refresh_summary()
 

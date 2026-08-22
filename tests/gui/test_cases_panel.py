@@ -83,12 +83,30 @@ class StructuredError(ValueError):
         )
 
 
+class MemorySettings:
+    def __init__(self, values=None) -> None:
+        self.values = dict(values or {})
+
+    def value(self, key, default=None):
+        return self.values.get(key, default)
+
+    def setValue(self, key, value) -> None:
+        self.values[key] = value
+
+
 class CasesPanelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    def make_panel(self, rows=None, *, spec_factory=fmf_solver_spec, **kwargs):
+    def make_panel(
+        self,
+        rows=None,
+        *,
+        spec_factory=fmf_solver_spec,
+        settings=None,
+        **kwargs,
+    ):
         rows = _rows() if rows is None else rows
         signatures = {
             str(row["case_id"]): ArtifactSignatureCandidates(
@@ -97,7 +115,7 @@ class CasesPanelTests(unittest.TestCase):
             for row in rows
         }
         spec = spec_factory(adapters=_adapters(rows, signatures, **kwargs))
-        return CasesPanel(spec), signatures
+        return CasesPanel(spec, settings=settings or MemorySettings()), signatures
 
     def wait_until(self, predicate, timeout: float = 3.0) -> None:
         deadline = time.monotonic() + timeout
@@ -144,6 +162,77 @@ class CasesPanelTests(unittest.TestCase):
             choose.call_args.args[3],
         )
 
+    def test_input_picker_uses_cwd_initially_and_falls_back_from_missing_saved_dir(self) -> None:
+        for saved in (None, "/directory/that/does/not/exist"):
+            settings = MemorySettings(
+                {} if saved is None else {"gui/last_input_directory": saved}
+            )
+            panel, _ = self.make_panel(settings=settings)
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getOpenFileName",
+                return_value=("", ""),
+            ) as choose:
+                panel.pick_input_file()
+            self.assertEqual(Path.cwd(), Path(choose.call_args.args[2]))
+
+    def test_success_updates_last_input_directory_and_failure_does_not(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            settings = MemorySettings()
+            panel, _ = self.make_panel(settings=settings)
+            self.assertTrue(panel.load_input_file(root / "input.csv"))
+            self.assertEqual(
+                str(root),
+                settings.values["gui/last_input_directory"],
+            )
+
+            failed_settings = MemorySettings(
+                {"gui/last_input_directory": str(root)}
+            )
+            failed, _ = self.make_panel(
+                settings=failed_settings,
+                reader_error=ValueError("broken input"),
+            )
+            with patch.object(QtWidgets.QMessageBox, "critical"):
+                self.assertFalse(failed.load_input_file(root / "other" / "bad.csv"))
+            self.assertEqual(
+                str(root),
+                failed_settings.values["gui/last_input_directory"],
+            )
+
+    def test_later_input_picker_starts_from_successfully_loaded_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            panel, _ = self.make_panel(settings=MemorySettings())
+            panel.load_input_file(root / "input.csv")
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getOpenFileName",
+                return_value=("", ""),
+            ) as choose:
+                panel.pick_input_file()
+            self.assertEqual(root, Path(choose.call_args.args[2]))
+
+    def test_example_load_does_not_update_last_input_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            remembered = root / "normal"
+            settings = MemorySettings(
+                {"gui/last_input_directory": str(remembered)}
+            )
+            panel, _ = self.make_panel(settings=settings)
+            self.assertTrue(
+                panel.load_input_file(
+                    root / "example" / "fmf" / "basic.csv",
+                    remember_directory=False,
+                )
+            )
+            self.assertEqual(
+                str(remembered),
+                settings.values["gui/last_input_directory"],
+            )
+
     def test_selected_rows_keep_table_order_and_no_selection_means_all(self) -> None:
         panel, _ = self.make_panel()
         panel.load_input_file("/tmp/input.csv")
@@ -188,6 +277,28 @@ class CasesPanelTests(unittest.TestCase):
             self.assertTrue(cleared)
             panel.case_table.clearSelection()
             self.assertGreaterEqual(len(cleared), 2)
+
+    def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gui_relative_vtp_") as directory:
+            root = Path(directory)
+            rows = _rows("outputs")
+            panel, signatures = self.make_panel(rows)
+            panel.load_input_file(root / "input.csv")
+            artifact_path = root / "outputs" / "case_b.vtp"
+            artifact_path.parent.mkdir()
+            artifact_path.write_text("fixture", encoding="utf-8")
+            seen = []
+            panel._artifact_reader = lambda path: (
+                seen.append(Path(path))
+                or SimpleNamespace(
+                    field_data={
+                        "case_id": ["case_b"],
+                        "case_signature": [signatures["case_b"].primary.digest],
+                    }
+                )
+            )
+            panel.case_table.selectRow(0)
+            self.assertEqual([artifact_path], seen)
 
     def test_missing_and_broken_artifacts_clear_previous_view(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:

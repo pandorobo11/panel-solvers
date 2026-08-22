@@ -10,7 +10,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 
 class CustomBuildHook(BuildHookInterface):
-    """Build one documentation site and force-include it in the wheel."""
+    """Build documentation and bundle GUI-accessible example resources."""
 
     def initialize(self, version: str, build_data: dict) -> None:
         del version
@@ -22,6 +22,19 @@ class CustomBuildHook(BuildHookInterface):
         builder.build_documentation_site(root, site_dir)
         force_include = build_data.setdefault("force_include", {})
         force_include[str(site_dir)] = "panelsolver/_docs_site"
+        examples_dir = root / "examples"
+        for source in sorted(examples_dir.rglob("*")):
+            relative = source.relative_to(examples_dir)
+            if (
+                not source.is_file()
+                or "outputs" in relative.parts
+                or "__pycache__" in relative.parts
+                or source.suffix.lower() in {".npz", ".xls"}
+            ):
+                continue
+            force_include[str(source)] = (
+                f"panelsolver/_examples/{relative.as_posix()}"
+            )
 
 
 def _load_module(path: Path):

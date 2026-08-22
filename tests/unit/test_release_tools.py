@@ -148,6 +148,13 @@ class ReleaseToolTests(unittest.TestCase):
                 )
             for relative, content in docs.items():
                 archive.writestr(f"panelsolver/_docs_site/{relative}", content)
+            for source in sorted((repository / "examples").rglob("*")):
+                if source.is_file():
+                    relative = source.relative_to(repository / "examples")
+                    archive.write(
+                        source,
+                        f"panelsolver/_examples/{relative.as_posix()}",
+                    )
         return wheel
 
     def write_sdist(

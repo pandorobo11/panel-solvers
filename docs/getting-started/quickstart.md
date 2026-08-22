@@ -39,8 +39,10 @@ panelsolver-gui fmf
 panelsolver-gui hypersonic
 ```
 
-Select the corresponding `basic.csv`, select its row, and choose **Run Selected
-Cases**. The GUI displays the generated VTP when one is saved. The legacy
+Use **File > New from Example > Basic** to copy the matching table and geometry
+to a workspace, or select the corresponding `basic.csv` directly. Select its
+row and choose **Run Selected Cases**. The GUI displays the generated VTP when
+one is saved. The legacy
 `fmfsolver`, `fmfsolver-gui`, `newtsolver`, and `newtsolver-gui` commands remain
 compatibility launchers with their existing titles.
 

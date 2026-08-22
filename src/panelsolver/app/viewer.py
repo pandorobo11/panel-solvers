@@ -10,6 +10,11 @@ import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 from pyvistaqt import QtInteractor
 
+from .path_resolution import (
+    absolute_input_path,
+    resolve_case_output_dir,
+    resolve_case_vtp_path,
+)
 from .solver_spec import CaseRow, SolverSpec
 from .viewer_data import (
     ScalarField,
@@ -88,6 +93,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self._connect_controls()
 
         self._case_rows: tuple[CaseRow, ...] = ()
+        self._input_path: Path | None = None
         self._poly: object | None = None
         self._loaded_vtp_path: Path | None = None
         self._display_case_row: CaseRow | None = None
@@ -227,6 +233,17 @@ class ViewerPanel(QtWidgets.QWidget):
     def set_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._case_rows = () if rows is None else tuple(rows)
 
+    def set_input_path(self, path: str | Path | None) -> None:
+        """Set the input table whose directory anchors relative artifact paths."""
+        self._input_path = (
+            None
+            if path is None
+            else absolute_input_path(path)
+        )
+
+    def _input_path_context(self) -> Path:
+        return self._input_path or (Path.cwd() / "input.csv")
+
     @QtCore.Slot()
     def clear_view(self) -> None:
         self._poly = None
@@ -315,9 +332,10 @@ class ViewerPanel(QtWidgets.QWidget):
         if self._loaded_vtp_path is not None:
             return self._loaded_vtp_path.parent
         if self._display_case_row is not None:
-            value = str(self._display_case_row.get("out_dir", "")).strip()
-            if value:
-                return Path(value).expanduser()
+            return resolve_case_output_dir(
+                self._display_case_row,
+                self._input_path_context(),
+            )
         return Path.cwd()
 
     def save_view_image(self) -> None:
@@ -343,12 +361,10 @@ class ViewerPanel(QtWidgets.QWidget):
         if not selected:
             self.logln("[WARN] No selected cases.")
             return
-        first_out_dir = str(selected[0].get("out_dir", "")).strip()
-        default_dir = (
-            Path(first_out_dir).expanduser() / "images"
-            if first_out_dir
-            else self.default_artifact_dir() / "images"
-        )
+        default_dir = resolve_case_output_dir(
+            selected[0],
+            self._input_path_context(),
+        ) / "images"
         selected_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self,
             "Select Folder to Save Selected Images",
@@ -382,8 +398,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if not case_id:
             self.logln("[SKIP] Missing case_id in selected row.")
             return False
-        raw_out_dir = str(row.get("out_dir", "")).strip() or "outputs"
-        vtp_path = Path(raw_out_dir).expanduser() / f"{case_id}.vtp"
+        vtp_path = resolve_case_vtp_path(row, self._input_path_context())
         if not self._path_exists(vtp_path):
             self.logln(f"[SKIP] VTP not found: {vtp_path}")
             return False

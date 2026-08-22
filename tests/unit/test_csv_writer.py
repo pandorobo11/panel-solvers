@@ -164,6 +164,32 @@ class CsvWriterTests(unittest.TestCase):
                             case_rows,
                         )
 
+    def test_relative_protected_paths_use_the_input_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            input_path = root / "project" / "cases.csv"
+            rows = (
+                {
+                    "case_id": "case_a",
+                    "stl_path": "geometry/mesh.stl",
+                    "out_dir": "outputs",
+                },
+            )
+            for adapter in (fmf_csv, newt_csv):
+                for protected in (
+                    input_path.parent / "geometry" / "mesh.stl",
+                    input_path.parent / "outputs" / "case_a.vtp",
+                ):
+                    with self.subTest(
+                        adapter=adapter.__name__,
+                        protected=protected,
+                    ), self.assertRaisesRegex(ValueError, "protected path"):
+                        adapter.validate_results_output_path(
+                            protected,
+                            input_path,
+                            rows,
+                        )
+
     def test_both_products_reject_portable_summary_variants_with_roles(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

@@ -382,6 +382,30 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.save_images_for_case_rows((row,))
         self.assertIn("Failed to create image directory: read only", messages[-1])
 
+    def test_relative_vtp_and_image_paths_use_input_parent(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="viewer_input_base_") as directory:
+            root = Path(directory)
+            row = {"case_id": "one", "out_dir": "outputs"}
+            seen = []
+            viewer, _plotter = self.make_viewer(
+                path_exists=lambda path: seen.append(path) or False,
+            )
+            viewer.set_input_path(root / "input.csv")
+            viewer._display_case_row = row
+            self.assertEqual(root / "outputs", viewer.default_artifact_dir())
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getExistingDirectory",
+                return_value="",
+            ) as dialog:
+                viewer.save_images_for_case_rows((row,))
+            self.assertEqual(
+                str(root / "outputs" / "images"),
+                dialog.call_args.args[2],
+            )
+            viewer._save_case_image(row, root / "captures")
+            self.assertEqual([root / "outputs" / "one.vtp"], seen)
+
 
 if __name__ == "__main__":
     unittest.main()
