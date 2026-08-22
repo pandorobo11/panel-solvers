@@ -24,6 +24,8 @@ import numpy as np
 import pandas as pd
 import pyvista as pv
 
+from panelsolver.app.csv_writer import CSV_ENCODING
+
 EXPECTED_COMPATIBILITY_ENTRY_POINTS = {
     "fmfsolver": "fmfsolver.app.gui_app:main",
     "fmfsolver-gui": "fmfsolver.app.gui_app:main",
@@ -318,11 +320,11 @@ def _prepare_current_inputs(inputs: Path) -> None:
     for historical_npz in inputs.rglob("*.npz"):
         historical_npz.unlink()
     for path in (inputs / "fmfsolver_cases.csv", inputs / "newtsolver_cases.csv"):
-        with path.open(encoding="utf-8", newline="") as stream:
+        with path.open(encoding=CSV_ENCODING, newline="") as stream:
             reader = csv.DictReader(stream)
             rows = list(reader)
             columns = [name for name in (reader.fieldnames or ()) if name != "save_npz_on"]
-        with path.open("w", encoding="utf-8", newline="") as stream:
+        with path.open("w", encoding=CSV_ENCODING, newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
             writer.writeheader()
             writer.writerows({name: row[name] for name in columns} for row in rows)
@@ -332,7 +334,7 @@ def _prepare_current_excel_inputs(inputs: Path) -> dict[str, dict[str, Path]]:
     prepared: dict[str, dict[str, Path]] = {}
     for product in ("fmfsolver", "newtsolver"):
         source = inputs / f"{product}_cases.csv"
-        frame = pd.read_csv(source).iloc[[0]].copy()
+        frame = pd.read_csv(source, encoding=CSV_ENCODING).iloc[[0]].copy()
         frame["save_vtp_on"] = 0
         xlsx = inputs / f"{product}_cases.xlsx"
         xlsm = inputs / f"{product}_cases.xlsm"
@@ -704,7 +706,7 @@ def _cli_input_for_available_backends(
     runtime = importlib.import_module("panelsolver.app.runtime")
     if runtime.trimesh_ray.has_embree:
         return source, set()
-    with source.open(encoding="utf-8", newline="") as stream:
+    with source.open(encoding=CSV_ENCODING, newline="") as stream:
         reader = csv.DictReader(stream)
         rows = list(reader)
         fieldnames = list(reader.fieldnames or ())
@@ -715,7 +717,7 @@ def _cli_input_for_available_backends(
     }
     selected = [row for row in rows if str(row.get("case_id", "")) not in excluded]
     filtered = source.with_name(f"{product}_installed_supported.csv")
-    with filtered.open("w", encoding="utf-8", newline="") as stream:
+    with filtered.open("w", encoding=CSV_ENCODING, newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(selected)
@@ -933,10 +935,10 @@ def main(argv: list[str] | None = None) -> int:
                     f"stdout={canonical_run.stdout!r}\n"
                     f"stderr={canonical_run.stderr!r}"
                 )
-            header = output.read_text(encoding="utf-8").splitlines()[0]
+            header = output.read_text(encoding=CSV_ENCODING).splitlines()[0]
             if "npz" in header.casefold():
                 raise RuntimeError(f"canonical {domain} restored NPZ output")
-            with output.open(encoding="utf-8", newline="") as stream:
+            with output.open(encoding=CSV_ENCODING, newline="") as stream:
                 canonical_rows = list(csv.DictReader(stream))
             canonical_versions = {
                 row["solver_version"] for row in canonical_rows
@@ -1045,7 +1047,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(
                     f"{product} sample failed:\n{run_result.stdout}\n{run_result.stderr}"
                 )
-            with output.open(encoding="utf-8", newline="") as stream:
+            with output.open(encoding=CSV_ENCODING, newline="") as stream:
                 reader = csv.DictReader(stream)
                 rows = list(reader)
                 columns = list(reader.fieldnames or ())

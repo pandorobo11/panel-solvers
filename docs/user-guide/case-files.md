@@ -6,6 +6,9 @@ Legacy Excel 97–2003 BIFF `.xls` input is not supported; resave the workbook a
 [FMF input reference](../reference/fmf-input.md) and
 [Hypersonic input reference](../reference/hypersonic-input.md).
 
+CSV case tables use UTF-8 with BOM (`utf-8-sig`). The reader also accepts
+BOM-less UTF-8 CSV files, so existing UTF-8 inputs remain compatible.
+
 ## Paths and components
 
 Relative `stl_path` and `out_dir` values are resolved from the case table's

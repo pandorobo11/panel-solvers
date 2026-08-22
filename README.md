@@ -61,7 +61,9 @@ newtsolver-cli --input examples/hypersonic/basic.csv --workers 1 --flush-every-c
 `fmf` is the free-molecular-flow domain selector; it is not the legacy
 `fmfsolver` product identity. The selected physical model is Sentman.
 
-Case tables may be CSV, XLSX, or XLSM files.
+Case tables may be CSV, XLSX, or XLSM files. CSV input and Summary CSV output
+use UTF-8 with BOM (`utf-8-sig`); BOM-less UTF-8 CSV files remain accepted on
+input for compatibility.
 
 The six `fmfsolver` / `newtsolver` commands remain legacy compatibility entry
 points with unchanged command behavior and GUI titles.

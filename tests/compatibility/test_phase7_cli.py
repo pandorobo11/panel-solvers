@@ -17,6 +17,7 @@ from newtsolver.app.cli_app import build_parser as build_newt_parser
 from newtsolver.app.cli_app import main as newt_main
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.cli import parse_case_ids
+from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.app.runtime import DEFAULT_CHECKPOINT_CASES
 from panelsolver.cli import build_parser as build_canonical_parser
 from panelsolver.cli import main as canonical_main
@@ -196,7 +197,7 @@ class Phase7CliTests(unittest.TestCase):
                     )
                 import pandas as pd
 
-                summary = pd.read_csv(output)
+                summary = pd.read_csv(output, encoding=CSV_ENCODING)
                 self.assertEqual(
                     list(case_ids),
                     summary.loc[summary["scope"] == "total", "case_id"].tolist(),

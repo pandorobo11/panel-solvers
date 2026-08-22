@@ -10,6 +10,7 @@ import numpy as np
 import pyvista as pv
 
 from panelsolver.app import run_and_write_product_cases
+from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -43,7 +44,7 @@ class ExampleRegressionTests(unittest.TestCase):
         for domain, reader, policy in domains:
             for table in sorted((cls.root / domain).glob("*.csv")):
                 key = (domain, table.stem)
-                with table.open(encoding="utf-8", newline="") as stream:
+                with table.open(encoding=CSV_ENCODING, newline="") as stream:
                     cls.raw_rows[key] = tuple(csv.DictReader(stream))
                 frame = reader(table)
                 cls.frames[key] = frame

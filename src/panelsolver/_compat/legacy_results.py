@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from panelsolver.app.csv_writer import AtomicCsvWritePolicy, write_csv_atomic
+from panelsolver.app.csv_writer import (
+    CSV_ENCODING,
+    AtomicCsvWritePolicy,
+    write_csv_atomic,
+)
 from panelsolver.app.runtime import (
     DEFAULT_CHECKPOINT_CASES,
     ProductBatchRunResult,
@@ -331,6 +335,7 @@ def append_legacy_results_csv(
         mode="w" if write_header else "a",
         header=write_header,
         index=False,
+        encoding=CSV_ENCODING,
     )
 
 

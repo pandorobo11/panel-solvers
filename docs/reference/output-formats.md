@@ -6,6 +6,10 @@ inside VTP are not contracts.
 
 ## Summary CSV
 
+Summary CSV is encoded as UTF-8 with BOM (`utf-8-sig`) so that it opens
+correctly in Windows Excel and preserves non-ASCII text. CSV case-table input
+uses the same encoding; BOM-less UTF-8 input remains accepted for compatibility.
+
 The writer emits canonical input columns, then accepted non-reserved unknown
 input columns in their source order, then the product's result columns. The
 retired `save_npz_on` field is not an accepted unknown column: case readers

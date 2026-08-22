@@ -18,6 +18,8 @@ from typing import TextIO
 from panelsolver.core.csv_projection import CsvProjection
 from panelsolver.core.errors import ContractValueError
 
+CSV_ENCODING = "utf-8-sig"
+
 
 class TempNameStyle(str, Enum):
     """Legacy same-directory temporary-file naming strategies."""
@@ -206,7 +208,7 @@ def _temporary_csv_file(
     if style is TempNameStyle.NAMED_RANDOM:
         with tempfile.NamedTemporaryFile(
             mode="w",
-            encoding="utf-8",
+            encoding=CSV_ENCODING,
             newline="",
             dir=out.parent,
             prefix=f".{out.name}.",
@@ -216,7 +218,7 @@ def _temporary_csv_file(
             yield handle, Path(handle.name)
         return
     temp_path = out.with_name(f".{out.name}.{uuid.uuid4().hex}.tmp")
-    with temp_path.open("w", encoding="utf-8", newline="") as handle:
+    with temp_path.open("w", encoding=CSV_ENCODING, newline="") as handle:
         yield handle, temp_path
 
 
@@ -276,6 +278,7 @@ def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
 
 
 __all__ = (
+    "CSV_ENCODING",
     "DURABLE_CSV_WRITE_POLICY",
     "AtomicCsvWritePolicy",
     "TempNameStyle",

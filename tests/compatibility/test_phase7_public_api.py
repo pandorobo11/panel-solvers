@@ -41,6 +41,7 @@ from newtsolver.core.solver import run_cases as run_newt_cases
 from newtsolver.io.csv_out import write_results_csv as write_newt_results_csv
 from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver._compat.legacy_results import legacy_result_frame
+from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.core import CsvProjection
 from tests.current_case_fixtures import read_current_cases
 
@@ -423,7 +424,8 @@ class Phase7PublicBehaviorTests(unittest.TestCase):
             with self.subTest(product=product), tempfile.TemporaryDirectory() as temp_dir:
                 output = Path(temp_dir) / "results.csv"
                 writer(str(output), inputs, results)
-                with output.open(encoding="utf-8", newline="") as stream:
+                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
+                with output.open(encoding=CSV_ENCODING, newline="") as stream:
                     rows = list(csv.DictReader(stream))
                 self.assertEqual(["", "0", "1"], [r["component_id"] for r in rows])
                 self.assertEqual(

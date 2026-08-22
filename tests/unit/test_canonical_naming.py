@@ -5,6 +5,8 @@ import csv
 import unittest
 from pathlib import Path
 
+from panelsolver.app.csv_writer import CSV_ENCODING
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -59,7 +61,7 @@ class CanonicalNamingTests(unittest.TestCase):
     def test_current_example_case_ids_do_not_use_legacy_product_names(self) -> None:
         for domain in ("fmf", "hypersonic"):
             for path in sorted((ROOT / "examples" / domain).glob("*.csv")):
-                with path.open(encoding="utf-8", newline="") as stream:
+                with path.open(encoding=CSV_ENCODING, newline="") as stream:
                     for row in csv.DictReader(stream):
                         with self.subTest(path=path.relative_to(ROOT), row=row):
                             case_id = row["case_id"].casefold()

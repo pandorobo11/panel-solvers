@@ -13,6 +13,7 @@ import pandas as pd
 
 from .attitude import ATTITUDE_INPUT_VALUES
 from .case_identity import validate_case_id
+from .csv_writer import CSV_ENCODING
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -407,6 +408,7 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
         frame = pd.read_csv(
             input_path,
             dtype={"case_id": "string"},
+            encoding=CSV_ENCODING,
             keep_default_na=policy.keep_default_na,
         )
     elif suffix in {".xlsx", ".xlsm"}:
