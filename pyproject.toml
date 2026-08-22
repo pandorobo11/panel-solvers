@@ -20,6 +20,8 @@ dependencies = [
   "pyside6==6.9.3",
   "pyvista",
   "pyvistaqt",
+  "rich>=15,<16",
+  "rich-argparse>=1.8,<2",
   "rtree",
   "scipy",
   "trimesh",

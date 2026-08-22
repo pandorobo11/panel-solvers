@@ -6,6 +6,9 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Improve batch CLI presentation with Rich, including progress display and
+  `--verbose`, `--plain`, and `--debug`, while preserving plain-text output for
+  non-interactive use.
 - **Breaking:** Rename the CLI checkpoint option from
   `--flush-every-cases` to `--checkpoint-every-cases`, with no compatibility or
   deprecated alias. Unify the CLI, GUI, and runtime API name as

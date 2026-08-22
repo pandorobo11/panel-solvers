@@ -5,8 +5,10 @@ The canonical batch entry point selects a physical flow domain:
 ```text
 panelsolver fmf --input PATH [--output PATH] [--workers N]
                 [--cases ID [ID ...]] [--checkpoint-every-cases N]
+                [--verbose] [--plain] [--debug]
 panelsolver hypersonic --input PATH [--output PATH] [--workers N]
                        [--cases ID [ID ...]] [--checkpoint-every-cases N]
+                       [--verbose] [--plain] [--debug]
 ```
 
 Here `fmf` means the free-molecular-flow domain selector. It is not the legacy
@@ -27,8 +29,10 @@ options:
 ```text
 fmfsolver-cli --input PATH [--output PATH] [--workers N]
               [--cases ID [ID ...]] [--checkpoint-every-cases N]
+              [--verbose] [--plain] [--debug]
 newtsolver-cli --input PATH [--output PATH] [--workers N]
                [--cases ID [ID ...]] [--checkpoint-every-cases N]
+               [--verbose] [--plain] [--debug]
 ```
 
 All four batch forms use the same case-table reader and application service.
@@ -42,6 +46,9 @@ only formal outputs; legacy BIFF `.xls` and NPZ are not supported.
 | `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
 | `--cases` | Space- or comma-separated case IDs | all cases |
 | `--checkpoint-every-cases` | Rewrite a complete checkpoint after N completed cases; `0` disables | `2000` |
+| `--verbose` | Show case-level runtime messages in Rich mode | off |
+| `--plain` | Disable Rich run/progress output | off |
+| `--debug` | Show a Python traceback for CLI errors | off |
 
 Examples:
 
@@ -51,8 +58,12 @@ newtsolver-cli -i cases.xlsx -o results.csv --cases baseline -j 1
 ```
 
 Selected rows retain input-table order. Unknown case IDs reject the request.
-`--cases` requires at least one value. Successful execution writes `[RUN]` and
-`[OK]` messages; validation and execution failures return a nonzero process exit.
+`--cases` requires at least one value. On an interactive TTY, the default display
+uses a Rich summary and live progress while suppressing case-level `[RUN]` and
+`[OK]` messages; `--verbose` shows those messages. Use `--plain` for plain-text
+run output. Redirected or piped stdout and CI environments automatically use
+plain output. Validation and execution failures normally show a concise error
+and return a nonzero exit status; `--debug` shows the Python traceback.
 
 Output-path validation rejects collisions with the input table, any STL, and
 any planned VTP before execution. See [Outputs](outputs.md) and

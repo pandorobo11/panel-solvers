@@ -35,7 +35,10 @@ from scripts.release_tools import (
     verify_wheel_contents,
     write_deterministic_zip,
 )
-from scripts.smoke_installed_wheel import _smoke_subprocess_environment
+from scripts.smoke_installed_wheel import (
+    _smoke_subprocess_environment,
+    _validate_cli_help,
+)
 
 
 class ReleaseToolTests(unittest.TestCase):
@@ -730,6 +733,24 @@ class ReleaseToolTests(unittest.TestCase):
                     for name in environment
                 )
             )
+
+    def test_installed_cli_help_ignores_usage_case_but_keeps_contract(self) -> None:
+        help_text = (
+            "Usage: fmfsolver-cli [-h] -i INPUT [-o OUTPUT] -j WORKERS\n"
+            "Run FMF solver from CSV/XLSX/XLSM input without GUI.\n"
+            "-i, --input INPUT\n"
+            "-o, --output OUTPUT\n"
+            "-j, --workers WORKERS\n"
+            "--cases CASES [CASES ...]\n"
+            "--checkpoint-every-cases CHECKPOINT_EVERY_CASES\n"
+            "--verbose\n"
+            "--plain\n"
+            "--debug\n"
+        )
+
+        _validate_cli_help("fmfsolver", help_text)
+        with self.assertRaisesRegex(RuntimeError, "--debug"):
+            _validate_cli_help("fmfsolver", help_text.replace("--debug", ""))
 
 
 if __name__ == "__main__":

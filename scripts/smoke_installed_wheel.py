@@ -354,15 +354,19 @@ def _load_phase1_comparator(repository: Path):
 
 def _validate_cli_help(product: str, help_text: str) -> None:
     required = (
-        f"usage: {product}-cli",
         EXPECTED_CLI_DESCRIPTIONS[product],
         "--input INPUT",
         "--output OUTPUT",
         "--workers WORKERS",
         "--cases CASES [CASES ...]",
         "--checkpoint-every-cases CHECKPOINT_EVERY_CASES",
+        "--verbose",
+        "--plain",
+        "--debug",
     )
     missing = [fragment for fragment in required if fragment not in help_text]
+    if f"usage: {product}-cli" not in help_text.casefold():
+        missing.insert(0, f"usage: {product}-cli")
     if missing:
         raise RuntimeError(f"{product} help is missing Phase 8 contract: {missing}")
 
@@ -848,18 +852,35 @@ def main(argv: list[str] | None = None) -> int:
             check=False,
             env=subprocess_environment,
         )
-        if canonical_help.returncode != 0 or "{fmf,hypersonic}" not in (
-            canonical_help.stdout
+        canonical_help_required = (
+            "Run Panel Solver using a canonical flow-domain selector.",
+            "{fmf,hypersonic}",
+        )
+        if (
+            canonical_help.returncode != 0
+            or "usage: panelsolver" not in canonical_help.stdout.casefold()
+            or any(
+                fragment not in canonical_help.stdout
+                for fragment in canonical_help_required
+            )
         ):
             raise RuntimeError(
                 "canonical help failed:\n"
                 f"stdout={canonical_help.stdout!r}\nstderr={canonical_help.stderr!r}"
             )
         canonical_cases = {
-            "fmf": ("fmfsolver", "fmf_zero_plate"),
-            "hypersonic": ("newtsolver", "newt_zero_newtonian"),
+            "fmf": (
+                "fmfsolver",
+                "fmf_zero_plate",
+                "Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input.",
+            ),
+            "hypersonic": (
+                "newtsolver",
+                "newt_zero_newtonian",
+                "Run hypersonic panel models from CSV/XLSX/XLSM input.",
+            ),
         }
-        for domain, (product, case_id) in canonical_cases.items():
+        for domain, (product, case_id, description) in canonical_cases.items():
             domain_help = subprocess.run(
                 [canonical, domain, "--help"],
                 cwd=staging,
@@ -870,8 +891,15 @@ def main(argv: list[str] | None = None) -> int:
             )
             if (
                 domain_help.returncode != 0
-                or f"usage: panelsolver {domain}" not in domain_help.stdout
+                or f"usage: panelsolver {domain}"
+                not in domain_help.stdout.casefold()
+                or description not in domain_help.stdout
                 or "Input cases file (.csv/.xlsx/.xlsm)" not in domain_help.stdout
+                or "--cases CASES [CASES ...]" not in domain_help.stdout
+                or "--checkpoint-every-cases" not in domain_help.stdout
+                or "--verbose" not in domain_help.stdout
+                or "--plain" not in domain_help.stdout
+                or "--debug" not in domain_help.stdout
             ):
                 raise RuntimeError(
                     f"canonical {domain} help failed:\n"

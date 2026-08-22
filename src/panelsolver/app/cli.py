@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+from rich.console import Console
+from rich.markup import escape
+from rich_argparse import RichHelpFormatter
 
+from .cli_presentation import CliPresentation, use_rich_ui
 from .runtime import (
     DEFAULT_CHECKPOINT_CASES,
     ProductRuntimePolicy,
@@ -63,6 +68,7 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=policy.program,
         description=policy.description,
+        formatter_class=RichHelpFormatter,
     )
     parser.add_argument(
         "-i",
@@ -101,6 +107,16 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
             f"(0 to disable, default: {DEFAULT_CHECKPOINT_CASES})."
         ),
     )
+    display = parser.add_argument_group("display options")
+    display.add_argument(
+        "--verbose", action="store_true", help="Show case-level runtime messages."
+    )
+    display.add_argument(
+        "--plain", action="store_true", help="Disable interactive Rich output."
+    )
+    display.add_argument(
+        "--debug", action="store_true", help="Show Python tracebacks on errors."
+    )
     return parser
 
 
@@ -113,6 +129,25 @@ def run_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
     if args.checkpoint_every_cases < 0:
         parser.error("--checkpoint-every-cases must be >= 0")
 
+    try:
+        return _run_parsed_cli(policy, args)
+    except KeyboardInterrupt:
+        print("Canceled.", file=sys.stderr)
+        return 130
+    except Exception as exc:
+        if args.debug:
+            raise
+        if use_rich_ui(plain=args.plain, stream=sys.stderr):
+            Console(stderr=True, highlight=False).print(
+                f"[bold red]ERROR[/] {escape(str(exc))}", markup=True
+            )
+        else:
+            print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
+    """Run validated parsed arguments behind the concise CLI error boundary."""
     input_path = Path(args.input).expanduser()
     frame = policy.read_cases(input_path)
     if len(frame) == 0:
@@ -141,23 +176,28 @@ def run_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
     output = policy.validate_output_path(raw_output, input_path, rows)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    def logfn(message: str) -> None:
-        print(message, flush=True)
-
-    print(
-        f"[RUN] cases={len(rows)} workers={args.workers} input={input_path}",
-        flush=True,
+    presentation = CliPresentation(
+        rich_ui=use_rich_ui(plain=args.plain), verbose=args.verbose
     )
-    run_and_write_product_cases(
-        rows,
-        policy.runtime_policy,
-        output,
-        workers=args.workers,
-        logfn=logfn,
-        checkpoint_every_cases=args.checkpoint_every_cases,
-        log_snapshots=args.checkpoint_every_cases > 0,
-    )
-    print(f"[OK] Wrote results: {output}", flush=True)
+    with presentation:
+        presentation.start(
+            domain=policy.runtime_policy.product_id,
+            input_path=input_path,
+            output_path=output,
+            cases=len(rows),
+            workers=args.workers,
+        )
+        run_and_write_product_cases(
+            rows,
+            policy.runtime_policy,
+            output,
+            workers=args.workers,
+            logfn=presentation.log,
+            progress_cb=presentation.update,
+            checkpoint_every_cases=args.checkpoint_every_cases,
+            log_snapshots=args.checkpoint_every_cases > 0,
+        )
+        presentation.finish(output)
     return 0
 
 
